@@ -1,7 +1,7 @@
 <script setup>
 import InputError from "@/Components/InputError.vue";
 import { useForm } from "@inertiajs/vue3";
-import { ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 
 const props = defineProps({
     show: {
@@ -12,11 +12,14 @@ const props = defineProps({
 
 const emit = defineEmits(["close"]);
 
+const MAX_IMAGES = 5;
+
 const activeTab = ref("basic");
 const imagePreviews = ref([]);
+const fileInput = ref(null);
+const imageLimitMessage = ref("");
 
 const form = useForm({
-    // stock_code: "",
     brand: "",
     model_name: "",
     reference_number: "",
@@ -85,31 +88,265 @@ watch(
     },
 );
 
-const closeModal = () => {
-    if (form.processing) return;
+const clean = (value) => String(value ?? "").trim();
 
-    emit("close");
+const isZeroOrGreater = (value) => {
+    if (value === "" || value === null || value === undefined) return false;
+
+    return Number(value) >= 0;
+};
+
+const isPositive = (value) => {
+    if (value === "" || value === null || value === undefined) return false;
+
+    return Number(value) > 0;
+};
+
+const remainingSlots = computed(() => {
+    return Math.max(MAX_IMAGES - imagePreviews.value.length, 0);
+});
+
+const canAddMoreImages = computed(() => {
+    return remainingSlots.value > 0;
+});
+
+const basicComplete = computed(() => {
+    return (
+        clean(form.brand) !== "" &&
+        clean(form.model_name) !== "" &&
+        clean(form.condition) !== ""
+    );
+});
+
+const pricingComplete = computed(() => {
+    return (
+        isZeroOrGreater(form.capital_price) &&
+        isPositive(form.selling_price) &&
+        clean(form.status) !== ""
+    );
+});
+
+const specsComplete = computed(() => {
+    return clean(form.warranty_type) !== "";
+});
+
+const photosComplete = computed(() => {
+    return (
+        imagePreviews.value.length > 0 &&
+        imagePreviews.value.length <= MAX_IMAGES
+    );
+});
+
+const termsComplete = computed(() => {
+    return form.sections.every((section) => {
+        return clean(section.title) !== "" && clean(section.content) !== "";
+    });
+});
+
+const stepCompletion = computed(() => ({
+    basic: basicComplete.value,
+    pricing: pricingComplete.value,
+    specs: specsComplete.value,
+    photos: photosComplete.value,
+    terms: termsComplete.value,
+}));
+
+const currentStepComplete = computed(() => {
+    return stepCompletion.value[activeTab.value] === true;
+});
+
+const canSubmit = computed(() => {
+    return (
+        basicComplete.value &&
+        pricingComplete.value &&
+        specsComplete.value &&
+        photosComplete.value &&
+        termsComplete.value &&
+        !form.processing
+    );
+});
+
+const missingRequirements = computed(() => {
+    const missing = [];
+
+    if (!basicComplete.value) missing.push("Basic Info");
+    if (!pricingComplete.value) missing.push("Pricing");
+    if (!specsComplete.value) missing.push("Specs");
+    if (!photosComplete.value) missing.push("HD Photos");
+    if (!termsComplete.value) missing.push("Terms");
+
+    return missing;
+});
+
+const firstIncompleteTab = () => {
+    const incomplete = tabs.find((tab) => !stepCompletion.value[tab.key]);
+
+    return incomplete?.key || "terms";
+};
+
+const getTabIndex = (key) => {
+    return tabs.findIndex((tab) => tab.key === key);
+};
+
+const canAccessTab = (key) => {
+    const targetIndex = getTabIndex(key);
+    const currentIndex = getTabIndex(activeTab.value);
+
+    if (targetIndex <= currentIndex) return true;
+
+    const previousTabs = tabs.slice(0, targetIndex);
+
+    return previousTabs.every((tab) => stepCompletion.value[tab.key]);
+};
+
+const goToTab = (key) => {
+    if (!canAccessTab(key)) {
+        activeTab.value = firstIncompleteTab();
+        return;
+    }
+
+    activeTab.value = key;
+};
+
+const goToPreviousTab = () => {
+    const currentIndex = getTabIndex(activeTab.value);
+    const previousIndex = Math.max(0, currentIndex - 1);
+
+    activeTab.value = tabs[previousIndex].key;
+};
+
+const goToNextTab = () => {
+    if (!currentStepComplete.value) return;
+
+    const currentIndex = getTabIndex(activeTab.value);
+    const nextIndex = Math.min(tabs.length - 1, currentIndex + 1);
+
+    activeTab.value = tabs[nextIndex].key;
+};
+
+const syncImages = () => {
+    form.images = imagePreviews.value.map((image) => image.file);
 };
 
 const handleImages = (event) => {
+    imageLimitMessage.value = "";
+
     const files = Array.from(event.target.files || []);
 
-    form.images = files;
-    imagePreviews.value = files.map((file) => URL.createObjectURL(file));
+    if (!files.length) return;
+
+    if (remainingSlots.value <= 0) {
+        imageLimitMessage.value = `Maximum of ${MAX_IMAGES} images only. Remove an image before adding another.`;
+
+        if (fileInput.value) {
+            fileInput.value.value = "";
+        }
+
+        return;
+    }
+
+    const acceptedFiles = files.slice(0, remainingSlots.value);
+
+    if (files.length > remainingSlots.value) {
+        imageLimitMessage.value = `Only ${remainingSlots.value} more image(s) added. Maximum allowed is ${MAX_IMAGES} images.`;
+    }
+
+    const newImages = acceptedFiles.map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
+        name: file.name,
+        size: file.size,
+    }));
+
+    imagePreviews.value = [...imagePreviews.value, ...newImages];
+
+    syncImages();
+
+    if (fileInput.value) {
+        fileInput.value.value = "";
+    }
+};
+
+const removeImage = (index) => {
+    const imageToRemove = imagePreviews.value[index];
+
+    if (imageToRemove?.url) {
+        URL.revokeObjectURL(imageToRemove.url);
+    }
+
+    imagePreviews.value = imagePreviews.value.filter((_, i) => i !== index);
+
+    imageLimitMessage.value = "";
+
+    syncImages();
+
+    if (fileInput.value) {
+        fileInput.value.value = "";
+    }
+};
+
+const clearImages = () => {
+    imagePreviews.value.forEach((image) => {
+        if (image?.url) {
+            URL.revokeObjectURL(image.url);
+        }
+    });
+
+    imagePreviews.value = [];
+    form.images = [];
+    imageLimitMessage.value = "";
+
+    if (fileInput.value) {
+        fileInput.value.value = "";
+    }
+};
+
+const setPrimaryImage = (index) => {
+    if (index === 0) return;
+
+    const images = [...imagePreviews.value];
+    const selected = images.splice(index, 1)[0];
+
+    images.unshift(selected);
+
+    imagePreviews.value = images;
+
+    syncImages();
+};
+
+const resetModalState = () => {
+    clearImages();
+    form.reset();
+    form.clearErrors();
+    activeTab.value = "basic";
+};
+
+const closeModal = () => {
+    if (form.processing) return;
+
+    resetModalState();
+    emit("close");
 };
 
 const submit = () => {
+    if (!canSubmit.value) {
+        activeTab.value = firstIncompleteTab();
+        return;
+    }
+
     form.post(route("admin.watches.store"), {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
-            form.reset();
-            imagePreviews.value = [];
-            activeTab.value = "basic";
+            resetModalState();
             emit("close");
         },
     });
 };
+
+onBeforeUnmount(() => {
+    clearImages();
+});
 </script>
 
 <template>
@@ -161,7 +398,8 @@ const submit = () => {
 
                                     <p class="mt-2 text-sm text-zinc-400">
                                         Encode stock details, pricing,
-                                        specifications, terms, and HD photos.
+                                        specifications, terms, and up to 5 HD
+                                        photos.
                                     </p>
                                 </div>
 
@@ -192,15 +430,29 @@ const submit = () => {
                                     v-for="tab in tabs"
                                     :key="tab.key"
                                     type="button"
-                                    class="whitespace-nowrap rounded-2xl px-4 py-2 text-sm font-medium transition"
+                                    :disabled="!canAccessTab(tab.key)"
+                                    class="flex items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40"
                                     :class="
                                         activeTab === tab.key
                                             ? 'bg-white text-black'
-                                            : 'border border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/30 hover:text-white'
+                                            : stepCompletion[tab.key]
+                                              ? 'border border-emerald-400/20 bg-emerald-400/10 text-emerald-300 hover:border-emerald-400/40'
+                                              : 'border border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/30 hover:text-white'
                                     "
-                                    @click="activeTab = tab.key"
+                                    @click="goToTab(tab.key)"
                                 >
-                                    {{ tab.label }}
+                                    <span>{{ tab.label }}</span>
+
+                                    <span v-if="stepCompletion[tab.key]">
+                                        ✓
+                                    </span>
+
+                                    <span
+                                        v-else-if="!canAccessTab(tab.key)"
+                                        class="text-xs"
+                                    >
+                                        locked
+                                    </span>
                                 </button>
                             </div>
                         </div>
@@ -213,7 +465,10 @@ const submit = () => {
                                 class="grid gap-5 md:grid-cols-2"
                             >
                                 <div>
-                                    <label class="mn-label">Brand</label>
+                                    <label class="mn-label">
+                                        Brand
+                                        <span class="text-red-400">*</span>
+                                    </label>
                                     <input
                                         v-model="form.brand"
                                         class="mn-input"
@@ -226,7 +481,10 @@ const submit = () => {
                                 </div>
 
                                 <div>
-                                    <label class="mn-label">Model Name</label>
+                                    <label class="mn-label">
+                                        Model Name
+                                        <span class="text-red-400">*</span>
+                                    </label>
                                     <input
                                         v-model="form.model_name"
                                         class="mn-input"
@@ -239,9 +497,9 @@ const submit = () => {
                                 </div>
 
                                 <div>
-                                    <label class="mn-label"
-                                        >Reference Number</label
-                                    >
+                                    <label class="mn-label">
+                                        Reference Number
+                                    </label>
                                     <input
                                         v-model="form.reference_number"
                                         class="mn-input"
@@ -254,7 +512,10 @@ const submit = () => {
                                 </div>
 
                                 <div>
-                                    <label class="mn-label">Condition</label>
+                                    <label class="mn-label">
+                                        Condition
+                                        <span class="text-red-400">*</span>
+                                    </label>
                                     <select
                                         v-model="form.condition"
                                         class="mn-input"
@@ -312,15 +573,24 @@ const submit = () => {
                                         Pricing
                                     </h3>
 
+                                    <p class="mt-2 text-sm text-zinc-500">
+                                        Capital price can be zero, but selling
+                                        price must be greater than zero.
+                                    </p>
+
                                     <div class="mt-5 grid gap-5 md:grid-cols-2">
                                         <div>
-                                            <label class="mn-label"
-                                                >Capital Price</label
-                                            >
+                                            <label class="mn-label">
+                                                Capital Price
+                                                <span class="text-red-400"
+                                                    >*</span
+                                                >
+                                            </label>
                                             <input
                                                 v-model="form.capital_price"
                                                 type="number"
                                                 step="0.01"
+                                                min="0"
                                                 class="mn-input"
                                                 placeholder="0.00"
                                             />
@@ -333,13 +603,17 @@ const submit = () => {
                                         </div>
 
                                         <div>
-                                            <label class="mn-label"
-                                                >Selling Price</label
-                                            >
+                                            <label class="mn-label">
+                                                Selling Price
+                                                <span class="text-red-400"
+                                                    >*</span
+                                                >
+                                            </label>
                                             <input
                                                 v-model="form.selling_price"
                                                 type="number"
                                                 step="0.01"
+                                                min="1"
                                                 class="mn-input"
                                                 placeholder="0.00"
                                             />
@@ -352,13 +626,14 @@ const submit = () => {
                                         </div>
 
                                         <div class="md:col-span-2">
-                                            <label class="mn-label"
-                                                >Discounted Price</label
-                                            >
+                                            <label class="mn-label">
+                                                Discounted Price
+                                            </label>
                                             <input
                                                 v-model="form.discounted_price"
                                                 type="number"
                                                 step="0.01"
+                                                min="0"
                                                 class="mn-input"
                                                 placeholder="Optional"
                                             />
@@ -383,9 +658,12 @@ const submit = () => {
 
                                     <div class="mt-5 space-y-5">
                                         <div>
-                                            <label class="mn-label"
-                                                >Status</label
-                                            >
+                                            <label class="mn-label">
+                                                Status
+                                                <span class="text-red-400"
+                                                    >*</span
+                                                >
+                                            </label>
                                             <select
                                                 v-model="form.status"
                                                 class="mn-input"
@@ -479,9 +757,9 @@ const submit = () => {
                                 </div>
 
                                 <div>
-                                    <label class="mn-label"
-                                        >Case Material</label
-                                    >
+                                    <label class="mn-label">
+                                        Case Material
+                                    </label>
                                     <input
                                         v-model="form.case_material"
                                         class="mn-input"
@@ -508,9 +786,9 @@ const submit = () => {
                                 </div>
 
                                 <div>
-                                    <label class="mn-label"
-                                        >Bracelet / Strap</label
-                                    >
+                                    <label class="mn-label">
+                                        Bracelet / Strap
+                                    </label>
                                     <input
                                         v-model="form.bracelet_or_strap"
                                         class="mn-input"
@@ -519,9 +797,9 @@ const submit = () => {
                                 </div>
 
                                 <div>
-                                    <label class="mn-label"
-                                        >Water Resistance</label
-                                    >
+                                    <label class="mn-label">
+                                        Water Resistance
+                                    </label>
                                     <input
                                         v-model="form.water_resistance"
                                         class="mn-input"
@@ -530,9 +808,9 @@ const submit = () => {
                                 </div>
 
                                 <div>
-                                    <label class="mn-label"
-                                        >Box and Papers</label
-                                    >
+                                    <label class="mn-label">
+                                        Box and Papers
+                                    </label>
                                     <input
                                         v-model="form.box_papers"
                                         class="mn-input"
@@ -541,9 +819,10 @@ const submit = () => {
                                 </div>
 
                                 <div class="md:col-span-2">
-                                    <label class="mn-label"
-                                        >Warranty Type</label
-                                    >
+                                    <label class="mn-label">
+                                        Warranty Type
+                                        <span class="text-red-400">*</span>
+                                    </label>
                                     <input
                                         v-model="form.warranty_type"
                                         class="mn-input"
@@ -559,7 +838,12 @@ const submit = () => {
                             >
                                 <div>
                                     <label
-                                        class="flex min-h-[320px] cursor-pointer flex-col items-center justify-center rounded-[1.7rem] border border-dashed border-white/20 bg-white/[0.03] px-6 py-10 text-center transition hover:border-white/40 hover:bg-white/[0.05]"
+                                        class="flex min-h-[320px] flex-col items-center justify-center rounded-[1.7rem] border border-dashed px-6 py-10 text-center transition"
+                                        :class="
+                                            canAddMoreImages
+                                                ? 'cursor-pointer border-white/20 bg-white/[0.03] hover:border-white/40 hover:bg-white/[0.05]'
+                                                : 'cursor-not-allowed border-red-400/20 bg-red-400/10'
+                                        "
                                     >
                                         <div
                                             class="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]"
@@ -588,57 +872,136 @@ const submit = () => {
                                         <span
                                             class="mt-2 max-w-sm text-xs leading-6 text-zinc-500"
                                         >
-                                            Upload front shot, wrist shot,
-                                            caseback, side profile, box/papers,
-                                            and condition detail photos.
+                                            Upload up to 5 photos only. First
+                                            photo will become the primary image.
                                         </span>
 
                                         <span
                                             class="mt-4 rounded-full border border-white/10 px-4 py-2 text-xs font-medium text-zinc-400"
                                         >
-                                            JPG, PNG, WEBP up to 10MB each
+                                            {{ imagePreviews.length }} /
+                                            {{ MAX_IMAGES }} selected
+                                        </span>
+
+                                        <span
+                                            v-if="canAddMoreImages"
+                                            class="mt-3 text-xs text-zinc-500"
+                                        >
+                                            You can still add
+                                            {{ remainingSlots }} image(s).
+                                        </span>
+
+                                        <span
+                                            v-else
+                                            class="mt-3 text-xs font-semibold text-red-300"
+                                        >
+                                            Maximum image limit reached.
                                         </span>
 
                                         <input
+                                            ref="fileInput"
                                             type="file"
                                             multiple
                                             accept="image/*"
                                             class="hidden"
+                                            :disabled="!canAddMoreImages"
                                             @change="handleImages"
                                         />
                                     </label>
 
                                     <InputError
                                         class="mt-2"
-                                        :message="form.errors.images"
+                                        :message="
+                                            imageLimitMessage ||
+                                            form.errors.images
+                                        "
                                     />
                                 </div>
 
                                 <div>
-                                    <div
-                                        v-if="imagePreviews.length"
-                                        class="grid grid-cols-2 gap-3 md:grid-cols-3"
-                                    >
+                                    <div v-if="imagePreviews.length">
                                         <div
-                                            v-for="(
-                                                preview, index
-                                            ) in imagePreviews"
-                                            :key="preview"
-                                            class="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#050505]"
+                                            class="mb-4 flex items-center justify-between gap-3"
                                         >
-                                            <img
-                                                :src="preview"
-                                                class="aspect-square w-full object-cover"
-                                            />
+                                            <div>
+                                                <p
+                                                    class="text-sm font-semibold text-white"
+                                                >
+                                                    Selected Photos
+                                                </p>
 
-                                            <div
-                                                class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white backdrop-blur"
+                                                <p
+                                                    class="mt-1 text-xs text-zinc-500"
+                                                >
+                                                    {{ imagePreviews.length }}
+                                                    of {{ MAX_IMAGES }} photos
+                                                    selected. First image will
+                                                    be the primary photo.
+                                                </p>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                class="rounded-xl border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs font-semibold text-red-300 transition hover:border-red-400/40 hover:bg-red-400/15"
+                                                @click="clearImages"
                                             >
-                                                {{
-                                                    index === 0
-                                                        ? "Primary"
-                                                        : `Photo ${index + 1}`
-                                                }}
+                                                Remove All
+                                            </button>
+                                        </div>
+
+                                        <div
+                                            class="grid grid-cols-2 gap-3 md:grid-cols-3"
+                                        >
+                                            <div
+                                                v-for="(
+                                                    preview, index
+                                                ) in imagePreviews"
+                                                :key="preview.url"
+                                                class="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#050505]"
+                                            >
+                                                <img
+                                                    :src="preview.url"
+                                                    class="aspect-square w-full object-cover"
+                                                />
+
+                                                <div
+                                                    class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white backdrop-blur"
+                                                >
+                                                    {{
+                                                        index === 0
+                                                            ? "Primary"
+                                                            : `Photo ${
+                                                                  index + 1
+                                                              }`
+                                                    }}
+                                                </div>
+
+                                                <div
+                                                    class="absolute inset-x-2 bottom-2 flex gap-2 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100"
+                                                >
+                                                    <button
+                                                        v-if="index !== 0"
+                                                        type="button"
+                                                        class="flex-1 rounded-xl bg-white px-3 py-2 text-[11px] font-semibold text-black transition hover:bg-zinc-200"
+                                                        @click="
+                                                            setPrimaryImage(
+                                                                index,
+                                                            )
+                                                        "
+                                                    >
+                                                        Set Primary
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        class="flex-1 rounded-xl bg-red-500 px-3 py-2 text-[11px] font-semibold text-white transition hover:bg-red-600"
+                                                        @click="
+                                                            removeImage(index)
+                                                        "
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -656,7 +1019,8 @@ const submit = () => {
                                             <p
                                                 class="mt-2 text-sm text-zinc-500"
                                             >
-                                                Your previews will appear here.
+                                                Add at least 1 photo before
+                                                saving this watch.
                                             </p>
                                         </div>
                                     </div>
@@ -670,16 +1034,20 @@ const submit = () => {
                                     :key="index"
                                     class="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5"
                                 >
-                                    <label class="mn-label"
-                                        >Section Title</label
-                                    >
+                                    <label class="mn-label">
+                                        Section Title
+                                        <span class="text-red-400">*</span>
+                                    </label>
                                     <input
                                         v-model="section.title"
                                         class="mn-input"
                                         placeholder="Section Title"
                                     />
 
-                                    <label class="mn-label mt-4">Content</label>
+                                    <label class="mn-label mt-4">
+                                        Content
+                                        <span class="text-red-400">*</span>
+                                    </label>
                                     <textarea
                                         v-model="section.content"
                                         rows="6"
@@ -695,34 +1063,44 @@ const submit = () => {
                             class="border-t border-white/10 bg-[#0B0B0D] px-6 py-5"
                         >
                             <div
-                                class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between"
+                                class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
                             >
-                                <button
-                                    type="button"
-                                    class="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30"
-                                    @click="closeModal"
-                                >
-                                    Cancel
-                                </button>
+                                <div class="text-xs leading-5">
+                                    <p
+                                        v-if="canSubmit"
+                                        class="font-semibold text-emerald-300"
+                                    >
+                                        All required steps are complete. You can
+                                        now save this watch.
+                                    </p>
 
-                                <div class="flex flex-col gap-3 sm:flex-row">
+                                    <p
+                                        v-else
+                                        class="font-semibold text-zinc-400"
+                                    >
+                                        Complete required steps before saving:
+                                        <span class="text-red-300">
+                                            {{ missingRequirements.join(", ") }}
+                                        </span>
+                                    </p>
+                                </div>
+
+                                <div
+                                    class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"
+                                >
+                                    <button
+                                        type="button"
+                                        class="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30"
+                                        @click="closeModal"
+                                    >
+                                        Cancel
+                                    </button>
+
                                     <button
                                         v-if="activeTab !== 'basic'"
                                         type="button"
                                         class="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-zinc-300 transition hover:border-white/30 hover:text-white"
-                                        @click="
-                                            activeTab =
-                                                tabs[
-                                                    Math.max(
-                                                        0,
-                                                        tabs.findIndex(
-                                                            (tab) =>
-                                                                tab.key ===
-                                                                activeTab,
-                                                        ) - 1,
-                                                    )
-                                                ].key
-                                        "
+                                        @click="goToPreviousTab"
                                     >
                                         Previous
                                     </button>
@@ -730,28 +1108,17 @@ const submit = () => {
                                     <button
                                         v-if="activeTab !== 'terms'"
                                         type="button"
-                                        class="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-zinc-300 transition hover:border-white/30 hover:text-white"
-                                        @click="
-                                            activeTab =
-                                                tabs[
-                                                    Math.min(
-                                                        tabs.length - 1,
-                                                        tabs.findIndex(
-                                                            (tab) =>
-                                                                tab.key ===
-                                                                activeTab,
-                                                        ) + 1,
-                                                    )
-                                                ].key
-                                        "
+                                        :disabled="!currentStepComplete"
+                                        class="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-zinc-300 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                                        @click="goToNextTab"
                                     >
                                         Next
                                     </button>
 
                                     <button
                                         type="submit"
-                                        :disabled="form.processing"
-                                        class="rounded-2xl bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+                                        :disabled="!canSubmit"
+                                        class="rounded-2xl bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
                                     >
                                         {{
                                             form.processing
