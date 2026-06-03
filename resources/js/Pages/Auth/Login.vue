@@ -237,12 +237,12 @@ const submit = () => {
                         <div class="mt-7 border-t border-white/10 pt-6">
                             <p class="text-center text-sm text-zinc-500">
                                 Need an admin account?
-                                <Link
+                                <!-- <Link
                                     :href="route('register')"
                                     class="font-medium text-white transition hover:text-zinc-300"
                                 >
                                     Create one
-                                </Link>
+                                </Link> -->
                             </p>
                         </div>
                     </div>
