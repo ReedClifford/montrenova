@@ -1,0 +1,316 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Watch;
+use App\Models\WatchImage;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
+
+class WatchController extends Controller
+{
+public function index(Request $request)
+{
+    $search = trim((string) $request->input('search', ''));
+    $status = $request->input('status', '');
+
+    $watches = Watch::query()
+        ->with(['primaryImage', 'images', 'sections'])
+        ->withCount('images')
+        ->when($search, function ($query) use ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('brand', 'like', "%{$search}%")
+                    ->orWhere('model_name', 'like', "%{$search}%")
+                    ->orWhere('reference_number', 'like', "%{$search}%")
+                    ->orWhere('condition', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%");
+            });
+        })
+        ->when($status, fn ($query) => $query->where('status', $status))
+        ->latest()
+        ->paginate(10)
+        ->withQueryString();
+
+    $activeInventoryQuery = Watch::query()
+        ->where('status', '!=', 'sold');
+
+    $inventoryCapital = (float) (clone $activeInventoryQuery)
+        ->sum('capital_price');
+
+    $expectedSalesValue = (float) (clone $activeInventoryQuery)
+        ->selectRaw('COALESCE(SUM(CASE WHEN discounted_price IS NOT NULL AND discounted_price > 0 THEN discounted_price ELSE selling_price END), 0) as total')
+        ->value('total');
+
+    $expectedProfit = $expectedSalesValue - $inventoryCapital;
+
+    return Inertia::render('Admin/Watches/Index', [
+        'watches' => $watches,
+        'filters' => [
+            'search' => $search,
+            'status' => $status,
+        ],
+        'summary' => [
+            'total_watches' => Watch::count(),
+            'available_watches' => Watch::where('status', 'available')->count(),
+            'reserved_watches' => Watch::where('status', 'reserved')->count(),
+            'sold_watches' => Watch::where('status', 'sold')->count(),
+            'draft_hidden_watches' => Watch::whereIn('status', ['draft', 'hidden'])->count(),
+            'inventory_capital' => $inventoryCapital,
+            'expected_sales_value' => $expectedSalesValue,
+            'expected_profit' => $expectedProfit,
+        ],
+    ]);
+}
+public function markSold(Request $request, Watch $watch)
+{
+    $validated = $request->validate([
+        'sold_price' => ['required', 'numeric', 'min:0'],
+        'date_sold' => ['required', 'date'],
+    ]);
+
+    $watch->update([
+        'status' => 'sold',
+        'discounted_price' => $validated['sold_price'],
+        'date_sold' => $validated['date_sold'],
+        'is_visible' => false,
+    ]);
+
+    return back()->with('success', 'Watch marked as sold successfully.');
+}
+public function create()
+{
+    return redirect()->route('admin.watches.index', [
+        'create' => 1,
+    ]);
+}
+
+    public function store(Request $request)
+    {
+        if (($validated['status'] ?? null) === 'sold' && empty($validated['date_sold'])) {
+            $validated['date_sold'] = now()->toDateString();
+        }
+        $validated = $this->validateWatch($request);
+
+        $validated['slug'] = $this->generateUniqueSlug(
+            $validated['brand'] ?? '',
+            $validated['model_name'],
+            $validated['reference_number'] ?? ''
+        );
+
+        $watch = Watch::create($validated);
+
+        $this->syncSections($watch, $request->input('sections', []));
+        $this->uploadImages($watch, $request);
+
+        return redirect()
+            ->route('admin.watches.index')
+            ->with('success', 'Watch stock created successfully.');
+    }
+
+    public function edit(Watch $watch)
+    {
+        $watch->load(['images', 'sections']);
+
+        return Inertia::render('Admin/Watches/Edit', [
+            'watch' => $watch,
+        ]);
+    }
+
+public function update(Request $request, Watch $watch)
+{
+    $validated = $this->validateWatch($request, $watch->id);
+
+    if (($validated['status'] ?? null) === 'sold' && empty($validated['date_sold']) && ! $watch->date_sold) {
+        $validated['date_sold'] = now()->toDateString();
+    }
+
+    if (($validated['status'] ?? null) !== 'sold') {
+        $validated['date_sold'] = null;
+    }
+
+    $watch->update($validated);
+
+    $this->syncSections($watch, $request->input('sections', []));
+    $this->uploadImages($watch, $request);
+
+    return redirect()
+        ->route('admin.watches.index')
+        ->with('success', 'Watch stock updated successfully.');
+}
+
+    public function destroy(Watch $watch)
+    {
+        foreach ($watch->images as $image) {
+            Storage::disk('public')->delete([
+                $image->image_path,
+                $image->hd_path,
+                $image->thumbnail_path,
+            ]);
+        }
+
+        $watch->delete();
+
+        return redirect()
+            ->route('admin.watches.index')
+            ->with('success', 'Watch stock deleted successfully.');
+    }
+
+    public function deleteImage(WatchImage $image)
+    {
+        Storage::disk('public')->delete([
+            $image->image_path,
+            $image->hd_path,
+            $image->thumbnail_path,
+        ]);
+
+        $image->delete();
+
+        return back()->with('success', 'Photo deleted successfully.');
+    }
+
+    public function setPrimaryImage(WatchImage $image)
+    {
+        WatchImage::where('watch_id', $image->watch_id)
+            ->update(['is_primary' => false]);
+
+        $image->update(['is_primary' => true]);
+
+        return back()->with('success', 'Primary photo updated successfully.');
+    }
+
+    private function validateWatch(Request $request, ?int $watchId = null): array
+    {
+        return $request->validate([
+      
+            'brand' => ['nullable', 'string', 'max:255'],
+            'model_name' => ['required', 'string', 'max:255'],
+            'reference_number' => ['nullable', 'string', 'max:255'],
+
+            'condition' => ['nullable', 'string', 'max:255'],
+            'category' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+
+            'movement' => ['nullable', 'string', 'max:255'],
+            'case_size' => ['nullable', 'string', 'max:255'],
+            'case_material' => ['nullable', 'string', 'max:255'],
+            'dial_color' => ['nullable', 'string', 'max:255'],
+            'crystal' => ['nullable', 'string', 'max:255'],
+            'bracelet_or_strap' => ['nullable', 'string', 'max:255'],
+            'water_resistance' => ['nullable', 'string', 'max:255'],
+            'box_papers' => ['nullable', 'string', 'max:255'],
+            'warranty_type' => ['nullable', 'string', 'max:255'],
+
+            'capital_price' => ['nullable', 'numeric', 'min:0'],
+            'selling_price' => ['required', 'numeric', 'min:0'],
+            'discounted_price' => ['nullable', 'numeric', 'min:0'],
+
+            'status' => ['required', 'in:draft,available,reserved,sold,hidden'],
+
+            'is_featured' => ['boolean'],
+            'is_visible' => ['boolean'],
+            'display_price' => ['boolean'],
+            'allow_inquiry' => ['boolean'],
+
+            'date_acquired' => ['nullable', 'date'],
+            'date_sold' => ['nullable', 'date'],
+
+            'images' => ['nullable', 'array'],
+            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+        ]);
+    }
+
+    private function uploadImages(Watch $watch, Request $request): void
+    {
+        if (!$request->hasFile('images')) {
+            return;
+        }
+
+        $currentCount = $watch->images()->count();
+
+        foreach ($request->file('images') as $index => $file) {
+            $folder = 'watches/' . $watch->id;
+            $path = $file->store($folder, 'public');
+
+            $watch->images()->create([
+                'image_path' => $path,
+                'hd_path' => $path,
+                'thumbnail_path' => $path,
+                'is_primary' => $currentCount === 0 && $index === 0,
+                'sort_order' => $currentCount + $index + 1,
+            ]);
+        }
+    }
+
+    private function syncSections(Watch $watch, array $sections): void
+    {
+        $watch->sections()->delete();
+
+        foreach ($sections as $index => $section) {
+            if (empty($section['title']) && empty($section['content'])) {
+                continue;
+            }
+
+            $watch->sections()->create([
+                'title' => $section['title'] ?? '',
+                'content' => $section['content'] ?? '',
+                'sort_order' => $index + 1,
+            ]);
+        }
+    }
+
+    private function generateUniqueSlug(string $brand, string $model, string $reference): string
+    {
+        $base = Str::slug(trim($brand . ' ' . $model . ' ' . $reference));
+        $slug = $base ?: Str::random(10);
+        $counter = 1;
+
+        while (Watch::where('slug', $slug)->exists()) {
+            $slug = $base . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
+    }
+
+
+    public function reserve(Request $request, Watch $watch)
+{
+    $validated = $request->validate([
+        'reserved_customer_name' => ['required', 'string', 'max:255'],
+        'reserved_contact_number' => ['nullable', 'string', 'max:255'],
+        'reservation_date' => ['required', 'date'],
+        'reservation_deadline' => ['nullable', 'date', 'after_or_equal:reservation_date'],
+        'reservation_notes' => ['nullable', 'string'],
+    ]);
+
+    $watch->update([
+        'status' => 'reserved',
+        'is_visible' => false,
+        'reserved_customer_name' => $validated['reserved_customer_name'],
+        'reserved_contact_number' => $validated['reserved_contact_number'] ?? null,
+        'reservation_date' => $validated['reservation_date'],
+        'reservation_deadline' => $validated['reservation_deadline'] ?? null,
+        'reservation_notes' => $validated['reservation_notes'] ?? null,
+    ]);
+
+    return back()->with('success', 'Watch reserved successfully.');
+}
+
+    public function clearReservation(Watch $watch)
+    {
+        $watch->update([
+            'status' => 'available',
+            'is_visible' => true,
+            'reserved_customer_name' => null,
+            'reserved_contact_number' => null,
+            'reservation_date' => null,
+            'reservation_deadline' => null,
+            'reservation_notes' => null,
+        ]);
+
+        return back()->with('success', 'Reservation cleared successfully.');
+    }
+}
