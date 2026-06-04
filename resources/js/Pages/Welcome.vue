@@ -275,45 +275,105 @@ const productBadges = (watch) => {
         </div>
 
         <!-- NAVBAR -->
-        <header class="relative z-10 border-b border-white/10">
-            <div
-                class="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 lg:px-8"
-            >
-                <a href="/" class="flex items-center">
-                    <MontreLogo />
-                </a>
+        <!-- NAVBAR -->
+        <header
+            class="sticky top-0 z-50 border-b border-white/10 bg-[#050505]/85 backdrop-blur-xl"
+        >
+            <div class="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+                <!-- TOP NAV ROW -->
+                <div class="flex items-center justify-between gap-3">
+                    <a href="/" class="flex min-w-0 items-center">
+                        <MontreLogo />
+                    </a>
 
+                    <!-- DESKTOP NAV -->
+                    <nav
+                        class="hidden items-center gap-8 text-sm font-medium text-zinc-500 md:flex"
+                    >
+                        <a
+                            href="#collection"
+                            class="transition hover:text-white"
+                        >
+                            Collection
+                        </a>
+
+                        <a
+                            v-if="recentSoldWatches.length"
+                            href="#recently-sold"
+                            class="transition hover:text-white"
+                        >
+                            Sold
+                        </a>
+
+                        <a href="#process" class="transition hover:text-white">
+                            Process
+                        </a>
+
+                        <a href="#warranty" class="transition hover:text-white">
+                            Warranty
+                        </a>
+
+                        <a href="#contact" class="transition hover:text-white">
+                            Contact
+                        </a>
+                    </nav>
+
+                    <!-- MOBILE CTA -->
+                    <a
+                        href="#contact"
+                        class="inline-flex shrink-0 items-center justify-center rounded-2xl bg-white px-4 py-2 text-xs font-bold text-black transition hover:bg-zinc-200 md:hidden"
+                    >
+                        Message
+                    </a>
+
+                    <div
+                        v-if="props.canLogin"
+                        class="hidden items-center gap-3"
+                    >
+                        <!-- Admin login hidden for public page -->
+                    </div>
+                </div>
+
+                <!-- MOBILE SCROLL NAV -->
                 <nav
-                    class="hidden items-center gap-8 text-sm text-zinc-500 md:flex"
+                    class="mt-3 flex gap-2 overflow-x-auto pb-1 text-xs font-semibold text-zinc-400 md:hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
-                    <a href="#collection" class="transition hover:text-white">
+                    <a
+                        href="#collection"
+                        class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
+                    >
                         Collection
                     </a>
 
                     <a
                         v-if="recentSoldWatches.length"
                         href="#recently-sold"
-                        class="transition hover:text-white"
+                        class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
                     >
                         Sold
                     </a>
 
-                    <a href="#process" class="transition hover:text-white">
+                    <a
+                        href="#process"
+                        class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
+                    >
                         Process
                     </a>
 
-                    <a href="#warranty" class="transition hover:text-white">
+                    <a
+                        href="#warranty"
+                        class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
+                    >
                         Warranty
                     </a>
 
-                    <a href="#contact" class="transition hover:text-white">
+                    <a
+                        href="#contact"
+                        class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
+                    >
                         Contact
                     </a>
                 </nav>
-
-                <div v-if="props.canLogin" class="flex items-center gap-3">
-                    <!-- Admin login hidden for public page -->
-                </div>
             </div>
         </header>
 
