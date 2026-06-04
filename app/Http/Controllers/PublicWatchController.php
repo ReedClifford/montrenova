@@ -33,9 +33,9 @@ class PublicWatchController extends Controller
             ->where('status', 'available')
             ->where('is_visible', true)
             ->latest()
-            ->limit(6)
-            ->get()
-            ->map(fn ($watch) => $this->publicWatchCard($watch));
+            ->paginate(3)
+            ->withQueryString()
+            ->through(fn ($watch) => $this->publicWatchCard($watch));
 
         $soldWatches = Watch::query()
             ->with(['primaryImage'])
@@ -92,6 +92,7 @@ class PublicWatchController extends Controller
             'price' => $price,
             'status' => $watch->status,
             'is_featured' => (bool) $watch->is_featured,
+            'created_at' => $watch->created_at?->toISOString(),
             'images_count' => $watch->images_count ?? $watch->images?->count() ?? 0,
             'primary_image_url' => $watch->primaryImage?->image_url,
             'primary_hd_url' => $watch->primaryImage?->hd_url,

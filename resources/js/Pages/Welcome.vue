@@ -17,7 +17,7 @@ const props = defineProps({
         default: null,
     },
     watches: {
-        type: Array,
+        type: [Array, Object],
         default: () => [],
     },
     soldWatches: {
@@ -26,13 +26,57 @@ const props = defineProps({
     },
 });
 
-const watches = computed(() => props.watches || []);
+const watchPagination = computed(() => {
+    return Array.isArray(props.watches) ? null : props.watches;
+});
+
+const watches = computed(() => {
+    if (Array.isArray(props.watches)) {
+        return props.watches;
+    }
+
+    return props.watches?.data || [];
+});
+
 const soldWatches = computed(() => props.soldWatches || []);
 const recentSoldWatches = computed(() => soldWatches.value.slice(0, 8));
 const featuredWatch = computed(() => props.featuredWatch);
 
-const availableCount = computed(() => watches.value.length);
+const paginationLinks = computed(() => {
+    return watchPagination.value?.links || [];
+});
+
+const hasWatchPagination = computed(() => {
+    return paginationLinks.value.length > 3;
+});
+
+const availableCount = computed(() => {
+    return Number(watchPagination.value?.total ?? watches.value.length);
+});
+
 const soldCount = computed(() => soldWatches.value.length);
+
+const paginationSummary = computed(() => {
+    const pagination = watchPagination.value;
+
+    if (!pagination?.total) {
+        return "";
+    }
+
+    return `Showing ${pagination.from || 0}-${pagination.to || 0} of ${
+        pagination.total
+    } watches`;
+});
+
+const paginationUrl = (url) => {
+    return url ? `${url}#collection` : null;
+};
+
+const cleanPaginationLabel = (label) => {
+    return String(label)
+        .replace("&laquo; Previous", "‹ Prev")
+        .replace("Next &raquo;", "Next ›");
+};
 
 const contactLinks = [
     {
@@ -663,6 +707,13 @@ const productBadges = (watch) => {
                             Browse real-time available watch stocks from Montre
                             Nova.
                         </p>
+
+                        <p
+                            v-if="paginationSummary"
+                            class="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-600"
+                        >
+                            {{ paginationSummary }}
+                        </p>
                     </div>
 
                     <a
@@ -673,132 +724,178 @@ const productBadges = (watch) => {
                     </a>
                 </div>
 
-                <div
-                    v-if="watches.length"
-                    class="grid gap-5 md:grid-cols-2 xl:grid-cols-3"
-                >
-                    <div
-                        v-for="watch in watches"
-                        :key="watch.id"
-                        class="group overflow-hidden rounded-[2rem] border border-white/10 bg-[#0B0B0D]/90 p-4 transition hover:border-white/30"
-                        :class="isSold(watch) ? 'opacity-70' : ''"
-                    >
+                <template v-if="watches.length">
+                    <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                         <div
-                            class="relative aspect-square overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#050505]"
+                            v-for="watch in watches"
+                            :key="watch.id"
+                            class="group overflow-hidden rounded-[2rem] border border-white/10 bg-[#0B0B0D]/90 p-4 transition hover:border-white/30"
+                            :class="isSold(watch) ? 'opacity-70' : ''"
                         >
                             <div
-                                class="absolute left-3 top-3 z-10 flex flex-wrap gap-1.5"
+                                class="relative aspect-square overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#050505]"
                             >
-                                <span
-                                    v-for="badge in productBadges(watch).slice(
-                                        0,
-                                        3,
-                                    )"
-                                    :key="badge.label"
-                                    class="rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] backdrop-blur"
-                                    :class="badge.className"
+                                <div
+                                    class="absolute left-3 top-3 z-10 flex flex-wrap gap-1.5"
                                 >
-                                    {{ badge.label }}
-                                </span>
-                            </div>
+                                    <span
+                                        v-for="badge in productBadges(
+                                            watch,
+                                        ).slice(0, 3)"
+                                        :key="badge.label"
+                                        class="rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] backdrop-blur"
+                                        :class="badge.className"
+                                    >
+                                        {{ badge.label }}
+                                    </span>
+                                </div>
 
-                            <img
-                                v-if="watchImage(watch)"
-                                :src="watchImage(watch)"
-                                :alt="`${watch.brand} ${watch.model_name}`"
-                                class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                            />
-
-                            <div
-                                v-else
-                                class="flex h-full items-center justify-center bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_40%)]"
-                            >
                                 <img
-                                    src="/images/montre-nova-logo.png"
-                                    alt="Montre Nova"
-                                    class="h-40 w-40 object-contain opacity-70"
+                                    v-if="watchImage(watch)"
+                                    :src="watchImage(watch)"
+                                    :alt="`${watch.brand} ${watch.model_name}`"
+                                    class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                                 />
+
+                                <div
+                                    v-else
+                                    class="flex h-full items-center justify-center bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_40%)]"
+                                >
+                                    <img
+                                        src="/images/montre-nova-logo.png"
+                                        alt="Montre Nova"
+                                        class="h-40 w-40 object-contain opacity-70"
+                                    />
+                                </div>
                             </div>
-                        </div>
 
-                        <div class="p-2 pt-5">
-                            <div class="flex items-start justify-between gap-4">
-                                <div>
-                                    <p
-                                        class="text-xs font-medium uppercase tracking-[0.26em] text-zinc-500"
+                            <div class="p-2 pt-5">
+                                <div
+                                    class="flex items-start justify-between gap-4"
+                                >
+                                    <div>
+                                        <p
+                                            class="text-xs font-medium uppercase tracking-[0.26em] text-zinc-500"
+                                        >
+                                            {{ watch.brand }}
+                                        </p>
+
+                                        <h3
+                                            class="mt-2 text-lg font-semibold text-white"
+                                        >
+                                            {{ watch.model_name }}
+                                        </h3>
+
+                                        <p class="mt-1 text-sm text-zinc-500">
+                                            Ref.
+                                            {{
+                                                watch.reference_number ||
+                                                "No reference"
+                                            }}
+                                        </p>
+                                    </div>
+
+                                    <span
+                                        class="shrink-0 rounded-full border px-3 py-1 text-xs font-medium"
+                                        :class="statusBadge(watch).className"
                                     >
-                                        {{ watch.brand }}
-                                    </p>
+                                        {{ statusBadge(watch).label }}
+                                    </span>
+                                </div>
 
-                                    <h3
-                                        class="mt-2 text-lg font-semibold text-white"
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    <span
+                                        class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
                                     >
-                                        {{ watch.model_name }}
-                                    </h3>
-
-                                    <p class="mt-1 text-sm text-zinc-500">
-                                        Ref.
                                         {{
-                                            watch.reference_number ||
-                                            "No reference"
+                                            watch.condition ||
+                                            "Condition upon request"
                                         }}
-                                    </p>
-                                </div>
+                                    </span>
 
-                                <span
-                                    class="shrink-0 rounded-full border px-3 py-1 text-xs font-medium"
-                                    :class="statusBadge(watch).className"
-                                >
-                                    {{ statusBadge(watch).label }}
-                                </span>
-                            </div>
-
-                            <div class="mt-4 flex flex-wrap gap-2">
-                                <span
-                                    class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
-                                >
-                                    {{
-                                        watch.condition ||
-                                        "Condition upon request"
-                                    }}
-                                </span>
-
-                                <span
-                                    v-if="watch.category"
-                                    class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
-                                >
-                                    {{ watch.category }}
-                                </span>
-                            </div>
-
-                            <div
-                                class="mt-6 flex items-center justify-between border-t border-white/10 pt-5"
-                            >
-                                <div>
-                                    <p class="text-xl font-semibold text-white">
-                                        {{ peso(finalPrice(watch)) }}
-                                    </p>
-
-                                    <p
-                                        v-if="isBelowSrp(watch)"
-                                        class="text-sm text-zinc-600 line-through"
+                                    <span
+                                        v-if="watch.category"
+                                        class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
                                     >
-                                        {{ peso(originalPrice(watch)) }}
-                                    </p>
+                                        {{ watch.category }}
+                                    </span>
                                 </div>
 
-                                <Link
-                                    :href="
-                                        route('public.watches.show', watch.id)
-                                    "
-                                    class="text-sm font-medium text-zinc-300 transition group-hover:text-white"
+                                <div
+                                    class="mt-6 flex items-center justify-between border-t border-white/10 pt-5"
                                 >
-                                    View Details
-                                </Link>
+                                    <div>
+                                        <p
+                                            class="text-xl font-semibold text-white"
+                                        >
+                                            {{ peso(finalPrice(watch)) }}
+                                        </p>
+
+                                        <p
+                                            v-if="isBelowSrp(watch)"
+                                            class="text-sm text-zinc-600 line-through"
+                                        >
+                                            {{ peso(originalPrice(watch)) }}
+                                        </p>
+                                    </div>
+
+                                    <Link
+                                        :href="
+                                            route(
+                                                'public.watches.show',
+                                                watch.id,
+                                            )
+                                        "
+                                        class="text-sm font-medium text-zinc-300 transition group-hover:text-white"
+                                    >
+                                        View Details
+                                    </Link>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+
+                    <!-- PAGINATION -->
+                    <div
+                        v-if="hasWatchPagination"
+                        class="mt-10 flex flex-col items-center justify-between gap-5 rounded-[1.5rem] border border-white/10 bg-[#0B0B0D]/80 p-4 sm:flex-row"
+                    >
+                        <p class="text-sm text-zinc-500">
+                            {{ paginationSummary }}
+                        </p>
+
+                        <div
+                            class="flex flex-wrap items-center justify-center gap-2"
+                        >
+                            <template
+                                v-for="link in paginationLinks"
+                                :key="link.label"
+                            >
+                                <span
+                                    v-if="!link.url"
+                                    class="cursor-not-allowed rounded-xl border border-white/5 bg-white/[0.02] px-4 py-2 text-sm font-semibold text-zinc-700"
+                                >
+                                    {{ cleanPaginationLabel(link.label) }}
+                                </span>
+
+                                <Link
+                                    v-else
+                                    :href="paginationUrl(link.url)"
+                                    preserve-scroll
+                                    preserve-state
+                                    class="rounded-xl border px-4 py-2 text-sm font-semibold transition"
+                                    :class="
+                                        link.active
+                                            ? 'border-white bg-white text-black'
+                                            : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/30 hover:text-white'
+                                    "
+                                >
+                                    {{ cleanPaginationLabel(link.label) }}
+                                </Link>
+                            </template>
+                        </div>
+                    </div>
+                </template>
 
                 <div
                     v-else
