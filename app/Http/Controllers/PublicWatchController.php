@@ -37,11 +37,22 @@ class PublicWatchController extends Controller
             ->get()
             ->map(fn ($watch) => $this->publicWatchCard($watch));
 
+        $soldWatches = Watch::query()
+            ->with(['primaryImage'])
+            ->withCount('images')
+            ->where('status', 'sold')
+            ->where('is_visible', true)
+            ->latest('updated_at')
+            ->limit(12)
+            ->get()
+            ->map(fn ($watch) => $this->publicWatchCard($watch));
+
         return Inertia::render('Welcome', [
             'canLogin' => Route::has('login'),
             'canRegister' => false,
             'featuredWatch' => $featuredWatch ? $this->publicWatchCard($featuredWatch) : null,
             'watches' => $watches,
+            'soldWatches' => $soldWatches,
         ]);
     }
 

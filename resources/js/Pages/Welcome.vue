@@ -20,11 +20,20 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    soldWatches: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const watches = computed(() => props.watches || []);
+const soldWatches = computed(() => props.soldWatches || []);
+const recentSoldWatches = computed(() => soldWatches.value.slice(0, 8));
 const featuredWatch = computed(() => props.featuredWatch);
+
 const availableCount = computed(() => watches.value.length);
+const soldCount = computed(() => soldWatches.value.length);
+
 const contactLinks = [
     {
         label: "Messenger",
@@ -42,6 +51,7 @@ const contactLinks = [
         href: "https://www.instagram.com/montrenova",
     },
 ];
+
 const trustItems = [
     {
         title: "Actual HD Photos",
@@ -225,24 +235,30 @@ const productBadges = (watch) => {
                     <a href="#collection" class="transition hover:text-white">
                         Collection
                     </a>
+
+                    <a
+                        v-if="recentSoldWatches.length"
+                        href="#recently-sold"
+                        class="transition hover:text-white"
+                    >
+                        Sold
+                    </a>
+
                     <a href="#process" class="transition hover:text-white">
                         Process
                     </a>
+
                     <a href="#warranty" class="transition hover:text-white">
                         Warranty
                     </a>
+
                     <a href="#contact" class="transition hover:text-white">
                         Contact
                     </a>
                 </nav>
 
                 <div v-if="props.canLogin" class="flex items-center gap-3">
-                    <!-- <Link
-                        :href="route('login')"
-                        class="rounded-full border border-white/10 px-5 py-2 text-sm font-medium text-zinc-300 transition hover:border-white/30 hover:text-white"
-                    >
-                        Admin Login
-                    </Link> -->
+                    <!-- Admin login hidden for public page -->
                 </div>
             </div>
         </header>
@@ -294,7 +310,9 @@ const productBadges = (watch) => {
                         </a>
                     </div>
 
-                    <div class="mt-12 grid max-w-2xl grid-cols-3 gap-4">
+                    <div
+                        class="mt-12 grid max-w-2xl grid-cols-2 gap-4 sm:grid-cols-4"
+                    >
                         <div
                             class="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
                         >
@@ -313,7 +331,7 @@ const productBadges = (watch) => {
                             <p
                                 class="mt-1 text-xs uppercase tracking-widest text-zinc-600"
                             >
-                                Service Warranty
+                                Warranty
                             </p>
                         </div>
 
@@ -327,6 +345,19 @@ const productBadges = (watch) => {
                                 class="mt-1 text-xs uppercase tracking-widest text-zinc-600"
                             >
                                 Available
+                            </p>
+                        </div>
+
+                        <div
+                            class="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                        >
+                            <p class="text-2xl font-semibold text-white">
+                                {{ soldCount }}+
+                            </p>
+                            <p
+                                class="mt-1 text-xs uppercase tracking-widest text-zinc-600"
+                            >
+                                Sold
                             </p>
                         </div>
                     </div>
@@ -395,6 +426,7 @@ const productBadges = (watch) => {
                                             {{ featuredWatch.brand }}
                                             {{ featuredWatch.model_name }}
                                         </template>
+
                                         <template v-else>
                                             Premium Timepiece
                                         </template>
@@ -413,6 +445,7 @@ const productBadges = (watch) => {
                                                 "Condition available upon request"
                                             }}
                                         </template>
+
                                         <template v-else>
                                             Brand New | Complete Set | Available
                                         </template>
@@ -508,7 +541,7 @@ const productBadges = (watch) => {
                             </p>
 
                             <div
-                                class="mt-6 grid grid-cols-3 gap-2 sm:max-w-md"
+                                class="mt-6 grid grid-cols-2 gap-2 sm:max-w-md sm:grid-cols-4"
                             >
                                 <div
                                     class="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
@@ -546,6 +579,19 @@ const productBadges = (watch) => {
                                         class="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-zinc-600"
                                     >
                                         Stocks
+                                    </p>
+                                </div>
+
+                                <div
+                                    class="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+                                >
+                                    <p class="text-xl font-black text-white">
+                                        {{ soldCount }}+
+                                    </p>
+                                    <p
+                                        class="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-zinc-600"
+                                    >
+                                        Sold
                                     </p>
                                 </div>
                             </div>
@@ -779,6 +825,131 @@ const productBadges = (watch) => {
                     >
                         Message Us for Availability
                     </a>
+                </div>
+            </section>
+
+            <!-- RECENTLY SOLD -->
+            <section
+                v-if="recentSoldWatches.length"
+                id="recently-sold"
+                class="mx-auto max-w-7xl px-6 py-16 lg:px-8"
+            >
+                <div
+                    class="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end"
+                >
+                    <div>
+                        <p
+                            class="text-xs font-medium uppercase tracking-[0.32em] text-zinc-500"
+                        >
+                            Recently Sold
+                        </p>
+
+                        <h2
+                            class="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl"
+                        >
+                            Claimed Timepieces
+                        </h2>
+
+                        <p
+                            class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400"
+                        >
+                            A glimpse of recently sold watches from Montre Nova.
+                            Message us if you want us to source a similar piece.
+                        </p>
+                    </div>
+
+                    <a
+                        href="#contact"
+                        class="inline-flex rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
+                    >
+                        Source Similar Watch
+                    </a>
+                </div>
+
+                <div
+                    class="flex gap-4 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                    <div
+                        v-for="watch in recentSoldWatches"
+                        :key="watch.id"
+                        class="group min-w-[250px] max-w-[250px] overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#0B0B0D]/90 p-3 opacity-90 transition hover:border-white/30 hover:opacity-100 sm:min-w-[280px] sm:max-w-[280px]"
+                    >
+                        <div
+                            class="relative aspect-square overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#050505]"
+                        >
+                            <div class="absolute left-3 top-3 z-10">
+                                <span
+                                    class="rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-red-300 backdrop-blur"
+                                >
+                                    Sold
+                                </span>
+                            </div>
+
+                            <div
+                                class="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent p-4"
+                            >
+                                <p
+                                    class="text-xs font-bold uppercase tracking-[0.18em] text-zinc-300"
+                                >
+                                    Recently Claimed
+                                </p>
+                            </div>
+
+                            <img
+                                v-if="watchImage(watch)"
+                                :src="watchImage(watch)"
+                                :alt="`${watch.brand} ${watch.model_name}`"
+                                class="h-full w-full object-cover grayscale-[20%] transition duration-500 group-hover:scale-105 group-hover:grayscale-0"
+                            />
+
+                            <div
+                                v-else
+                                class="flex h-full items-center justify-center bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_40%)]"
+                            >
+                                <img
+                                    src="/images/montre-nova-logo.png"
+                                    alt="Montre Nova"
+                                    class="h-32 w-32 object-contain opacity-70"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="p-2 pt-4">
+                            <p
+                                class="text-xs font-medium uppercase tracking-[0.24em] text-zinc-500"
+                            >
+                                {{ watch.brand }}
+                            </p>
+
+                            <h3
+                                class="mt-2 truncate text-base font-semibold text-white"
+                            >
+                                {{ watch.model_name }}
+                            </h3>
+
+                            <p class="mt-1 truncate text-sm text-zinc-500">
+                                Ref.
+                                {{ watch.reference_number || "No reference" }}
+                            </p>
+
+                            <div
+                                class="mt-4 flex items-center justify-between border-t border-white/10 pt-4"
+                            >
+                                <span
+                                    class="rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1 text-xs font-semibold text-red-300"
+                                >
+                                    Sold
+                                </span>
+
+                                <a
+                                    href="#contact"
+                                    class="text-sm font-medium text-zinc-300 transition hover:text-white"
+                                >
+                                    Find Similar
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 

@@ -182,7 +182,7 @@ const availableSpecGroups = computed(() => {
         .filter((group) => group.items.length);
 });
 
-const inquiryMessage = computed(() => {
+const defaultInquiryMessage = computed(() => {
     return `Hi Montre Nova, I'm interested in this watch:
 
 ${displayName.value}
@@ -191,6 +191,12 @@ Price: ${peso(finalPrice.value || props.watch.price)}
 
 Is this still available?`;
 });
+
+const inquiryMessage = ref(defaultInquiryMessage.value);
+
+const resetInquiryMessage = () => {
+    inquiryMessage.value = defaultInquiryMessage.value;
+};
 
 const contactLinks = computed(() => [
     {
@@ -341,14 +347,6 @@ const goToInquiry = () => {
                     >
                         {{ copied ? "Copied" : "Share" }}
                     </button>
-
-                    <Link
-                        v-if="canLogin"
-                        :href="route('login')"
-                        class="rounded-full bg-white px-4 py-2 text-xs font-bold text-black transition hover:bg-zinc-200"
-                    >
-                        Admin
-                    </Link>
                 </div>
             </div>
         </header>
@@ -946,9 +944,10 @@ const goToInquiry = () => {
                                 <p
                                     class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400"
                                 >
-                                    Copy the prepared inquiry message, then open
-                                    your preferred channel. We recommend
-                                    Messenger for the fastest response.
+                                    Edit the message preview if needed, then
+                                    copy it or open your preferred channel. We
+                                    recommend Messenger for the fastest
+                                    response.
                                 </p>
 
                                 <div class="mt-5 grid gap-3">
@@ -1004,20 +1003,42 @@ const goToInquiry = () => {
                             <div
                                 class="rounded-[1.4rem] border border-white/10 bg-[#050505] p-5"
                             >
-                                <p
-                                    class="text-[11px] font-bold uppercase tracking-[0.24em] text-zinc-500"
+                                <div
+                                    class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"
                                 >
-                                    Message Preview
-                                </p>
+                                    <div>
+                                        <p
+                                            class="text-[11px] font-bold uppercase tracking-[0.24em] text-zinc-500"
+                                        >
+                                            Message Preview
+                                        </p>
 
-                                <pre
-                                    class="mt-4 whitespace-pre-wrap rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-7 text-zinc-300"
-                                    >{{ inquiryMessage }}</pre
-                                >
+                                        <p
+                                            class="mt-1 text-xs leading-5 text-zinc-500"
+                                        >
+                                            Editable before copying or sending.
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-bold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white"
+                                        @click="resetInquiryMessage"
+                                    >
+                                        Reset Message
+                                    </button>
+                                </div>
+
+                                <textarea
+                                    v-model="inquiryMessage"
+                                    rows="9"
+                                    class="mt-4 w-full resize-none rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-7 text-zinc-300 outline-none transition placeholder:text-zinc-600 focus:border-white/30 focus:bg-white/[0.05]"
+                                ></textarea>
 
                                 <p class="mt-4 text-xs leading-5 text-zinc-500">
-                                    The message is automatically copied before
-                                    opening Messenger, Viber, or Instagram.
+                                    The exact message above will be copied
+                                    before opening Messenger, Viber, or
+                                    Instagram.
                                 </p>
                             </div>
                         </div>
