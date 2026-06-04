@@ -15,7 +15,7 @@ class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $startingCash = BusinessSetting::getDecimal('starting_cash', 0);
+        $startingCash = (float) BusinessSetting::getDecimal('starting_cash', 0);
 
         $totalWatches = Watch::count();
         $availableWatches = Watch::where('status', 'available')->count();
@@ -24,24 +24,44 @@ class DashboardController extends Controller
 
         $soldPriceSql = $this->soldPriceSql();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Main Financial Formula
+        |--------------------------------------------------------------------------
+        |
+        | Current On-hand Money:
+        | Starting Cash + Total Sales - Total Capital Spent - Total Expenses
+        |
+        | Net Profit:
+        | Total Sales - Sold Capital Cost - Total Expenses
+        |
+        | Inventory Value:
+        | Capital value of unsold watches
+        |
+        */
+
         $totalCapitalSpent = (float) Watch::sum('capital_price');
 
-        $inventoryValue = (float) Watch::where('status', '!=', 'sold')
+        $inventoryValue = (float) Watch::query()
+            ->whereIn('status', ['available', 'reserved'])
             ->sum('capital_price');
 
-        $totalSales = (float) Watch::where('status', 'sold')
+        $totalSales = (float) Watch::query()
+            ->where('status', 'sold')
             ->selectRaw("COALESCE(SUM({$soldPriceSql}), 0) as total")
             ->value('total');
 
-        $soldCapitalCost = (float) Watch::where('status', 'sold')
+        $soldCapitalCost = (float) Watch::query()
+            ->where('status', 'sold')
             ->sum('capital_price');
 
         $totalExpenses = (float) Expense::sum('amount');
 
         $grossProfit = $totalSales - $soldCapitalCost;
+
         $netProfit = $grossProfit - $totalExpenses;
 
-        $currentMoney = $startingCash - $totalCapitalSpent + $totalSales - $totalExpenses;
+        $currentOnhandMoney = $startingCash + $totalSales - $totalCapitalSpent - $totalExpenses;
 
         $now = now();
 
@@ -50,10 +70,12 @@ class DashboardController extends Controller
                 $now->copy()->startOfWeek(Carbon::MONDAY),
                 $now->copy()->endOfWeek(Carbon::SUNDAY)
             ),
+
             'monthly' => $this->periodSummary(
                 $now->copy()->startOfMonth(),
                 $now->copy()->endOfMonth()
             ),
+
             'yearly' => $this->periodSummary(
                 $now->copy()->startOfYear(),
                 $now->copy()->endOfYear()
@@ -100,7 +122,20 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'money' => [
                 'starting_cash' => $startingCash,
-                'current_money' => $currentMoney,
+
+                /*
+                |--------------------------------------------------------------------------
+                | Current On-hand Money
+                |--------------------------------------------------------------------------
+                |
+                | current_money is kept for your existing Vue dashboard.
+                | current_onhand_money is added as a clearer alias.
+                |
+                */
+
+                'current_money' => $currentOnhandMoney,
+                'current_onhand_money' => $currentOnhandMoney,
+
                 'total_capital_spent' => $totalCapitalSpent,
                 'inventory_value' => $inventoryValue,
                 'total_sales' => $totalSales,
@@ -167,8 +202,8 @@ class DashboardController extends Controller
         $sales = Watch::query()
             ->where('status', 'sold')
             ->whereBetween('date_sold', [
-                $start->toDateString(),
-                $end->toDateString(),
+                $start->copy()->startOfDay(),
+                $end->copy()->endOfDay(),
             ])
             ->selectRaw("
                 COUNT(*) as sold_count,
@@ -182,8 +217,8 @@ class DashboardController extends Controller
             ->where(function ($query) use ($start, $end) {
                 $query
                     ->whereBetween('spent_at', [
-                        $start->toDateString(),
-                        $end->toDateString(),
+                        $start->copy()->startOfDay(),
+                        $end->copy()->endOfDay(),
                     ])
                     ->orWhere(function ($q) use ($start, $end) {
                         $q->whereNull('spent_at')

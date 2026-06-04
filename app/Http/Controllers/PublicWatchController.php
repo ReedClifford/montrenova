@@ -33,7 +33,7 @@ class PublicWatchController extends Controller
             ->where('status', 'available')
             ->where('is_visible', true)
             ->latest()
-            ->paginate(5)
+            ->paginate(6)
             ->withQueryString()
             ->through(fn ($watch) => $this->publicWatchCard($watch));
 

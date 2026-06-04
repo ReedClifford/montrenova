@@ -9,6 +9,7 @@ const props = defineProps({
         default: () => ({
             starting_cash: 0,
             current_money: 0,
+            current_onhand_money: 0,
             total_capital_spent: 0,
             inventory_value: 0,
             total_sales: 0,
@@ -80,6 +81,12 @@ const expenseForm = useForm({
     notes: "",
 });
 
+const currentOnhandMoney = computed(() => {
+    return Number(
+        props.money.current_onhand_money ?? props.money.current_money ?? 0,
+    );
+});
+
 const peso = (value) => {
     const amount = Number(value || 0);
 
@@ -92,12 +99,13 @@ const peso = (value) => {
 
 const compactPeso = (value) => {
     const amount = Number(value || 0);
+    const shouldCompact = Math.abs(amount) >= 100000;
 
     return new Intl.NumberFormat("en-PH", {
         style: "currency",
         currency: "PHP",
-        notation: amount >= 100000 ? "compact" : "standard",
-        maximumFractionDigits: amount >= 100000 ? 1 : 0,
+        notation: shouldCompact ? "compact" : "standard",
+        maximumFractionDigits: shouldCompact ? 1 : 0,
     }).format(amount);
 };
 
@@ -107,10 +115,8 @@ const netProfitClass = computed(() => {
         : "text-red-300";
 });
 
-const currentMoneyClass = computed(() => {
-    return Number(props.money.current_money || 0) >= 0
-        ? "text-white"
-        : "text-red-300";
+const currentOnhandMoneyClass = computed(() => {
+    return currentOnhandMoney.value >= 0 ? "text-white" : "text-red-300";
 });
 
 const selectedMonthNetClass = computed(() => {
@@ -190,38 +196,38 @@ const heroStats = computed(() => [
 
 const moneyCards = computed(() => [
     {
-        label: "Current Money",
-        value: peso(props.money.current_money),
-        compactValue: compactPeso(props.money.current_money),
-        helper: "Estimated cash after sales, capital, and expenses",
-        valueClass: currentMoneyClass.value,
+        label: "Current On-hand Money",
+        value: peso(currentOnhandMoney.value),
+        compactValue: compactPeso(currentOnhandMoney.value),
+        helper: "Cash available after sales, inventory capital, and expenses",
+        valueClass: currentOnhandMoneyClass.value,
     },
     {
         label: "Net Profit",
         value: peso(props.money.net_profit),
         compactValue: compactPeso(props.money.net_profit),
-        helper: "Sales minus sold capital cost and expenses",
+        helper: "Total sales minus sold capital cost and expenses",
         valueClass: netProfitClass.value,
     },
     {
-        label: "Total Sales",
-        value: peso(props.money.total_sales),
-        compactValue: compactPeso(props.money.total_sales),
-        helper: "Total value from watches marked as sold",
+        label: "Inventory Value",
+        value: peso(props.money.inventory_value),
+        compactValue: compactPeso(props.money.inventory_value),
+        helper: "Capital value of available and reserved watches",
         valueClass: "text-white",
     },
     {
         label: "Total Expenses",
         value: peso(props.money.total_expenses),
         compactValue: compactPeso(props.money.total_expenses),
-        helper: "Ads, transpo, packaging, repairs, and others",
+        helper: "Ads, transpo, packaging, repairs, and other costs",
         valueClass: "text-red-300",
     },
 ]);
 
 const inventoryCards = computed(() => [
     {
-        label: "Capital Spent",
+        label: "Total Capital Spent",
         value: peso(props.money.total_capital_spent),
         compactValue: compactPeso(props.money.total_capital_spent),
         helper: "Total capital encoded across all watches",
@@ -233,10 +239,10 @@ const inventoryCards = computed(() => [
         helper: "Capital value of unsold watches",
     },
     {
-        label: "Gross Profit",
-        value: peso(props.money.gross_profit),
-        compactValue: compactPeso(props.money.gross_profit),
-        helper: "Sales minus capital cost of sold watches",
+        label: "Sold Capital Cost",
+        value: peso(props.money.sold_capital_cost),
+        compactValue: compactPeso(props.money.sold_capital_cost),
+        helper: "Capital cost of watches already sold",
     },
     {
         label: "Starting Cash",
@@ -276,16 +282,13 @@ const watchCards = computed(() => [
 const insightCards = computed(() => [
     {
         label: "Cash Health",
-        value:
-            Number(props.money.current_money || 0) >= 0
-                ? "Healthy"
-                : "Needs Attention",
+        value: currentOnhandMoney.value >= 0 ? "Healthy" : "Needs Attention",
         helper:
-            Number(props.money.current_money || 0) >= 0
-                ? "Your estimated cash is positive."
-                : "Your estimated cash is below zero.",
+            currentOnhandMoney.value >= 0
+                ? "Your current on-hand money is positive."
+                : "Your current on-hand money is below zero.",
         className:
-            Number(props.money.current_money || 0) >= 0
+            currentOnhandMoney.value >= 0
                 ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
                 : "border-red-500/20 bg-red-500/10 text-red-300",
     },
@@ -402,15 +405,16 @@ const deleteExpense = (expense) => {
                         <h2
                             class="mt-4 max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-5xl"
                         >
-                            Track cash, profit, inventory, and sales.
+                            Track on-hand cash, net profit, inventory, and
+                            sales.
                         </h2>
 
                         <p
                             class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base"
                         >
-                            A cleaner overview of your watch business: money,
-                            expenses, sales performance, inventory value, and
-                            top-selling units.
+                            A cleaner overview of your watch business: current
+                            on-hand money, expenses, sales performance,
+                            inventory value, and top-selling units.
                         </p>
 
                         <div
@@ -440,18 +444,18 @@ const deleteExpense = (expense) => {
                         <p
                             class="text-xs uppercase tracking-[0.24em] text-zinc-600"
                         >
-                            Current Money
+                            Current On-hand Money
                         </p>
 
                         <p
                             class="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl"
-                            :class="currentMoneyClass"
+                            :class="currentOnhandMoneyClass"
                         >
-                            {{ compactPeso(money.current_money) }}
+                            {{ compactPeso(currentOnhandMoney) }}
                         </p>
 
                         <p class="mt-2 text-sm text-zinc-500">
-                            {{ peso(money.current_money) }}
+                            {{ peso(currentOnhandMoney) }}
                         </p>
 
                         <div
@@ -594,7 +598,7 @@ const deleteExpense = (expense) => {
                     </p>
 
                     <h3 class="mt-2 text-2xl font-semibold text-white">
-                        Money overview
+                        Core money overview
                     </h3>
                 </div>
 
@@ -1060,8 +1064,8 @@ const deleteExpense = (expense) => {
                     </h2>
 
                     <p class="mt-3 text-sm leading-6 text-zinc-400">
-                        This is your base cash. The dashboard uses it to
-                        estimate current money.
+                        This is your base cash. The dashboard uses it to compute
+                        your current on-hand money.
                     </p>
 
                     <div class="mt-6">
