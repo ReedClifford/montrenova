@@ -8,7 +8,7 @@ const imagePreviews = ref([]);
 
 const form = useForm({
     stock_code: "",
-    brand: "",
+    brand: "Seiko",
     model_name: "",
     reference_number: "",
     condition: "Brand New",
