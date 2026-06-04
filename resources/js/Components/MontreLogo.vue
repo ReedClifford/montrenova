@@ -19,7 +19,7 @@
             <p
                 class="mt-1 text-[10px] uppercase tracking-[0.28em] text-zinc-500"
             >
-                Curated Timepieces
+                Your Next Signature Timepiece
             </p>
         </div>
     </div>

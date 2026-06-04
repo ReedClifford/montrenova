@@ -1,5 +1,6 @@
 <script setup>
 import InputError from "@/Components/InputError.vue";
+import { compressImageFile, formatFileSize } from "@/Utils/imageCompression";
 import { useForm } from "@inertiajs/vue3";
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 
@@ -14,6 +15,7 @@ const emit = defineEmits(["close"]);
 
 const MAX_IMAGES = 5;
 
+const isCompressingImages = ref(false);
 const activeTab = ref("basic");
 const imagePreviews = ref([]);
 const fileInput = ref(null);
@@ -66,17 +68,42 @@ const form = useForm({
         {
             title: "Payment Methods",
             content:
-                "Accepted payment methods include cash, GCash, bank transfer, QR code payments, and selected trade-ins subject to evaluation. All photos posted are actual photos unless stated otherwise.",
+                "Accepted payment methods include cash, Maribank, GoTyme, QR code payments, and selected trade-ins subject to evaluation.",
         },
     ],
 });
 
 const tabs = [
-    { key: "basic", label: "Basic Info" },
-    { key: "pricing", label: "Pricing" },
-    { key: "specs", label: "Specs" },
-    { key: "photos", label: "HD Photos" },
-    { key: "terms", label: "Terms" },
+    {
+        key: "basic",
+        label: "Basic",
+        title: "Basic Information",
+        helper: "Brand, model, condition, category, and description.",
+    },
+    {
+        key: "pricing",
+        label: "Pricing",
+        title: "Pricing & Visibility",
+        helper: "Set capital, selling price, stock status, and website display.",
+    },
+    {
+        key: "specs",
+        label: "Specs",
+        title: "Watch Specifications",
+        helper: "Movement, case size, material, strap, resistance, and warranty.",
+    },
+    {
+        key: "photos",
+        label: "Photos",
+        title: "HD Product Photos",
+        helper: "Upload up to 5 compressed photos. First photo is primary.",
+    },
+    {
+        key: "terms",
+        label: "Terms",
+        title: "Public Listing Terms",
+        helper: "Set purchase process, warranty, and payment instructions.",
+    },
 ];
 
 watch(
@@ -102,12 +129,38 @@ const isPositive = (value) => {
     return Number(value) > 0;
 };
 
+const peso = (value) => {
+    return new Intl.NumberFormat("en-PH", {
+        style: "currency",
+        currency: "PHP",
+        minimumFractionDigits: 2,
+    }).format(Number(value || 0));
+};
+
 const remainingSlots = computed(() => {
     return Math.max(MAX_IMAGES - imagePreviews.value.length, 0);
 });
 
 const canAddMoreImages = computed(() => {
     return remainingSlots.value > 0;
+});
+
+const finalSellingPrice = computed(() => {
+    if (Number(form.discounted_price || 0) > 0) {
+        return Number(form.discounted_price || 0);
+    }
+
+    return Number(form.selling_price || 0);
+});
+
+const estimatedProfit = computed(() => {
+    return finalSellingPrice.value - Number(form.capital_price || 0);
+});
+
+const estimatedMargin = computed(() => {
+    if (finalSellingPrice.value <= 0) return 0;
+
+    return (estimatedProfit.value / finalSellingPrice.value) * 100;
 });
 
 const basicComplete = computed(() => {
@@ -155,6 +208,22 @@ const currentStepComplete = computed(() => {
     return stepCompletion.value[activeTab.value] === true;
 });
 
+const completedStepCount = computed(() => {
+    return tabs.filter((tab) => stepCompletion.value[tab.key]).length;
+});
+
+const progressPercentage = computed(() => {
+    return (completedStepCount.value / tabs.length) * 100;
+});
+
+const currentTab = computed(() => {
+    return tabs.find((tab) => tab.key === activeTab.value) || tabs[0];
+});
+
+const currentTabIndex = computed(() => {
+    return tabs.findIndex((tab) => tab.key === activeTab.value);
+});
+
 const canSubmit = computed(() => {
     return (
         basicComplete.value &&
@@ -162,7 +231,8 @@ const canSubmit = computed(() => {
         specsComplete.value &&
         photosComplete.value &&
         termsComplete.value &&
-        !form.processing
+        !form.processing &&
+        !isCompressingImages.value
     );
 });
 
@@ -172,7 +242,7 @@ const missingRequirements = computed(() => {
     if (!basicComplete.value) missing.push("Basic Info");
     if (!pricingComplete.value) missing.push("Pricing");
     if (!specsComplete.value) missing.push("Specs");
-    if (!photosComplete.value) missing.push("HD Photos");
+    if (!photosComplete.value) missing.push("Photos");
     if (!termsComplete.value) missing.push("Terms");
 
     return missing;
@@ -209,8 +279,7 @@ const goToTab = (key) => {
 };
 
 const goToPreviousTab = () => {
-    const currentIndex = getTabIndex(activeTab.value);
-    const previousIndex = Math.max(0, currentIndex - 1);
+    const previousIndex = Math.max(0, currentTabIndex.value - 1);
 
     activeTab.value = tabs[previousIndex].key;
 };
@@ -218,8 +287,7 @@ const goToPreviousTab = () => {
 const goToNextTab = () => {
     if (!currentStepComplete.value) return;
 
-    const currentIndex = getTabIndex(activeTab.value);
-    const nextIndex = Math.min(tabs.length - 1, currentIndex + 1);
+    const nextIndex = Math.min(tabs.length - 1, currentTabIndex.value + 1);
 
     activeTab.value = tabs[nextIndex].key;
 };
@@ -228,7 +296,7 @@ const syncImages = () => {
     form.images = imagePreviews.value.map((image) => image.file);
 };
 
-const handleImages = (event) => {
+const handleImages = async (event) => {
     imageLimitMessage.value = "";
 
     const files = Array.from(event.target.files || []);
@@ -251,19 +319,41 @@ const handleImages = (event) => {
         imageLimitMessage.value = `Only ${remainingSlots.value} more image(s) added. Maximum allowed is ${MAX_IMAGES} images.`;
     }
 
-    const newImages = acceptedFiles.map((file) => ({
-        file,
-        url: URL.createObjectURL(file),
-        name: file.name,
-        size: file.size,
-    }));
+    isCompressingImages.value = true;
 
-    imagePreviews.value = [...imagePreviews.value, ...newImages];
+    try {
+        const compressedFiles = await Promise.all(
+            acceptedFiles.map((file) =>
+                compressImageFile(file, {
+                    maxWidth: 1600,
+                    maxHeight: 1600,
+                    quality: 0.78,
+                }),
+            ),
+        );
 
-    syncImages();
+        const newImages = compressedFiles.map((file, index) => ({
+            file,
+            url: URL.createObjectURL(file),
+            name: file.name,
+            size: file.size,
+            originalSize: acceptedFiles[index].size,
+        }));
 
-    if (fileInput.value) {
-        fileInput.value.value = "";
+        imagePreviews.value = [...imagePreviews.value, ...newImages];
+
+        syncImages();
+    } catch (error) {
+        console.error(error);
+
+        imageLimitMessage.value =
+            "Something went wrong while compressing images. Please try again.";
+    } finally {
+        isCompressingImages.value = false;
+
+        if (fileInput.value) {
+            fileInput.value.value = "";
+        }
     }
 };
 
@@ -361,42 +451,53 @@ onBeforeUnmount(() => {
         >
             <div
                 v-if="show"
-                class="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 px-4 py-6 backdrop-blur-sm"
+                class="fixed inset-0 z-[999] flex items-end justify-center bg-black/80 px-2 py-2 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
             >
                 <div class="absolute inset-0" @click="closeModal"></div>
 
                 <Transition
                     enter-active-class="transition duration-200 ease-out"
-                    enter-from-class="translate-y-4 scale-95 opacity-0"
-                    enter-to-class="translate-y-0 scale-100 opacity-100"
+                    enter-from-class="translate-y-8 opacity-0 sm:translate-y-4 sm:scale-95"
+                    enter-to-class="translate-y-0 opacity-100 sm:scale-100"
                     leave-active-class="transition duration-150 ease-in"
-                    leave-from-class="translate-y-0 scale-100 opacity-100"
-                    leave-to-class="translate-y-4 scale-95 opacity-0"
+                    leave-from-class="translate-y-0 opacity-100 sm:scale-100"
+                    leave-to-class="translate-y-8 opacity-0 sm:translate-y-4 sm:scale-95"
                 >
                     <form
                         v-if="show"
                         @submit.prevent="submit"
-                        class="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#080808] shadow-2xl shadow-black"
+                        class="relative flex h-[94svh] w-full max-w-6xl flex-col overflow-hidden rounded-t-[2rem] border border-white/10 bg-[#080808] shadow-2xl shadow-black sm:h-auto sm:max-h-[92vh] sm:rounded-[2rem]"
                     >
+                        <!-- MOBILE HANDLE -->
+                        <div
+                            class="flex justify-center border-b border-white/10 bg-[#0B0B0D] py-2 sm:hidden"
+                        >
+                            <div
+                                class="h-1.5 w-12 rounded-full bg-white/20"
+                            ></div>
+                        </div>
+
                         <!-- HEADER -->
                         <div
-                            class="border-b border-white/10 bg-[#0B0B0D] px-6 py-5"
+                            class="border-b border-white/10 bg-[#0B0B0D] px-4 py-4 sm:px-6 sm:py-5"
                         >
-                            <div class="flex items-start justify-between gap-5">
-                                <div>
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="min-w-0">
                                     <p
-                                        class="text-xs uppercase tracking-[0.3em] text-zinc-600"
+                                        class="text-[10px] font-bold uppercase tracking-[0.26em] text-zinc-600 sm:text-xs"
                                     >
                                         Montre Nova Inventory
                                     </p>
 
                                     <h2
-                                        class="mt-2 text-2xl font-semibold tracking-tight text-white"
+                                        class="mt-2 truncate text-xl font-semibold tracking-tight text-white sm:text-2xl"
                                     >
                                         Add New Watch
                                     </h2>
 
-                                    <p class="mt-2 text-sm text-zinc-400">
+                                    <p
+                                        class="mt-2 hidden max-w-2xl text-sm leading-6 text-zinc-400 sm:block"
+                                    >
                                         Encode stock details, pricing,
                                         specifications, terms, and up to 5 HD
                                         photos.
@@ -405,7 +506,7 @@ onBeforeUnmount(() => {
 
                                 <button
                                     type="button"
-                                    class="rounded-2xl border border-white/10 p-3 text-zinc-400 transition hover:border-white/30 hover:text-white"
+                                    class="shrink-0 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-zinc-400 transition hover:border-white/30 hover:text-white"
                                     @click="closeModal"
                                 >
                                     <svg
@@ -424,56 +525,129 @@ onBeforeUnmount(() => {
                                 </button>
                             </div>
 
-                            <!-- TABS -->
-                            <div class="mt-6 flex gap-2 overflow-x-auto">
+                            <!-- PROGRESS -->
+                            <div class="mt-4">
+                                <div
+                                    class="flex items-center justify-between gap-4"
+                                >
+                                    <div>
+                                        <p
+                                            class="text-xs font-semibold text-white"
+                                        >
+                                            Step {{ currentTabIndex + 1 }} of
+                                            {{ tabs.length }}:
+                                            {{ currentTab.title }}
+                                        </p>
+
+                                        <p
+                                            class="mt-1 text-xs leading-5 text-zinc-500"
+                                        >
+                                            {{ currentTab.helper }}
+                                        </p>
+                                    </div>
+
+                                    <div
+                                        class="hidden rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-semibold text-zinc-400 sm:block"
+                                    >
+                                        {{ completedStepCount }} /
+                                        {{ tabs.length }} done
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="mt-4 h-2 overflow-hidden rounded-full bg-zinc-900"
+                                >
+                                    <div
+                                        class="h-full rounded-full bg-white transition-all duration-300"
+                                        :style="{
+                                            width: `${progressPercentage}%`,
+                                        }"
+                                    ></div>
+                                </div>
+                            </div>
+
+                            <!-- STEP PILLS -->
+                            <div
+                                class="thin-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1"
+                            >
                                 <button
-                                    v-for="tab in tabs"
+                                    v-for="(tab, index) in tabs"
                                     :key="tab.key"
                                     type="button"
                                     :disabled="!canAccessTab(tab.key)"
-                                    class="flex items-center gap-2 whitespace-nowrap rounded-2xl px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40"
+                                    class="flex shrink-0 items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-40 sm:px-4 sm:text-sm"
                                     :class="
                                         activeTab === tab.key
-                                            ? 'bg-white text-black'
+                                            ? 'border-white bg-white text-black'
                                             : stepCompletion[tab.key]
-                                              ? 'border border-emerald-400/20 bg-emerald-400/10 text-emerald-300 hover:border-emerald-400/40'
-                                              : 'border border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/30 hover:text-white'
+                                              ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300'
+                                              : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/30 hover:text-white'
                                     "
                                     @click="goToTab(tab.key)"
                                 >
-                                    <span>{{ tab.label }}</span>
-
-                                    <span v-if="stepCompletion[tab.key]">
-                                        ✓
-                                    </span>
-
                                     <span
-                                        v-else-if="!canAccessTab(tab.key)"
-                                        class="text-xs"
+                                        class="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-black"
+                                        :class="
+                                            activeTab === tab.key
+                                                ? 'bg-black text-white'
+                                                : stepCompletion[tab.key]
+                                                  ? 'bg-emerald-400 text-black'
+                                                  : 'bg-white/10 text-zinc-400'
+                                        "
                                     >
-                                        locked
+                                        {{
+                                            stepCompletion[tab.key]
+                                                ? "✓"
+                                                : index + 1
+                                        }}
                                     </span>
+
+                                    <span>{{ tab.label }}</span>
                                 </button>
                             </div>
                         </div>
 
                         <!-- BODY -->
-                        <div class="flex-1 overflow-y-auto px-6 py-6">
+                        <div
+                            class="thin-scrollbar flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6"
+                        >
                             <!-- BASIC -->
                             <div
                                 v-if="activeTab === 'basic'"
-                                class="grid gap-5 md:grid-cols-2"
+                                class="grid gap-4 md:grid-cols-2 sm:gap-5"
                             >
+                                <div class="md:col-span-2">
+                                    <div
+                                        class="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-4"
+                                    >
+                                        <p
+                                            class="text-xs font-bold uppercase tracking-[0.2em] text-zinc-600"
+                                        >
+                                            Required
+                                        </p>
+
+                                        <p
+                                            class="mt-2 text-sm leading-6 text-zinc-400"
+                                        >
+                                            Start with the brand, model, and
+                                            condition. These are required before
+                                            moving to pricing.
+                                        </p>
+                                    </div>
+                                </div>
+
                                 <div>
                                     <label class="mn-label">
                                         Brand
                                         <span class="text-red-400">*</span>
                                     </label>
+
                                     <input
                                         v-model="form.brand"
                                         class="mn-input"
                                         placeholder="Seiko"
                                     />
+
                                     <InputError
                                         class="mt-2"
                                         :message="form.errors.brand"
@@ -485,11 +659,13 @@ onBeforeUnmount(() => {
                                         Model Name
                                         <span class="text-red-400">*</span>
                                     </label>
+
                                     <input
                                         v-model="form.model_name"
                                         class="mn-input"
                                         placeholder="Prospex Speedtimer"
                                     />
+
                                     <InputError
                                         class="mt-2"
                                         :message="form.errors.model_name"
@@ -500,11 +676,13 @@ onBeforeUnmount(() => {
                                     <label class="mn-label">
                                         Reference Number
                                     </label>
+
                                     <input
                                         v-model="form.reference_number"
                                         class="mn-input"
                                         placeholder="SSC813"
                                     />
+
                                     <InputError
                                         class="mt-2"
                                         :message="form.errors.reference_number"
@@ -516,6 +694,7 @@ onBeforeUnmount(() => {
                                         Condition
                                         <span class="text-red-400">*</span>
                                     </label>
+
                                     <select
                                         v-model="form.condition"
                                         class="mn-input"
@@ -525,6 +704,7 @@ onBeforeUnmount(() => {
                                         <option>Like New</option>
                                         <option>Used</option>
                                     </select>
+
                                     <InputError
                                         class="mt-2"
                                         :message="form.errors.condition"
@@ -533,11 +713,13 @@ onBeforeUnmount(() => {
 
                                 <div>
                                     <label class="mn-label">Category</label>
+
                                     <input
                                         v-model="form.category"
                                         class="mn-input"
-                                        placeholder="Diver, GMT, Dress, Chronograph"
+                                        placeholder="Diver, GMT, Dress..."
                                     />
+
                                     <InputError
                                         class="mt-2"
                                         :message="form.errors.category"
@@ -546,12 +728,14 @@ onBeforeUnmount(() => {
 
                                 <div class="md:col-span-2">
                                     <label class="mn-label">Description</label>
+
                                     <textarea
                                         v-model="form.description"
-                                        rows="6"
+                                        rows="5"
                                         class="mn-input"
                                         placeholder="Short product description..."
                                     ></textarea>
+
                                     <InputError
                                         class="mt-2"
                                         :message="form.errors.description"
@@ -562,10 +746,10 @@ onBeforeUnmount(() => {
                             <!-- PRICING -->
                             <div
                                 v-if="activeTab === 'pricing'"
-                                class="grid gap-6 lg:grid-cols-[1fr_0.8fr]"
+                                class="grid gap-5 lg:grid-cols-[1fr_0.75fr]"
                             >
                                 <div
-                                    class="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5"
+                                    class="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 sm:p-5"
                                 >
                                     <h3
                                         class="text-lg font-semibold text-white"
@@ -573,12 +757,14 @@ onBeforeUnmount(() => {
                                         Pricing
                                     </h3>
 
-                                    <p class="mt-2 text-sm text-zinc-500">
+                                    <p
+                                        class="mt-2 text-sm leading-6 text-zinc-500"
+                                    >
                                         Capital price can be zero, but selling
                                         price must be greater than zero.
                                     </p>
 
-                                    <div class="mt-5 grid gap-5 md:grid-cols-2">
+                                    <div class="mt-5 grid gap-4 md:grid-cols-2">
                                         <div>
                                             <label class="mn-label">
                                                 Capital Price
@@ -586,6 +772,7 @@ onBeforeUnmount(() => {
                                                     >*</span
                                                 >
                                             </label>
+
                                             <input
                                                 v-model="form.capital_price"
                                                 type="number"
@@ -594,6 +781,7 @@ onBeforeUnmount(() => {
                                                 class="mn-input"
                                                 placeholder="0.00"
                                             />
+
                                             <InputError
                                                 class="mt-2"
                                                 :message="
@@ -609,6 +797,7 @@ onBeforeUnmount(() => {
                                                     >*</span
                                                 >
                                             </label>
+
                                             <input
                                                 v-model="form.selling_price"
                                                 type="number"
@@ -617,6 +806,7 @@ onBeforeUnmount(() => {
                                                 class="mn-input"
                                                 placeholder="0.00"
                                             />
+
                                             <InputError
                                                 class="mt-2"
                                                 :message="
@@ -629,6 +819,7 @@ onBeforeUnmount(() => {
                                             <label class="mn-label">
                                                 Discounted Price
                                             </label>
+
                                             <input
                                                 v-model="form.discounted_price"
                                                 type="number"
@@ -637,6 +828,7 @@ onBeforeUnmount(() => {
                                                 class="mn-input"
                                                 placeholder="Optional"
                                             />
+
                                             <InputError
                                                 class="mt-2"
                                                 :message="
@@ -647,87 +839,147 @@ onBeforeUnmount(() => {
                                     </div>
                                 </div>
 
-                                <div
-                                    class="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5"
-                                >
-                                    <h3
-                                        class="text-lg font-semibold text-white"
+                                <div class="space-y-4">
+                                    <div
+                                        class="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 sm:p-5"
                                     >
-                                        Status & Display
-                                    </h3>
-
-                                    <div class="mt-5 space-y-5">
-                                        <div>
-                                            <label class="mn-label">
-                                                Status
-                                                <span class="text-red-400"
-                                                    >*</span
-                                                >
-                                            </label>
-                                            <select
-                                                v-model="form.status"
-                                                class="mn-input"
-                                            >
-                                                <option value="draft">
-                                                    Draft
-                                                </option>
-                                                <option value="available">
-                                                    Available
-                                                </option>
-                                                <option value="reserved">
-                                                    Reserved
-                                                </option>
-                                                <option value="sold">
-                                                    Sold
-                                                </option>
-                                                <option value="hidden">
-                                                    Hidden
-                                                </option>
-                                            </select>
-                                            <InputError
-                                                class="mt-2"
-                                                :message="form.errors.status"
-                                            />
-                                        </div>
-
-                                        <div
-                                            class="space-y-3 border-t border-white/10 pt-5"
+                                        <h3
+                                            class="text-lg font-semibold text-white"
                                         >
-                                            <label class="mn-toggle">
-                                                <span>Visible on website</span>
-                                                <input
-                                                    v-model="form.is_visible"
-                                                    type="checkbox"
-                                                    class="mn-checkbox"
-                                                />
-                                            </label>
+                                            Profit Preview
+                                        </h3>
 
-                                            <label class="mn-toggle">
-                                                <span>Featured watch</span>
-                                                <input
-                                                    v-model="form.is_featured"
-                                                    type="checkbox"
-                                                    class="mn-checkbox"
-                                                />
-                                            </label>
+                                        <div class="mt-5 grid gap-3">
+                                            <div class="mn-preview-row">
+                                                <span>Final Price</span>
+                                                <strong>
+                                                    {{
+                                                        peso(finalSellingPrice)
+                                                    }}
+                                                </strong>
+                                            </div>
 
-                                            <label class="mn-toggle">
-                                                <span>Display price</span>
-                                                <input
-                                                    v-model="form.display_price"
-                                                    type="checkbox"
-                                                    class="mn-checkbox"
-                                                />
-                                            </label>
+                                            <div class="mn-preview-row">
+                                                <span>Estimated Profit</span>
+                                                <strong
+                                                    :class="
+                                                        estimatedProfit >= 0
+                                                            ? 'text-emerald-300'
+                                                            : 'text-red-300'
+                                                    "
+                                                >
+                                                    {{ peso(estimatedProfit) }}
+                                                </strong>
+                                            </div>
 
-                                            <label class="mn-toggle">
-                                                <span>Allow inquiry</span>
-                                                <input
-                                                    v-model="form.allow_inquiry"
-                                                    type="checkbox"
-                                                    class="mn-checkbox"
+                                            <div class="mn-preview-row">
+                                                <span>Margin</span>
+                                                <strong>
+                                                    {{
+                                                        estimatedMargin.toFixed(
+                                                            1,
+                                                        )
+                                                    }}%
+                                                </strong>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 sm:p-5"
+                                    >
+                                        <h3
+                                            class="text-lg font-semibold text-white"
+                                        >
+                                            Status & Display
+                                        </h3>
+
+                                        <div class="mt-5 space-y-4">
+                                            <div>
+                                                <label class="mn-label">
+                                                    Status
+                                                    <span class="text-red-400"
+                                                        >*</span
+                                                    >
+                                                </label>
+
+                                                <select
+                                                    v-model="form.status"
+                                                    class="mn-input"
+                                                >
+                                                    <option value="draft">
+                                                        Draft
+                                                    </option>
+                                                    <option value="available">
+                                                        Available
+                                                    </option>
+                                                    <option value="reserved">
+                                                        Reserved
+                                                    </option>
+                                                    <option value="sold">
+                                                        Sold
+                                                    </option>
+                                                    <option value="hidden">
+                                                        Hidden
+                                                    </option>
+                                                </select>
+
+                                                <InputError
+                                                    class="mt-2"
+                                                    :message="
+                                                        form.errors.status
+                                                    "
                                                 />
-                                            </label>
+                                            </div>
+
+                                            <div class="space-y-3">
+                                                <label class="mn-toggle">
+                                                    <span
+                                                        >Visible on
+                                                        website</span
+                                                    >
+                                                    <input
+                                                        v-model="
+                                                            form.is_visible
+                                                        "
+                                                        type="checkbox"
+                                                        class="mn-checkbox"
+                                                    />
+                                                </label>
+
+                                                <label class="mn-toggle">
+                                                    <span>Featured watch</span>
+                                                    <input
+                                                        v-model="
+                                                            form.is_featured
+                                                        "
+                                                        type="checkbox"
+                                                        class="mn-checkbox"
+                                                    />
+                                                </label>
+
+                                                <label class="mn-toggle">
+                                                    <span>Display price</span>
+                                                    <input
+                                                        v-model="
+                                                            form.display_price
+                                                        "
+                                                        type="checkbox"
+                                                        class="mn-checkbox"
+                                                    />
+                                                </label>
+
+                                                <label class="mn-toggle">
+                                                    <span>Allow inquiry</span>
+                                                    <input
+                                                        v-model="
+                                                            form.allow_inquiry
+                                                        "
+                                                        type="checkbox"
+                                                        class="mn-checkbox"
+                                                    />
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -736,7 +988,7 @@ onBeforeUnmount(() => {
                             <!-- SPECS -->
                             <div
                                 v-if="activeTab === 'specs'"
-                                class="grid gap-5 md:grid-cols-2"
+                                class="grid gap-4 md:grid-cols-2 sm:gap-5"
                             >
                                 <div>
                                     <label class="mn-label">Movement</label>
@@ -823,6 +1075,7 @@ onBeforeUnmount(() => {
                                         Warranty Type
                                         <span class="text-red-400">*</span>
                                     </label>
+
                                     <input
                                         v-model="form.warranty_type"
                                         class="mn-input"
@@ -834,11 +1087,11 @@ onBeforeUnmount(() => {
                             <!-- PHOTOS -->
                             <div
                                 v-if="activeTab === 'photos'"
-                                class="grid gap-6 lg:grid-cols-[0.8fr_1fr]"
+                                class="grid gap-5 lg:grid-cols-[0.75fr_1fr]"
                             >
                                 <div>
                                     <label
-                                        class="flex min-h-[320px] flex-col items-center justify-center rounded-[1.7rem] border border-dashed px-6 py-10 text-center transition"
+                                        class="flex min-h-[230px] flex-col items-center justify-center rounded-[1.7rem] border border-dashed px-5 py-8 text-center transition sm:min-h-[320px]"
                                         :class="
                                             canAddMoreImages
                                                 ? 'cursor-pointer border-white/20 bg-white/[0.03] hover:border-white/40 hover:bg-white/[0.05]'
@@ -846,7 +1099,7 @@ onBeforeUnmount(() => {
                                         "
                                     >
                                         <div
-                                            class="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]"
+                                            class="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] sm:h-16 sm:w-16"
                                         >
                                             <svg
                                                 class="h-7 w-7 text-zinc-400"
@@ -872,8 +1125,8 @@ onBeforeUnmount(() => {
                                         <span
                                             class="mt-2 max-w-sm text-xs leading-6 text-zinc-500"
                                         >
-                                            Upload up to 5 photos only. First
-                                            photo will become the primary image.
+                                            Maximum of 5 photos. First photo is
+                                            used as the primary image.
                                         </span>
 
                                         <span
@@ -884,11 +1137,18 @@ onBeforeUnmount(() => {
                                         </span>
 
                                         <span
-                                            v-if="canAddMoreImages"
+                                            v-if="isCompressingImages"
+                                            class="mt-3 text-xs font-semibold text-emerald-300"
+                                        >
+                                            Compressing images...
+                                        </span>
+
+                                        <span
+                                            v-else-if="canAddMoreImages"
                                             class="mt-3 text-xs text-zinc-500"
                                         >
-                                            You can still add
-                                            {{ remainingSlots }} image(s).
+                                            {{ remainingSlots }} slot(s)
+                                            remaining
                                         </span>
 
                                         <span
@@ -933,10 +1193,8 @@ onBeforeUnmount(() => {
                                                 <p
                                                     class="mt-1 text-xs text-zinc-500"
                                                 >
-                                                    {{ imagePreviews.length }}
-                                                    of {{ MAX_IMAGES }} photos
-                                                    selected. First image will
-                                                    be the primary photo.
+                                                    Tap a photo to make it
+                                                    primary.
                                                 </p>
                                             </div>
 
@@ -950,7 +1208,7 @@ onBeforeUnmount(() => {
                                         </div>
 
                                         <div
-                                            class="grid grid-cols-2 gap-3 md:grid-cols-3"
+                                            class="grid grid-cols-2 gap-3 sm:grid-cols-3"
                                         >
                                             <div
                                                 v-for="(
@@ -959,65 +1217,65 @@ onBeforeUnmount(() => {
                                                 :key="preview.url"
                                                 class="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#050505]"
                                             >
-                                                <img
-                                                    :src="preview.url"
-                                                    class="aspect-square w-full object-cover"
-                                                />
+                                                <button
+                                                    type="button"
+                                                    class="block w-full"
+                                                    @click="
+                                                        setPrimaryImage(index)
+                                                    "
+                                                >
+                                                    <img
+                                                        :src="preview.url"
+                                                        class="aspect-square w-full object-cover"
+                                                    />
+                                                </button>
 
                                                 <div
-                                                    class="absolute left-3 top-3 rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white backdrop-blur"
+                                                    class="absolute left-2 top-2 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur"
                                                 >
                                                     {{
                                                         index === 0
                                                             ? "Primary"
-                                                            : `Photo ${
-                                                                  index + 1
-                                                              }`
+                                                            : `Photo ${index + 1}`
                                                     }}
                                                 </div>
 
                                                 <div
-                                                    class="absolute inset-x-2 bottom-2 flex gap-2 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100"
+                                                    class="absolute bottom-2 left-2 right-2 rounded-xl bg-black/70 px-2 py-1 text-[10px] text-zinc-300 backdrop-blur"
                                                 >
-                                                    <button
-                                                        v-if="index !== 0"
-                                                        type="button"
-                                                        class="flex-1 rounded-xl bg-white px-3 py-2 text-[11px] font-semibold text-black transition hover:bg-zinc-200"
-                                                        @click="
-                                                            setPrimaryImage(
-                                                                index,
-                                                            )
-                                                        "
-                                                    >
-                                                        Set Primary
-                                                    </button>
-
-                                                    <button
-                                                        type="button"
-                                                        class="flex-1 rounded-xl bg-red-500 px-3 py-2 text-[11px] font-semibold text-white transition hover:bg-red-600"
-                                                        @click="
-                                                            removeImage(index)
-                                                        "
-                                                    >
-                                                        Remove
-                                                    </button>
+                                                    {{
+                                                        formatFileSize(
+                                                            preview.size,
+                                                        )
+                                                    }}
                                                 </div>
+
+                                                <button
+                                                    type="button"
+                                                    class="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white"
+                                                    @click.stop="
+                                                        removeImage(index)
+                                                    "
+                                                >
+                                                    ×
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div
                                         v-else
-                                        class="flex min-h-[320px] items-center justify-center rounded-[1.7rem] border border-white/10 bg-[#050505] text-center"
+                                        class="flex min-h-[230px] items-center justify-center rounded-[1.7rem] border border-white/10 bg-[#050505] text-center sm:min-h-[320px]"
                                     >
-                                        <div>
+                                        <div class="px-6">
                                             <p
                                                 class="text-sm font-medium text-white"
                                             >
                                                 No photos selected yet.
                                             </p>
+
                                             <p
-                                                class="mt-2 text-sm text-zinc-500"
+                                                class="mt-2 text-sm leading-6 text-zinc-500"
                                             >
                                                 Add at least 1 photo before
                                                 saving this watch.
@@ -1028,16 +1286,27 @@ onBeforeUnmount(() => {
                             </div>
 
                             <!-- TERMS -->
-                            <div v-if="activeTab === 'terms'" class="space-y-5">
+                            <div v-if="activeTab === 'terms'" class="space-y-4">
                                 <div
                                     v-for="(section, index) in form.sections"
                                     :key="index"
-                                    class="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5"
+                                    class="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 sm:p-5"
                                 >
+                                    <div
+                                        class="mb-4 flex items-center justify-between"
+                                    >
+                                        <p
+                                            class="text-xs font-bold uppercase tracking-[0.2em] text-zinc-600"
+                                        >
+                                            Section {{ index + 1 }}
+                                        </p>
+                                    </div>
+
                                     <label class="mn-label">
                                         Section Title
                                         <span class="text-red-400">*</span>
                                     </label>
+
                                     <input
                                         v-model="section.title"
                                         class="mn-input"
@@ -1048,9 +1317,10 @@ onBeforeUnmount(() => {
                                         Content
                                         <span class="text-red-400">*</span>
                                     </label>
+
                                     <textarea
                                         v-model="section.content"
-                                        rows="6"
+                                        rows="5"
                                         class="mn-input"
                                         placeholder="Section content..."
                                     ></textarea>
@@ -1060,7 +1330,7 @@ onBeforeUnmount(() => {
 
                         <!-- FOOTER -->
                         <div
-                            class="border-t border-white/10 bg-[#0B0B0D] px-6 py-5"
+                            class="safe-bottom border-t border-white/10 bg-[#0B0B0D] px-4 py-4 sm:px-6 sm:py-5"
                         >
                             <div
                                 class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
@@ -1070,15 +1340,14 @@ onBeforeUnmount(() => {
                                         v-if="canSubmit"
                                         class="font-semibold text-emerald-300"
                                     >
-                                        All required steps are complete. You can
-                                        now save this watch.
+                                        All required steps are complete.
                                     </p>
 
                                     <p
                                         v-else
                                         class="font-semibold text-zinc-400"
                                     >
-                                        Complete required steps before saving:
+                                        Missing:
                                         <span class="text-red-300">
                                             {{ missingRequirements.join(", ") }}
                                         </span>
@@ -1086,7 +1355,7 @@ onBeforeUnmount(() => {
                                 </div>
 
                                 <div
-                                    class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"
+                                    class="grid grid-cols-2 gap-3 sm:flex sm:justify-end"
                                 >
                                     <button
                                         type="button"
@@ -1109,21 +1378,24 @@ onBeforeUnmount(() => {
                                         v-if="activeTab !== 'terms'"
                                         type="button"
                                         :disabled="!currentStepComplete"
-                                        class="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-zinc-300 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                                        class="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
                                         @click="goToNextTab"
                                     >
                                         Next
                                     </button>
 
                                     <button
+                                        v-if="activeTab === 'terms'"
                                         type="submit"
                                         :disabled="!canSubmit"
-                                        class="rounded-2xl bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+                                        class="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
                                     >
                                         {{
-                                            form.processing
-                                                ? "Saving Watch..."
-                                                : "Save Watch"
+                                            isCompressingImages
+                                                ? "Compressing..."
+                                                : form.processing
+                                                  ? "Saving..."
+                                                  : "Save Watch"
                                         }}
                                     </button>
                                 </div>
@@ -1137,12 +1409,16 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
 .mn-label {
     margin-bottom: 0.5rem;
     display: block;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.16em;
     color: rgb(113 113 122);
 }
 
@@ -1151,10 +1427,14 @@ onBeforeUnmount(() => {
     border-radius: 1rem;
     border: 1px solid rgb(255 255 255 / 0.1);
     background: #050505;
-    padding: 0.75rem 1rem;
+    padding: 0.85rem 1rem;
     font-size: 0.875rem;
     color: white;
     outline: none;
+    transition:
+        border-color 150ms ease,
+        box-shadow 150ms ease,
+        background-color 150ms ease;
 }
 
 .mn-input::placeholder {
@@ -1163,7 +1443,8 @@ onBeforeUnmount(() => {
 
 .mn-input:focus {
     border-color: rgb(255 255 255 / 0.4);
-    box-shadow: 0 0 0 2px rgb(255 255 255 / 0.1);
+    background: #070707;
+    box-shadow: 0 0 0 2px rgb(255 255 255 / 0.08);
 }
 
 .mn-toggle {
@@ -1180,9 +1461,56 @@ onBeforeUnmount(() => {
 }
 
 .mn-checkbox {
+    height: 1.1rem;
+    width: 1.1rem;
     border-radius: 0.375rem;
     border-color: rgb(255 255 255 / 0.2);
     background: black;
     color: white;
+}
+
+.mn-preview-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-bottom: 1px solid rgb(255 255 255 / 0.08);
+    padding-bottom: 0.85rem;
+    font-size: 0.875rem;
+    color: rgb(113 113 122);
+}
+
+.mn-preview-row:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.mn-preview-row strong {
+    color: white;
+    font-weight: 700;
+    text-align: right;
+}
+
+.thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 255 255 / 0.2) transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+    height: 5px;
+    width: 5px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+    background: rgb(255 255 255 / 0.18);
+    border-radius: 999px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgb(255 255 255 / 0.35);
 }
 </style>

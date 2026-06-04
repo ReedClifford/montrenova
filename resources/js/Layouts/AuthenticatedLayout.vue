@@ -1,7 +1,7 @@
 <script setup>
+import MontreLogo from "@/Components/MontreLogo.vue";
 import { Link, usePage } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
-import MontreLogo from "@/Components/MontreLogo.vue";
 
 const props = defineProps({
     title: {
@@ -16,52 +16,55 @@ const page = usePage();
 
 const user = computed(() => page.props.auth?.user);
 
-const sidebarLinks = [
+const isActive = (path) => {
+    return page.url.startsWith(path);
+};
+
+const sidebarLinks = computed(() => [
     {
         label: "Dashboard",
+        shortLabel: "Home",
         href: "/dashboard",
         icon: "M3.75 13.5l10.5-10.5 10.5 10.5M6.75 10.5v9.75h5.25v-6h4.5v6h5.25V10.5",
-        active: page.url.startsWith("/dashboard"),
+        active: isActive("/dashboard"),
     },
     {
         label: "Watch Stocks",
+        shortLabel: "Stocks",
         href: route("admin.watches.index"),
         icon: "M12 6v12m6-6H6",
-        active: page.url.startsWith("/admin/watches"),
+        active: isActive("/admin/watches"),
     },
-    // {
-    //     label: "HD Photo Manager",
-    //     href: "#",
-    //     icon: "M3.75 6.75A2.25 2.25 0 016 4.5h12a2.25 2.25 0 012.25 2.25v10.5A2.25 2.25 0 0118 19.5H6a2.25 2.25 0 01-2.25-2.25V6.75z M8.25 10.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z M3.75 16.5l4.5-4.5 3 3 3.75-3.75 5.25 5.25",
-    //     active: false,
-    // },
-    // {
-    //     label: "Reservations",
-    //     href: "#",
-    //     icon: "M8.25 6.75h12M8.25 12h12M8.25 17.25h12M3.75 6.75h.008v.008H3.75V6.75zm0 5.25h.008v.008H3.75V12zm0 5.25h.008v.008H3.75v-.008z",
-    //     active: false,
-    // },
     {
         label: "Sales",
+        shortLabel: "Sales",
         href: route("admin.sales.index"),
         icon: "M8.25 6.75h12M8.25 12h12M8.25 17.25h12M3.75 6.75h.008v.008H3.75V6.75zm0 5.25h.008v.008H3.75V12zm0 5.25h.008v.008H3.75v-.008z",
-
-        active: page.url.startsWith("/admin/sales"),
+        active: isActive("/admin/sales"),
     },
-
     {
         label: "Expenses",
+        shortLabel: "Expenses",
         href: route("admin.expenses.index"),
         icon: "M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.768 0-1.536-.219-2.121-.659-1.172-.879-1.172-2.303 0-3.182 1.171-.879 3.07-.879 4.242 0l.879.659M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-        active: page.url.startsWith("/admin/expenses"),
+        active: isActive("/admin/expenses"),
     },
-    // {
-    //     label: "Website Settings",
-    //     href: "#",
-    //     icon: "M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.34.78.725.97.385.19.838.166 1.203-.062l.774-.484a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.484.774c-.228.365-.252.818-.062 1.203.19.385.546.655.97.725l.894.149c.542.09.94.56.94 1.11v1.093c0 .55-.398 1.02-.94 1.11l-.894.149c-.424.07-.78.34-.97.725-.19.385-.166.838.062 1.203l.484.774c.32.448.27 1.061-.12 1.45l-.773.774a1.125 1.125 0 01-1.45.12l-.774-.484c-.365-.228-.818-.252-1.203-.062-.385.19-.655.546-.725.97l-.149.894c-.09.542-.56.94-1.11.94h-1.093c-.55 0-1.02-.398-1.11-.94l-.149-.894a1.125 1.125 0 00-.725-.97 1.125 1.125 0 00-1.203.062l-.774.484a1.125 1.125 0 01-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.484-.774c.228-.365.252-.818.062-1.203a1.125 1.125 0 00-.97-.725l-.894-.149A1.125 1.125 0 013 12.547v-1.093c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.78-.34.97-.725.19-.385.166-.838-.062-1.203l-.484-.774a1.125 1.125 0 01.12-1.45l.773-.774a1.125 1.125 0 011.45-.12l.774.484c.365.228.818.252 1.203.062.385-.19.655-.546.725-.97l.149-.894z M15 12a3 3 0 11-6 0 3 3 0 016 0z",
-    //     active: false,
-    // },
-];
+]);
+
+const mobileBottomLinks = computed(() => [
+    sidebarLinks.value[0],
+    sidebarLinks.value[1],
+    {
+        label: "Add Watch",
+        shortLabel: "Add",
+        href: route("admin.watches.create"),
+        icon: "M12 4.5v15m7.5-7.5h-15",
+        active: false,
+        primary: true,
+    },
+    sidebarLinks.value[2],
+    sidebarLinks.value[3],
+]);
 
 const initials = computed(() => {
     if (!user.value?.name) return "MN";
@@ -73,10 +76,14 @@ const initials = computed(() => {
         .slice(0, 2)
         .toUpperCase();
 });
+
+const closeMobileSidebar = () => {
+    showingMobileSidebar.value = false;
+};
 </script>
 
 <template>
-    <div class="min-h-screen bg-[#050505] text-white">
+    <div class="min-h-screen bg-[#050505] text-white antialiased">
         <!-- DESKTOP SIDEBAR -->
         <aside
             class="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-white/10 bg-[#080808] lg:block"
@@ -87,14 +94,14 @@ const initials = computed(() => {
                 </div>
 
                 <nav class="flex-1 space-y-1 overflow-y-auto px-4 py-6">
-                    <a
+                    <Link
                         v-for="item in sidebarLinks"
                         :key="item.label"
                         :href="item.href"
                         class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition"
                         :class="
                             item.active
-                                ? 'bg-white text-black'
+                                ? 'bg-white text-black shadow-lg shadow-white/5'
                                 : 'text-zinc-400 hover:bg-white/[0.05] hover:text-white'
                         "
                     >
@@ -118,7 +125,7 @@ const initials = computed(() => {
                         </svg>
 
                         <span>{{ item.label }}</span>
-                    </a>
+                    </Link>
                 </nav>
 
                 <div class="border-t border-white/10 p-4">
@@ -142,10 +149,11 @@ const initials = computed(() => {
                                 <p
                                     class="truncate text-sm font-semibold text-white"
                                 >
-                                    {{ user?.name }}
+                                    {{ user?.name || "Montre Nova" }}
                                 </p>
+
                                 <p class="truncate text-xs text-zinc-500">
-                                    {{ user?.email }}
+                                    {{ user?.email || "Admin" }}
                                 </p>
                             </div>
                         </div>
@@ -173,91 +181,159 @@ const initials = computed(() => {
         </aside>
 
         <!-- MOBILE SIDEBAR OVERLAY -->
-        <div v-if="showingMobileSidebar" class="fixed inset-0 z-50 lg:hidden">
+        <Transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition duration-150 ease-in"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
             <div
-                class="absolute inset-0 bg-black/70 backdrop-blur-sm"
-                @click="showingMobileSidebar = false"
-            ></div>
-
-            <aside
-                class="relative h-full w-80 max-w-[85vw] border-r border-white/10 bg-[#080808]"
+                v-if="showingMobileSidebar"
+                class="fixed inset-0 z-50 lg:hidden"
             >
                 <div
-                    class="flex items-center justify-between border-b border-white/10 px-5 py-5"
+                    class="absolute inset-0 bg-black/75 backdrop-blur-sm"
+                    @click="closeMobileSidebar"
+                ></div>
+
+                <aside
+                    class="relative flex h-full w-[86vw] max-w-sm flex-col border-r border-white/10 bg-[#080808] shadow-2xl shadow-black"
                 >
-                    <MontreLogo />
-
-                    <button
-                        type="button"
-                        class="rounded-xl border border-white/10 p-2 text-zinc-400 hover:text-white"
-                        @click="showingMobileSidebar = false"
+                    <div
+                        class="flex items-center justify-between border-b border-white/10 px-5 py-5"
                     >
-                        <svg
-                            class="h-5 w-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke-width="1.7"
-                            stroke="currentColor"
+                        <MontreLogo />
+
+                        <button
+                            type="button"
+                            class="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-zinc-400 transition hover:border-white/30 hover:text-white"
+                            @click="closeMobileSidebar"
                         >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M6 18L18 6M6 6l12 12"
-                            />
-                        </svg>
-                    </button>
-                </div>
+                            <svg
+                                class="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke-width="1.7"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M6 18L18 6M6 6l12 12"
+                                />
+                            </svg>
+                        </button>
+                    </div>
 
-                <nav class="space-y-1 px-4 py-5">
-                    <a
-                        v-for="item in sidebarLinks"
-                        :key="item.label"
-                        :href="item.href"
-                        class="group flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition"
-                        :class="
-                            item.active
-                                ? 'bg-white text-black'
-                                : 'text-zinc-400 hover:bg-white/[0.05] hover:text-white'
-                        "
-                    >
-                        <svg
-                            class="h-5 w-5 shrink-0"
+                    <div class="border-b border-white/10 p-4">
+                        <div
+                            class="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                        >
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-black"
+                                >
+                                    {{ initials }}
+                                </div>
+
+                                <div class="min-w-0">
+                                    <p
+                                        class="truncate text-sm font-semibold text-white"
+                                    >
+                                        {{ user?.name || "Montre Nova" }}
+                                    </p>
+
+                                    <p class="truncate text-xs text-zinc-500">
+                                        {{ user?.email || "Admin" }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 grid grid-cols-2 gap-2">
+                                <Link
+                                    :href="route('profile.edit')"
+                                    class="rounded-xl border border-white/10 px-3 py-2 text-center text-xs font-medium text-zinc-300"
+                                    @click="closeMobileSidebar"
+                                >
+                                    Profile
+                                </Link>
+
+                                <Link
+                                    :href="route('logout')"
+                                    method="post"
+                                    as="button"
+                                    class="rounded-xl bg-white px-3 py-2 text-center text-xs font-semibold text-black"
+                                >
+                                    Logout
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+
+                    <nav class="flex-1 space-y-1 overflow-y-auto px-4 py-5">
+                        <Link
+                            v-for="item in sidebarLinks"
+                            :key="item.label"
+                            :href="item.href"
+                            class="group flex items-center gap-3 rounded-2xl px-4 py-4 text-sm font-medium transition"
                             :class="
                                 item.active
-                                    ? 'text-black'
-                                    : 'text-zinc-500 group-hover:text-white'
+                                    ? 'bg-white text-black'
+                                    : 'text-zinc-400 hover:bg-white/[0.05] hover:text-white'
                             "
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke-width="1.7"
-                            stroke="currentColor"
+                            @click="closeMobileSidebar"
                         >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                :d="item.icon"
-                            />
-                        </svg>
+                            <svg
+                                class="h-5 w-5 shrink-0"
+                                :class="
+                                    item.active
+                                        ? 'text-black'
+                                        : 'text-zinc-500 group-hover:text-white'
+                                "
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke-width="1.7"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    :d="item.icon"
+                                />
+                            </svg>
 
-                        <span>{{ item.label }}</span>
-                    </a>
-                </nav>
-            </aside>
-        </div>
+                            <span>{{ item.label }}</span>
+                        </Link>
+                    </nav>
+
+                    <div class="safe-bottom border-t border-white/10 p-4">
+                        <Link
+                            href="/"
+                            class="flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-zinc-300 transition hover:border-white/30 hover:text-white"
+                            @click="closeMobileSidebar"
+                        >
+                            View Website
+                        </Link>
+                    </div>
+                </aside>
+            </div>
+        </Transition>
 
         <!-- MAIN AREA -->
         <div class="lg:pl-72">
             <!-- TOPBAR -->
             <header
-                class="sticky top-0 z-30 border-b border-white/10 bg-[#050505]/85 backdrop-blur-xl"
+                class="sticky top-0 z-30 border-b border-white/10 bg-[#050505]/90 backdrop-blur-xl"
             >
                 <div
-                    class="flex h-20 items-center justify-between px-5 sm:px-8"
+                    class="flex h-16 items-center justify-between gap-3 px-3 sm:h-20 sm:px-8"
                 >
-                    <div class="flex items-center gap-4">
+                    <div class="flex min-w-0 items-center gap-3 sm:gap-4">
                         <button
                             type="button"
-                            class="rounded-2xl border border-white/10 p-3 text-zinc-400 transition hover:border-white/30 hover:text-white lg:hidden"
+                            class="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-zinc-400 transition hover:border-white/30 hover:text-white lg:hidden"
                             @click="showingMobileSidebar = true"
                         >
                             <svg
@@ -275,21 +351,22 @@ const initials = computed(() => {
                             </svg>
                         </button>
 
-                        <div>
+                        <div class="min-w-0">
                             <p
-                                class="text-xs uppercase tracking-[0.28em] text-zinc-600"
+                                class="hidden text-xs uppercase tracking-[0.28em] text-zinc-600 sm:block"
                             >
                                 Montre Nova Admin
                             </p>
+
                             <h1
-                                class="mt-1 text-xl font-semibold tracking-tight text-white sm:text-2xl"
+                                class="truncate text-lg font-semibold tracking-tight text-white sm:mt-1 sm:text-2xl"
                             >
                                 {{ title }}
                             </h1>
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-3">
+                    <div class="flex shrink-0 items-center gap-2 sm:gap-3">
                         <Link
                             href="/"
                             class="hidden rounded-2xl border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-white/30 hover:text-white sm:inline-flex"
@@ -299,18 +376,83 @@ const initials = computed(() => {
 
                         <Link
                             :href="route('admin.watches.create')"
-                            class="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-zinc-200"
+                            class="hidden rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-zinc-200 sm:inline-flex"
                         >
                             Add Watch
+                        </Link>
+
+                        <Link
+                            :href="route('admin.watches.create')"
+                            class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-black transition hover:bg-zinc-200 sm:hidden"
+                            aria-label="Add Watch"
+                        >
+                            <svg
+                                class="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke-width="2"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M12 4.5v15m7.5-7.5h-15"
+                                />
+                            </svg>
                         </Link>
                     </div>
                 </div>
             </header>
 
             <!-- PAGE CONTENT -->
-            <main class="px-5 py-8 sm:px-8">
+            <main class="px-3 pb-28 pt-5 sm:px-8 sm:py-8 lg:pb-8">
                 <slot />
             </main>
         </div>
+
+        <!-- MOBILE BOTTOM NAV -->
+        <nav
+            class="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050505]/95 px-2 pt-2 backdrop-blur-xl lg:hidden"
+        >
+            <div class="grid grid-cols-5 gap-1">
+                <Link
+                    v-for="item in mobileBottomLinks"
+                    :key="item.label"
+                    :href="item.href"
+                    class="flex min-w-0 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-semibold transition"
+                    :class="
+                        item.primary
+                            ? 'bg-white text-black'
+                            : item.active
+                              ? 'bg-white/[0.10] text-white'
+                              : 'text-zinc-500 hover:bg-white/[0.05] hover:text-white'
+                    "
+                >
+                    <svg
+                        class="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke-width="1.8"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            :d="item.icon"
+                        />
+                    </svg>
+
+                    <span class="truncate">
+                        {{ item.shortLabel }}
+                    </span>
+                </Link>
+            </div>
+        </nav>
     </div>
 </template>
+
+<style scoped>
+.safe-bottom {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+</style>

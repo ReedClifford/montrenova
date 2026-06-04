@@ -1,8 +1,9 @@
 <script setup>
 import MontreLogo from "@/Components/MontreLogo.vue";
 import { Head, Link } from "@inertiajs/vue3";
+import { computed } from "vue";
 
-defineProps({
+const props = defineProps({
     canLogin: {
         type: Boolean,
         default: true,
@@ -21,12 +22,175 @@ defineProps({
     },
 });
 
+const watches = computed(() => props.watches || []);
+const featuredWatch = computed(() => props.featuredWatch);
+const availableCount = computed(() => watches.value.length);
+const contactLinks = [
+    {
+        label: "Messenger",
+        description: "Chat with us directly on Facebook Messenger",
+        href: "https://m.me/montrenova",
+    },
+    {
+        label: "Viber Community",
+        description: "Join our Viber community for latest drops",
+        href: "#",
+    },
+    {
+        label: "Instagram",
+        description: "View our latest posts and send us a DM",
+        href: "https://www.instagram.com/montrenova",
+    },
+];
+const trustItems = [
+    {
+        title: "Actual HD Photos",
+        description:
+            "Every listed watch is presented with real product photos so buyers can inspect the exact timepiece before inquiry.",
+        label: "Real photos",
+    },
+    {
+        title: "Clear Pricing",
+        description:
+            "Prices are displayed clearly to make browsing simple, direct, and transparent for every buyer.",
+        label: "No guessing",
+    },
+    {
+        title: "Montre Card Warranty",
+        description:
+            "Selected watches include Montre Card service warranty coverage for movement and internal mechanism concerns.",
+        label: "Warranty support",
+    },
+    {
+        title: "Curated Timepieces",
+        description:
+            "Stocks are carefully selected from brand-new and pre-owned watches suited for collectors and daily wearers.",
+        label: "Curated picks",
+    },
+];
+
 const peso = (value) => {
     return new Intl.NumberFormat("en-PH", {
         style: "currency",
         currency: "PHP",
         minimumFractionDigits: 0,
     }).format(Number(value || 0));
+};
+
+const finalPrice = (watch) => {
+    if (!watch) return 0;
+
+    const discounted = Number(watch.discounted_price || 0);
+    const selling = Number(watch.selling_price || 0);
+    const price = Number(watch.price || 0);
+
+    if (discounted > 0 && selling > discounted) {
+        return discounted;
+    }
+
+    return price || selling || discounted || 0;
+};
+
+const originalPrice = (watch) => {
+    if (!watch) return 0;
+
+    return Number(watch.selling_price || watch.price || 0);
+};
+
+const watchImage = (watch) => {
+    return (
+        watch?.primary_hd_url ||
+        watch?.primary_image_url ||
+        watch?.image_url ||
+        watch?.thumbnail_url ||
+        null
+    );
+};
+
+const statusBadge = (watch) => {
+    const status = String(watch?.status || "available").toLowerCase();
+
+    const badges = {
+        available: {
+            label: "Available",
+            className:
+                "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+        },
+        reserved: {
+            label: "Reserved",
+            className: "border-amber-400/20 bg-amber-400/10 text-amber-300",
+        },
+        sold: {
+            label: "Sold",
+            className: "border-red-400/20 bg-red-400/10 text-red-300",
+        },
+        draft: {
+            label: "Draft",
+            className: "border-zinc-400/20 bg-zinc-400/10 text-zinc-400",
+        },
+        hidden: {
+            label: "Hidden",
+            className: "border-zinc-400/20 bg-zinc-400/10 text-zinc-400",
+        },
+    };
+
+    return badges[status] || badges.available;
+};
+
+const isNewDrop = (watch) => {
+    if (!watch?.created_at) return false;
+
+    const createdDate = new Date(watch.created_at);
+    const today = new Date();
+
+    const differenceInDays =
+        (today.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+
+    return differenceInDays <= 14;
+};
+
+const isFeatured = (watch) => {
+    return Boolean(watch?.is_featured);
+};
+
+const isBelowSrp = (watch) => {
+    return (
+        Number(watch?.discounted_price || 0) > 0 &&
+        Number(watch?.selling_price || 0) > Number(watch?.discounted_price || 0)
+    );
+};
+
+const isSold = (watch) => {
+    return String(watch?.status || "").toLowerCase() === "sold";
+};
+
+const productBadges = (watch) => {
+    const badges = [];
+
+    badges.push(statusBadge(watch));
+
+    if (isNewDrop(watch)) {
+        badges.push({
+            label: "New Drop",
+            className: "border-sky-400/20 bg-sky-400/10 text-sky-300",
+        });
+    }
+
+    if (isBelowSrp(watch)) {
+        badges.push({
+            label: "Below SRP",
+            className: "border-violet-400/20 bg-violet-400/10 text-violet-300",
+        });
+    }
+
+    if (isFeatured(watch)) {
+        badges.push({
+            label: "Featured",
+            className: "border-white/20 bg-white/10 text-white",
+        });
+    }
+
+    return badges;
 };
 </script>
 
@@ -72,13 +236,13 @@ const peso = (value) => {
                     </a>
                 </nav>
 
-                <div v-if="canLogin" class="flex items-center gap-3">
-                    <Link
+                <div v-if="props.canLogin" class="flex items-center gap-3">
+                    <!-- <Link
                         :href="route('login')"
                         class="rounded-full border border-white/10 px-5 py-2 text-sm font-medium text-zinc-300 transition hover:border-white/30 hover:text-white"
                     >
                         Admin Login
-                    </Link>
+                    </Link> -->
                 </div>
             </div>
         </header>
@@ -157,7 +321,7 @@ const peso = (value) => {
                             class="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
                         >
                             <p class="text-2xl font-semibold text-white">
-                                {{ watches.length || 0 }}
+                                {{ availableCount }}
                             </p>
                             <p
                                 class="mt-1 text-xs uppercase tracking-widest text-zinc-600"
@@ -178,17 +342,27 @@ const peso = (value) => {
                         class="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#0B0B0D]/90 p-5 shadow-2xl shadow-black/50"
                     >
                         <div
-                            class="aspect-[4/5] overflow-hidden rounded-[2rem] border border-white/10 bg-[#050505]"
+                            class="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-white/10 bg-[#050505]"
                         >
+                            <div
+                                v-if="featuredWatch"
+                                class="absolute left-3 top-3 z-10 flex flex-wrap gap-2"
+                            >
+                                <span
+                                    v-for="badge in productBadges(
+                                        featuredWatch,
+                                    )"
+                                    :key="badge.label"
+                                    class="rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] backdrop-blur"
+                                    :class="badge.className"
+                                >
+                                    {{ badge.label }}
+                                </span>
+                            </div>
+
                             <img
-                                v-if="
-                                    featuredWatch?.primary_hd_url ||
-                                    featuredWatch?.primary_image_url
-                                "
-                                :src="
-                                    featuredWatch.primary_hd_url ||
-                                    featuredWatch.primary_image_url
-                                "
+                                v-if="watchImage(featuredWatch)"
+                                :src="watchImage(featuredWatch)"
                                 :alt="`${featuredWatch.brand} ${featuredWatch.model_name}`"
                                 class="h-full w-full object-cover"
                             />
@@ -245,11 +419,15 @@ const peso = (value) => {
                                     </p>
                                 </div>
 
-                                <div
-                                    class="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300"
+                                <span
+                                    v-if="featuredWatch"
+                                    class="shrink-0 rounded-full border px-3 py-1 text-xs font-medium"
+                                    :class="
+                                        statusBadge(featuredWatch).className
+                                    "
                                 >
-                                    Available
-                                </div>
+                                    {{ statusBadge(featuredWatch).label }}
+                                </span>
                             </div>
 
                             <div
@@ -259,13 +437,26 @@ const peso = (value) => {
                                     Starting from
                                 </p>
 
-                                <p class="text-2xl font-semibold text-white">
-                                    {{
-                                        featuredWatch
-                                            ? peso(featuredWatch.price)
-                                            : "₱XX,XXX"
-                                    }}
-                                </p>
+                                <div class="text-right">
+                                    <p
+                                        class="text-2xl font-semibold text-white"
+                                    >
+                                        {{
+                                            featuredWatch
+                                                ? peso(
+                                                      finalPrice(featuredWatch),
+                                                  )
+                                                : "₱XX,XXX"
+                                        }}
+                                    </p>
+
+                                    <p
+                                        v-if="isBelowSrp(featuredWatch)"
+                                        class="text-sm text-zinc-600 line-through"
+                                    >
+                                        {{ peso(originalPrice(featuredWatch)) }}
+                                    </p>
+                                </div>
                             </div>
 
                             <Link
@@ -280,6 +471,120 @@ const peso = (value) => {
                             >
                                 View Details
                             </Link>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TRUST SECTION -->
+            <section
+                class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12"
+            >
+                <div
+                    class="overflow-hidden rounded-[2rem] border border-white/10 bg-[#0A0A0B] p-5 shadow-2xl shadow-black/30 sm:p-8 lg:p-10"
+                >
+                    <div
+                        class="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-start"
+                    >
+                        <div>
+                            <p
+                                class="text-[11px] font-black uppercase tracking-[0.32em] text-zinc-500"
+                            >
+                                Why Buy From Us
+                            </p>
+
+                            <h2
+                                class="mt-3 max-w-xl text-3xl font-black tracking-[-0.05em] text-white sm:text-4xl"
+                            >
+                                Built for smoother and safer watch deals.
+                            </h2>
+
+                            <p
+                                class="mt-4 max-w-xl text-sm leading-7 text-zinc-400"
+                            >
+                                Montre Nova keeps the buying experience simple
+                                with actual photos, clear pricing, curated
+                                stocks, and after-sales service support.
+                            </p>
+
+                            <div
+                                class="mt-6 grid grid-cols-3 gap-2 sm:max-w-md"
+                            >
+                                <div
+                                    class="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+                                >
+                                    <p class="text-xl font-black text-white">
+                                        HD
+                                    </p>
+                                    <p
+                                        class="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-zinc-600"
+                                    >
+                                        Photos
+                                    </p>
+                                </div>
+
+                                <div
+                                    class="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+                                >
+                                    <p class="text-xl font-black text-white">
+                                        1Y
+                                    </p>
+                                    <p
+                                        class="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-zinc-600"
+                                    >
+                                        Warranty
+                                    </p>
+                                </div>
+
+                                <div
+                                    class="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+                                >
+                                    <p class="text-xl font-black text-white">
+                                        {{ availableCount }}
+                                    </p>
+                                    <p
+                                        class="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-zinc-600"
+                                    >
+                                        Stocks
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div
+                                v-for="item in trustItems"
+                                :key="item.title"
+                                class="group rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5 transition hover:border-white/30 hover:bg-white/[0.055]"
+                            >
+                                <div
+                                    class="flex items-start justify-between gap-4"
+                                >
+                                    <div>
+                                        <span
+                                            class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-300"
+                                        >
+                                            {{ item.label }}
+                                        </span>
+
+                                        <h3
+                                            class="mt-4 text-lg font-black tracking-[-0.03em] text-white"
+                                        >
+                                            {{ item.title }}
+                                        </h3>
+                                    </div>
+
+                                    <span
+                                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-[#050505] text-sm font-black text-zinc-500 transition group-hover:border-white/30 group-hover:text-white"
+                                    >
+                                        ✓
+                                    </span>
+                                </div>
+
+                                <p class="mt-3 text-sm leading-6 text-zinc-500">
+                                    {{ item.description }}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -330,13 +635,30 @@ const peso = (value) => {
                         v-for="watch in watches"
                         :key="watch.id"
                         class="group overflow-hidden rounded-[2rem] border border-white/10 bg-[#0B0B0D]/90 p-4 transition hover:border-white/30"
+                        :class="isSold(watch) ? 'opacity-70' : ''"
                     >
                         <div
-                            class="aspect-square overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#050505]"
+                            class="relative aspect-square overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#050505]"
                         >
+                            <div
+                                class="absolute left-3 top-3 z-10 flex flex-wrap gap-1.5"
+                            >
+                                <span
+                                    v-for="badge in productBadges(watch).slice(
+                                        0,
+                                        3,
+                                    )"
+                                    :key="badge.label"
+                                    class="rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] backdrop-blur"
+                                    :class="badge.className"
+                                >
+                                    {{ badge.label }}
+                                </span>
+                            </div>
+
                             <img
-                                v-if="watch.primary_image_url"
-                                :src="watch.primary_image_url"
+                                v-if="watchImage(watch)"
+                                :src="watchImage(watch)"
                                 :alt="`${watch.brand} ${watch.model_name}`"
                                 class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                             />
@@ -378,9 +700,10 @@ const peso = (value) => {
                                 </div>
 
                                 <span
-                                    class="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300"
+                                    class="shrink-0 rounded-full border px-3 py-1 text-xs font-medium"
+                                    :class="statusBadge(watch).className"
                                 >
-                                    Available
+                                    {{ statusBadge(watch).label }}
                                 </span>
                             </div>
 
@@ -405,9 +728,18 @@ const peso = (value) => {
                             <div
                                 class="mt-6 flex items-center justify-between border-t border-white/10 pt-5"
                             >
-                                <p class="text-xl font-semibold text-white">
-                                    {{ peso(watch.price) }}
-                                </p>
+                                <div>
+                                    <p class="text-xl font-semibold text-white">
+                                        {{ peso(finalPrice(watch)) }}
+                                    </p>
+
+                                    <p
+                                        v-if="isBelowSrp(watch)"
+                                        class="text-sm text-zinc-600 line-through"
+                                    >
+                                        {{ peso(originalPrice(watch)) }}
+                                    </p>
+                                </div>
 
                                 <Link
                                     :href="
@@ -507,9 +839,9 @@ const peso = (value) => {
                         </h3>
 
                         <p class="mt-4 text-sm leading-7 text-zinc-400">
-                            Cash, GCash, bank transfer, QR code payments, and
-                            selected trade-ins may be accepted subject to
-                            evaluation.
+                            Accepted payment methods include cash, Maribank,
+                            GoTyme, QR code payments, and selected trade-ins
+                            subject to evaluation.
                         </p>
                     </div>
                 </div>
@@ -546,27 +878,35 @@ const peso = (value) => {
 
                         <div class="space-y-3">
                             <a
-                                href="#"
-                                class="flex items-center justify-between rounded-2xl border border-white/10 bg-[#050505] px-5 py-4 text-sm font-semibold text-white transition hover:border-white/30"
+                                v-for="link in contactLinks"
+                                :key="link.label"
+                                :href="link.href"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="group flex items-center justify-between rounded-2xl border border-white/10 bg-[#050505] px-5 py-4 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
+                                :class="
+                                    link.href === '#'
+                                        ? 'pointer-events-none opacity-50'
+                                        : ''
+                                "
                             >
-                                Messenger
-                                <span class="text-zinc-500">→</span>
-                            </a>
+                                <div>
+                                    <p class="font-semibold text-white">
+                                        {{ link.label }}
+                                    </p>
 
-                            <a
-                                href="#"
-                                class="flex items-center justify-between rounded-2xl border border-white/10 bg-[#050505] px-5 py-4 text-sm font-semibold text-white transition hover:border-white/30"
-                            >
-                                Viber Community
-                                <span class="text-zinc-500">→</span>
-                            </a>
+                                    <p
+                                        class="mt-1 text-xs font-normal leading-5 text-zinc-500"
+                                    >
+                                        {{ link.description }}
+                                    </p>
+                                </div>
 
-                            <a
-                                href="#"
-                                class="flex items-center justify-between rounded-2xl border border-white/10 bg-[#050505] px-5 py-4 text-sm font-semibold text-white transition hover:border-white/30"
-                            >
-                                Instagram
-                                <span class="text-zinc-500">→</span>
+                                <span
+                                    class="text-zinc-500 transition group-hover:text-white"
+                                >
+                                    →
+                                </span>
                             </a>
                         </div>
                     </div>

@@ -16,7 +16,8 @@ const props = defineProps({
 
 const selectedImageIndex = ref(0);
 const copied = ref(false);
-const activeTab = ref("specs");
+const inquiryCopied = ref(false);
+const activeTab = ref("overview");
 
 const touchStartX = ref(0);
 const touchStartY = ref(0);
@@ -56,6 +57,34 @@ const originalPrice = computed(() => {
     return props.watch.selling_price || props.watch.price || 0;
 });
 
+const statusLabel = computed(() => {
+    const status = String(props.watch.status || "available").toLowerCase();
+
+    const labels = {
+        available: "Available",
+        reserved: "Reserved",
+        sold: "Sold",
+        hidden: "Hidden",
+        draft: "Draft",
+    };
+
+    return labels[status] || "Available";
+});
+
+const statusClass = computed(() => {
+    const status = String(props.watch.status || "available").toLowerCase();
+
+    const classes = {
+        available: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+        reserved: "border-amber-400/20 bg-amber-400/10 text-amber-300",
+        sold: "border-zinc-400/20 bg-zinc-400/10 text-zinc-300",
+        hidden: "border-red-400/20 bg-red-400/10 text-red-300",
+        draft: "border-white/10 bg-white/[0.05] text-zinc-400",
+    };
+
+    return classes[status] || classes.available;
+});
+
 const peso = (value) => {
     return new Intl.NumberFormat("en-PH", {
         style: "currency",
@@ -64,22 +93,12 @@ const peso = (value) => {
     }).format(Number(value || 0));
 };
 
-const specs = computed(() => [
-    { label: "Reference", value: props.watch.reference_number },
-    { label: "Condition", value: props.watch.condition },
-    { label: "Category", value: props.watch.category },
-    { label: "Movement", value: props.watch.movement },
-    { label: "Case Size", value: props.watch.case_size },
-    { label: "Case Material", value: props.watch.case_material },
-    { label: "Dial Color", value: props.watch.dial_color },
-    { label: "Crystal", value: props.watch.crystal },
-    { label: "Bracelet / Strap", value: props.watch.bracelet_or_strap },
-    { label: "Water Resistance", value: props.watch.water_resistance },
-    { label: "Box / Papers", value: props.watch.box_papers },
-    { label: "Warranty", value: props.watch.warranty_type },
-]);
-
-const availableSpecs = computed(() => specs.value.filter((item) => item.value));
+const productDescription = computed(() => {
+    return (
+        props.watch.description ||
+        "A curated Montre Nova timepiece. Message us for availability confirmation, actual photos, payment options, and reservation details."
+    );
+});
 
 const quickSpecs = computed(() => [
     {
@@ -95,38 +114,107 @@ const quickSpecs = computed(() => [
         value: props.watch.movement || "Upon request",
     },
     {
-        label: "Case Size",
-        value: props.watch.case_size || "Upon request",
-    },
-    {
-        label: "Box / Papers",
-        value: props.watch.box_papers || "Upon request",
-    },
-    {
         label: "Warranty",
         value: props.watch.warranty_type || "Montre Card",
     },
 ]);
 
+const trustBadges = computed(() => [
+    {
+        title: "Actual HD Photos",
+        description: "View real product photos before inquiring.",
+    },
+    {
+        title: "Montre Card Warranty",
+        description: "Selected watches include service warranty support.",
+    },
+    {
+        title: "Clear Pricing",
+        description: "Price is shown upfront for easy decision-making.",
+    },
+    {
+        title: "Curated Stock",
+        description: "Handpicked pieces from Montre Nova.",
+    },
+]);
+
+const specGroups = computed(() => [
+    {
+        title: "Core Details",
+        items: [
+            { label: "Reference", value: props.watch.reference_number },
+            { label: "Condition", value: props.watch.condition },
+            { label: "Category", value: props.watch.category },
+            { label: "Movement", value: props.watch.movement },
+        ],
+    },
+    {
+        title: "Case & Build",
+        items: [
+            { label: "Case Size", value: props.watch.case_size },
+            { label: "Case Material", value: props.watch.case_material },
+            { label: "Dial Color", value: props.watch.dial_color },
+            { label: "Crystal", value: props.watch.crystal },
+        ],
+    },
+    {
+        title: "Strap & Resistance",
+        items: [
+            { label: "Bracelet / Strap", value: props.watch.bracelet_or_strap },
+            { label: "Water Resistance", value: props.watch.water_resistance },
+        ],
+    },
+    {
+        title: "Inclusions",
+        items: [
+            { label: "Box / Papers", value: props.watch.box_papers },
+            { label: "Warranty", value: props.watch.warranty_type },
+        ],
+    },
+]);
+
+const availableSpecGroups = computed(() => {
+    return specGroups.value
+        .map((group) => ({
+            ...group,
+            items: group.items.filter((item) => item.value),
+        }))
+        .filter((group) => group.items.length);
+});
+
+const inquiryMessage = computed(() => {
+    return `Hi Montre Nova, I'm interested in this watch:
+
+${displayName.value}
+${props.watch.reference_number ? `Ref. ${props.watch.reference_number}` : ""}
+Price: ${peso(finalPrice.value || props.watch.price)}
+
+Is this still available?`;
+});
+
 const contactLinks = computed(() => [
     {
         label: "Messenger",
-        description: "Fastest way to inquire or reserve",
-        href: props.watch.messenger_url || "#",
+        description: "Fastest way to inquire or reserve this watch",
+        href: "https://m.me/montrenova",
+        primary: true,
     },
     {
         label: "Viber",
-        description: "Request more photos or payment details",
-        href: props.watch.viber_url || "#",
+        description: "Ask for more photos or payment details",
+        href: "viber://chat?number=%2B6399084161980",
+        primary: false,
     },
     {
         label: "Instagram",
         description: "View latest drops and curated stocks",
-        href: props.watch.instagram_url || "#",
+        href: "https://instagram.com/montrenova",
+        primary: false,
     },
 ]);
 
 const tabs = [
+    { key: "overview", label: "Overview" },
     { key: "specs", label: "Specs" },
     { key: "warranty", label: "Warranty" },
     { key: "inquiry", label: "Inquiry" },
@@ -179,6 +267,24 @@ const handleTouchEnd = (event) => {
     }
 };
 
+const copyInquiryMessage = async () => {
+    if (!navigator.clipboard) return;
+
+    await navigator.clipboard.writeText(inquiryMessage.value);
+
+    inquiryCopied.value = true;
+
+    setTimeout(() => {
+        inquiryCopied.value = false;
+    }, 1800);
+};
+
+const openInquiryChannel = async (href) => {
+    await copyInquiryMessage();
+
+    window.open(href, "_blank", "noopener,noreferrer");
+};
+
 const copyLink = async () => {
     if (!navigator.clipboard) return;
 
@@ -189,6 +295,19 @@ const copyLink = async () => {
     setTimeout(() => {
         copied.value = false;
     }, 1800);
+};
+
+const goToInquiry = () => {
+    activeTab.value = "inquiry";
+
+    const target = document.getElementById("details");
+
+    if (target) {
+        target.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+        });
+    }
 };
 </script>
 
@@ -234,10 +353,10 @@ const copyLink = async () => {
             </div>
         </header>
 
-        <main class="pb-24 lg:pb-10">
-            <!-- PRODUCT HERO -->
+        <main class="pb-28 lg:pb-12">
+            <!-- HERO -->
             <section
-                class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 lg:py-7"
+                class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 lg:py-8"
             >
                 <!-- BREADCRUMB -->
                 <div
@@ -262,19 +381,19 @@ const copyLink = async () => {
                     <span class="shrink-0">/</span>
 
                     <span class="truncate text-zinc-400">
-                        {{ watch.brand }}
+                        {{ watch.brand || "Watch" }}
                     </span>
                 </div>
 
                 <div
-                    class="grid gap-4 lg:grid-cols-[minmax(0,500px)_minmax(0,1fr)] lg:items-start xl:grid-cols-[minmax(0,540px)_minmax(0,1fr)]"
+                    class="grid gap-4 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)] lg:items-start"
                 >
                     <!-- IMAGE CARD -->
                     <section
-                        class="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0A0A0B] shadow-2xl shadow-black/40"
+                        class="overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0A0A0B] shadow-2xl shadow-black/40 lg:sticky lg:top-24"
                     >
                         <div
-                            class="relative flex h-[245px] touch-pan-y select-none items-center justify-center overflow-hidden bg-[#101011] sm:h-[340px] lg:h-[430px]"
+                            class="relative flex h-[310px] touch-pan-y select-none items-center justify-center overflow-hidden bg-[#101011] sm:h-[430px] lg:h-[580px]"
                             @touchstart.passive="handleTouchStart"
                             @touchend.passive="handleTouchEnd"
                         >
@@ -284,7 +403,7 @@ const copyLink = async () => {
                                 :src="selectedImage"
                                 :alt="displayName"
                                 draggable="false"
-                                class="pointer-events-none h-full w-full object-contain p-3 sm:p-5"
+                                class="pointer-events-none h-full w-full object-contain p-3 sm:p-6"
                             />
 
                             <div
@@ -297,56 +416,106 @@ const copyLink = async () => {
                                     class="h-24 w-24 object-contain opacity-60"
                                 />
                             </div>
+
+                            <!-- IMAGE BADGES -->
+                            <div
+                                class="absolute left-4 top-4 flex flex-wrap gap-2"
+                            >
+                                <span
+                                    class="rounded-full border px-3 py-1 text-[11px] font-bold backdrop-blur"
+                                    :class="statusClass"
+                                >
+                                    {{ statusLabel }}
+                                </span>
+
+                                <span
+                                    v-if="hasDiscount"
+                                    class="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-[11px] font-bold text-violet-300 backdrop-blur"
+                                >
+                                    Below SRP
+                                </span>
+                            </div>
+
+                            <!-- IMAGE COUNTER -->
+                            <div
+                                v-if="images.length"
+                                class="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-black/70 px-4 py-2 backdrop-blur"
+                            >
+                                <span
+                                    class="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-300"
+                                >
+                                    {{ selectedImageIndex + 1 }} /
+                                    {{ images.length }}
+                                </span>
+
+                                <div
+                                    v-if="hasMultipleImages"
+                                    class="flex items-center gap-1.5"
+                                >
+                                    <button
+                                        v-for="(_, index) in images"
+                                        :key="index"
+                                        type="button"
+                                        class="h-1.5 rounded-full transition"
+                                        :class="
+                                            selectedImageIndex === index
+                                                ? 'w-5 bg-white'
+                                                : 'w-1.5 bg-white/30'
+                                        "
+                                        @click="selectImage(index)"
+                                    ></button>
+                                </div>
+                            </div>
+
+                            <!-- ARROWS -->
+                            <button
+                                v-if="hasMultipleImages"
+                                type="button"
+                                class="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-2xl font-semibold text-white backdrop-blur transition hover:bg-white hover:text-black"
+                                aria-label="Previous image"
+                                @click="previousImage"
+                            >
+                                ‹
+                            </button>
+
+                            <button
+                                v-if="hasMultipleImages"
+                                type="button"
+                                class="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-2xl font-semibold text-white backdrop-blur transition hover:bg-white hover:text-black"
+                                aria-label="Next image"
+                                @click="nextImage"
+                            >
+                                ›
+                            </button>
                         </div>
 
+                        <!-- THUMBNAILS -->
                         <div class="border-t border-white/10 p-3 sm:p-4">
                             <div
                                 v-if="hasMultipleImages"
-                                class="flex items-center gap-3"
+                                class="thin-scrollbar flex gap-2 overflow-x-auto pb-1"
                             >
                                 <button
+                                    v-for="(image, index) in images"
+                                    :key="image.id || index"
                                     type="button"
-                                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-xl font-semibold text-white transition hover:border-white/30 hover:bg-white hover:text-black"
-                                    aria-label="Previous image"
-                                    @click="previousImage"
+                                    class="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border bg-[#050505] p-1 transition sm:h-20 sm:w-20"
+                                    :class="
+                                        selectedImageIndex === index
+                                            ? 'border-white'
+                                            : 'border-white/10 hover:border-white/40'
+                                    "
+                                    @click="selectImage(index)"
                                 >
-                                    ‹
-                                </button>
-
-                                <div
-                                    class="thin-scrollbar flex flex-1 gap-2 overflow-x-auto pb-1"
-                                >
-                                    <button
-                                        v-for="(image, index) in images"
-                                        :key="image.id || index"
-                                        type="button"
-                                        class="h-14 w-14 shrink-0 overflow-hidden rounded-2xl border bg-[#050505] p-1 transition sm:h-16 sm:w-16"
-                                        :class="
-                                            selectedImageIndex === index
-                                                ? 'border-white'
-                                                : 'border-white/10 hover:border-white/40'
+                                    <img
+                                        :src="
+                                            image.thumbnail_url ||
+                                            image.image_url ||
+                                            image.hd_url
                                         "
-                                        @click="selectImage(index)"
-                                    >
-                                        <img
-                                            :src="
-                                                image.thumbnail_url ||
-                                                image.image_url ||
-                                                image.hd_url
-                                            "
-                                            alt=""
-                                            class="h-full w-full rounded-xl object-cover"
-                                        />
-                                    </button>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] text-xl font-semibold text-white transition hover:border-white/30 hover:bg-white hover:text-black"
-                                    aria-label="Next image"
-                                    @click="nextImage"
-                                >
-                                    ›
+                                        alt=""
+                                        class="h-full w-full rounded-xl object-cover"
+                                    />
                                 </button>
                             </div>
 
@@ -354,10 +523,7 @@ const copyLink = async () => {
                                 v-if="images.length"
                                 class="mt-3 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500"
                             >
-                                <span>
-                                    Photo {{ selectedImageIndex + 1 }} of
-                                    {{ images.length }}
-                                </span>
+                                <span> Actual HD Photos </span>
 
                                 <span class="hidden sm:inline">
                                     Swipe or tap thumbnails
@@ -366,144 +532,174 @@ const copyLink = async () => {
                         </div>
                     </section>
 
-                    <!-- DETAILS CARD -->
-                    <section
-                        class="rounded-[1.5rem] border border-white/10 bg-[#0A0A0B] p-4 shadow-2xl shadow-black/40 sm:p-6 lg:min-h-[430px]"
-                    >
-                        <div class="flex h-full flex-col">
-                            <div>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span
-                                        class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-bold text-emerald-300"
-                                    >
-                                        Available
-                                    </span>
-
-                                    <span
-                                        v-if="watch.category"
-                                        class="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold text-zinc-400"
-                                    >
-                                        {{ watch.category }}
-                                    </span>
-
-                                    <span
-                                        v-if="watch.condition"
-                                        class="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold text-zinc-400"
-                                    >
-                                        {{ watch.condition }}
-                                    </span>
-                                </div>
-
-                                <p
-                                    class="mt-5 text-[11px] font-bold uppercase tracking-[0.34em] text-zinc-500"
+                    <!-- PRODUCT DETAILS -->
+                    <section class="space-y-4">
+                        <div
+                            class="rounded-[1.6rem] border border-white/10 bg-[#0A0A0B] p-4 shadow-2xl shadow-black/40 sm:p-6 lg:p-7"
+                        >
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span
+                                    class="rounded-full border px-3 py-1 text-[11px] font-bold"
+                                    :class="statusClass"
                                 >
-                                    {{ watch.brand || "Montre Nova" }}
-                                </p>
+                                    {{ statusLabel }}
+                                </span>
 
-                                <h1
-                                    class="mt-2 text-2xl font-bold leading-tight tracking-[-0.04em] text-white sm:text-4xl lg:text-5xl"
+                                <span
+                                    v-if="watch.category"
+                                    class="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold text-zinc-400"
                                 >
-                                    {{ watch.model_name }}
-                                </h1>
+                                    {{ watch.category }}
+                                </span>
 
-                                <p
-                                    v-if="watch.reference_number"
-                                    class="mt-2 text-sm font-medium text-zinc-500"
+                                <span
+                                    v-if="watch.condition"
+                                    class="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold text-zinc-400"
                                 >
-                                    Ref. {{ watch.reference_number }}
-                                </p>
+                                    {{ watch.condition }}
+                                </span>
+                            </div>
 
+                            <p
+                                class="mt-6 text-[11px] font-bold uppercase tracking-[0.34em] text-zinc-500"
+                            >
+                                {{ watch.brand || "Montre Nova" }}
+                            </p>
+
+                            <h1
+                                class="mt-2 text-3xl font-black leading-[0.95] tracking-[-0.06em] text-white sm:text-5xl lg:text-6xl"
+                            >
+                                {{ watch.model_name }}
+                            </h1>
+
+                            <p
+                                v-if="watch.reference_number"
+                                class="mt-3 text-sm font-medium text-zinc-500"
+                            >
+                                Ref. {{ watch.reference_number }}
+                            </p>
+
+                            <!-- PRICE -->
+                            <div
+                                class="mt-6 rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5"
+                            >
                                 <div
-                                    class="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                                    class="flex items-start justify-between gap-4"
                                 >
-                                    <p
-                                        class="text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500"
-                                    >
-                                        Price
-                                    </p>
-
-                                    <div
-                                        class="mt-2 flex flex-wrap items-end gap-3"
-                                    >
+                                    <div>
                                         <p
-                                            class="text-3xl font-black tracking-[-0.05em] text-white sm:text-4xl"
+                                            class="text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500"
                                         >
-                                            {{ peso(finalPrice) }}
+                                            Price
                                         </p>
 
-                                        <p
-                                            v-if="hasDiscount"
-                                            class="pb-1 text-sm font-semibold text-zinc-500 line-through"
+                                        <div
+                                            class="mt-2 flex flex-wrap items-end gap-3"
                                         >
-                                            {{ peso(originalPrice) }}
-                                        </p>
+                                            <p
+                                                class="text-4xl font-black tracking-[-0.06em] text-white sm:text-5xl"
+                                            >
+                                                {{ peso(finalPrice) }}
+                                            </p>
+
+                                            <p
+                                                v-if="hasDiscount"
+                                                class="pb-1 text-sm font-semibold text-zinc-500 line-through"
+                                            >
+                                                {{ peso(originalPrice) }}
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <p
-                                    v-if="watch.description"
-                                    class="description-clamp mt-4 text-sm leading-6 text-zinc-400"
+                                    <span
+                                        v-if="hasDiscount"
+                                        class="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-[11px] font-bold text-violet-300"
+                                    >
+                                        Below SRP
+                                    </span>
+                                </div>
+                            </div>
+
+                            <p class="mt-5 text-sm leading-7 text-zinc-400">
+                                {{ productDescription }}
+                            </p>
+
+                            <!-- CTA -->
+                            <div class="mt-6 grid gap-3 sm:grid-cols-2">
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
+                                    @click="goToInquiry"
                                 >
-                                    {{ watch.description }}
+                                    Inquire / Reserve
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                                    @click="copyInquiryMessage"
+                                >
+                                    {{
+                                        inquiryCopied
+                                            ? "Message Copied"
+                                            : "Copy Inquiry Message"
+                                    }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- TRUST BADGES -->
+                        <div
+                            class="grid grid-cols-2 gap-3 rounded-[1.6rem] border border-white/10 bg-[#0A0A0B] p-4 sm:p-5"
+                        >
+                            <div
+                                v-for="badge in trustBadges"
+                                :key="badge.title"
+                                class="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                            >
+                                <p class="text-xs font-bold text-white">
+                                    {{ badge.title }}
+                                </p>
+
+                                <p class="mt-2 text-xs leading-5 text-zinc-500">
+                                    {{ badge.description }}
                                 </p>
                             </div>
+                        </div>
 
-                            <!-- QUICK SPECS -->
-                            <div class="mt-5 grid grid-cols-2 gap-2">
-                                <div
-                                    v-for="item in quickSpecs"
-                                    :key="item.label"
-                                    class="rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+                        <!-- QUICK SPECS -->
+                        <div
+                            class="grid grid-cols-2 gap-3 rounded-[1.6rem] border border-white/10 bg-[#0A0A0B] p-4 sm:p-5"
+                        >
+                            <div
+                                v-for="item in quickSpecs"
+                                :key="item.label"
+                                class="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                            >
+                                <p
+                                    class="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500"
                                 >
-                                    <p
-                                        class="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500"
-                                    >
-                                        {{ item.label }}
-                                    </p>
+                                    {{ item.label }}
+                                </p>
 
-                                    <p
-                                        class="mt-1 truncate text-xs font-bold text-white sm:text-sm"
-                                    >
-                                        {{ item.value }}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <!-- DESKTOP CTA -->
-                            <div class="mt-auto hidden pt-5 sm:block">
-                                <div class="grid gap-3 sm:grid-cols-2">
-                                    <a
-                                        href="#inquire"
-                                        class="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
-                                    >
-                                        Inquire Now
-                                    </a>
-
-                                    <button
-                                        type="button"
-                                        class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
-                                        @click="copyLink"
-                                    >
-                                        {{
-                                            copied
-                                                ? "Link Copied"
-                                                : "Share Watch"
-                                        }}
-                                    </button>
-                                </div>
+                                <p
+                                    class="mt-1 truncate text-xs font-bold text-white sm:text-sm"
+                                >
+                                    {{ item.value }}
+                                </p>
                             </div>
                         </div>
                     </section>
                 </div>
             </section>
 
-            <!-- TABBED CONTENT -->
+            <!-- DETAILS -->
             <section
-                id="inquire"
+                id="details"
                 class="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8"
             >
                 <div
-                    class="rounded-[1.5rem] border border-white/10 bg-[#0A0A0B] p-4 sm:p-6"
+                    class="rounded-[1.6rem] border border-white/10 bg-[#0A0A0B] p-4 sm:p-6"
                 >
                     <div
                         class="thin-scrollbar flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#050505] p-1"
@@ -512,7 +708,7 @@ const copyLink = async () => {
                             v-for="tab in tabs"
                             :key="tab.key"
                             type="button"
-                            class="min-w-24 flex-1 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-[0.16em] transition"
+                            class="min-w-28 flex-1 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-[0.16em] transition"
                             :class="
                                 activeTab === tab.key
                                     ? 'bg-white text-black'
@@ -524,8 +720,90 @@ const copyLink = async () => {
                         </button>
                     </div>
 
+                    <!-- OVERVIEW TAB -->
+                    <div v-if="activeTab === 'overview'" class="mt-6">
+                        <div class="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+                            <div
+                                class="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5"
+                            >
+                                <p
+                                    class="text-[11px] font-bold uppercase tracking-[0.32em] text-zinc-500"
+                                >
+                                    Overview
+                                </p>
+
+                                <h2
+                                    class="mt-2 text-2xl font-bold tracking-[-0.04em] text-white"
+                                >
+                                    About this timepiece
+                                </h2>
+
+                                <p class="mt-4 text-sm leading-7 text-zinc-400">
+                                    {{ productDescription }}
+                                </p>
+                            </div>
+
+                            <div
+                                class="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5"
+                            >
+                                <p
+                                    class="text-[11px] font-bold uppercase tracking-[0.32em] text-zinc-500"
+                                >
+                                    What to check
+                                </p>
+
+                                <div class="mt-4 space-y-3">
+                                    <div
+                                        class="flex items-center justify-between gap-4 border-b border-white/10 pb-3"
+                                    >
+                                        <span class="text-sm text-zinc-500">
+                                            Box / Papers
+                                        </span>
+                                        <span
+                                            class="text-right text-sm font-semibold text-white"
+                                        >
+                                            {{
+                                                watch.box_papers ||
+                                                "Upon request"
+                                            }}
+                                        </span>
+                                    </div>
+
+                                    <div
+                                        class="flex items-center justify-between gap-4 border-b border-white/10 pb-3"
+                                    >
+                                        <span class="text-sm text-zinc-500">
+                                            Warranty
+                                        </span>
+                                        <span
+                                            class="text-right text-sm font-semibold text-white"
+                                        >
+                                            {{
+                                                watch.warranty_type ||
+                                                "Montre Card"
+                                            }}
+                                        </span>
+                                    </div>
+
+                                    <div
+                                        class="flex items-center justify-between gap-4"
+                                    >
+                                        <span class="text-sm text-zinc-500">
+                                            Inquiry
+                                        </span>
+                                        <span
+                                            class="text-right text-sm font-semibold text-emerald-300"
+                                        >
+                                            Message us to confirm availability
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- SPECS TAB -->
-                    <div v-if="activeTab === 'specs'" class="mt-5">
+                    <div v-if="activeTab === 'specs'" class="mt-6">
                         <div
                             class="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"
                         >
@@ -544,28 +822,43 @@ const copyLink = async () => {
                             </div>
 
                             <p class="max-w-xl text-sm leading-6 text-zinc-500">
-                                Check the important details before reservation.
+                                Grouped for easier comparison before
+                                reservation.
                             </p>
                         </div>
 
                         <div
-                            v-if="availableSpecs.length"
-                            class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+                            v-if="availableSpecGroups.length"
+                            class="mt-6 grid gap-4 lg:grid-cols-2"
                         >
                             <div
-                                v-for="spec in availableSpecs"
-                                :key="spec.label"
-                                class="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                                v-for="group in availableSpecGroups"
+                                :key="group.title"
+                                class="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5"
                             >
-                                <p
-                                    class="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500"
-                                >
-                                    {{ spec.label }}
-                                </p>
+                                <h3 class="text-sm font-bold text-white">
+                                    {{ group.title }}
+                                </h3>
 
-                                <p class="mt-1 text-sm font-bold text-white">
-                                    {{ spec.value }}
-                                </p>
+                                <div class="mt-4 divide-y divide-white/10">
+                                    <div
+                                        v-for="spec in group.items"
+                                        :key="spec.label"
+                                        class="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0"
+                                    >
+                                        <p
+                                            class="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500"
+                                        >
+                                            {{ spec.label }}
+                                        </p>
+
+                                        <p
+                                            class="max-w-[60%] text-right text-sm font-bold text-white"
+                                        >
+                                            {{ spec.value }}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -575,7 +868,7 @@ const copyLink = async () => {
                     </div>
 
                     <!-- WARRANTY TAB -->
-                    <div v-if="activeTab === 'warranty'" class="mt-5">
+                    <div v-if="activeTab === 'warranty'" class="mt-6">
                         <p
                             class="text-[11px] font-bold uppercase tracking-[0.32em] text-zinc-500"
                         >
@@ -585,14 +878,14 @@ const copyLink = async () => {
                         <h2
                             class="mt-2 text-2xl font-bold tracking-[-0.04em] text-white"
                         >
-                            Montre Card
+                            Montre Card Warranty
                         </h2>
 
                         <div
                             class="mt-5 grid gap-3 text-sm leading-6 text-zinc-400 lg:grid-cols-3"
                         >
                             <div
-                                class="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                                class="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
                             >
                                 <p class="font-bold text-white">
                                     1 Year Coverage
@@ -605,7 +898,7 @@ const copyLink = async () => {
                             </div>
 
                             <div
-                                class="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                                class="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
                             >
                                 <p class="font-bold text-white">
                                     Movement Defects
@@ -620,7 +913,7 @@ const copyLink = async () => {
                             </div>
 
                             <div
-                                class="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                                class="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
                             >
                                 <p class="font-bold text-white">Not Covered</p>
 
@@ -635,54 +928,126 @@ const copyLink = async () => {
                     </div>
 
                     <!-- INQUIRY TAB -->
-                    <div v-if="activeTab === 'inquiry'" class="mt-5">
-                        <p
-                            class="text-[11px] font-bold uppercase tracking-[0.32em] text-zinc-500"
-                        >
-                            Inquiry
-                        </p>
-
-                        <h2
-                            class="mt-2 text-2xl font-bold tracking-[-0.04em] text-white"
-                        >
-                            Ready to reserve this watch?
-                        </h2>
-
-                        <p
-                            class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400"
-                        >
-                            Message Montre Nova to confirm availability, request
-                            more photos, ask for payment details, or reserve
-                            this timepiece.
-                        </p>
-
-                        <div class="mt-5 grid gap-3 sm:grid-cols-3">
-                            <a
-                                v-for="link in contactLinks"
-                                :key="link.label"
-                                :href="link.href"
-                                class="group rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/30 hover:bg-white/[0.06]"
-                            >
-                                <div
-                                    class="flex items-center justify-between gap-4"
+                    <div v-if="activeTab === 'inquiry'" class="mt-6">
+                        <div class="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+                            <div>
+                                <p
+                                    class="text-[11px] font-bold uppercase tracking-[0.32em] text-zinc-500"
                                 >
-                                    <p class="text-sm font-bold text-white">
-                                        {{ link.label }}
-                                    </p>
-
-                                    <span
-                                        class="text-zinc-500 transition group-hover:text-white"
-                                    >
-                                        →
-                                    </span>
-                                </div>
-
-                                <p class="mt-2 text-xs leading-5 text-zinc-500">
-                                    {{ link.description }}
+                                    Inquiry
                                 </p>
-                            </a>
+
+                                <h2
+                                    class="mt-2 text-2xl font-bold tracking-[-0.04em] text-white"
+                                >
+                                    Ready to reserve this watch?
+                                </h2>
+
+                                <p
+                                    class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400"
+                                >
+                                    Copy the prepared inquiry message, then open
+                                    your preferred channel. We recommend
+                                    Messenger for the fastest response.
+                                </p>
+
+                                <div class="mt-5 grid gap-3">
+                                    <button
+                                        type="button"
+                                        class="rounded-2xl bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
+                                        @click="copyInquiryMessage"
+                                    >
+                                        {{
+                                            inquiryCopied
+                                                ? "Inquiry Message Copied"
+                                                : "Copy Inquiry Message"
+                                        }}
+                                    </button>
+
+                                    <button
+                                        v-for="link in contactLinks"
+                                        :key="link.label"
+                                        type="button"
+                                        class="group rounded-2xl border p-4 text-left transition"
+                                        :class="
+                                            link.primary
+                                                ? 'border-emerald-400/20 bg-emerald-400/10 hover:border-emerald-400/40'
+                                                : 'border-white/10 bg-[#050505] hover:border-white/30'
+                                        "
+                                        @click="openInquiryChannel(link.href)"
+                                    >
+                                        <div
+                                            class="flex items-center justify-between gap-4"
+                                        >
+                                            <p
+                                                class="text-sm font-semibold text-white"
+                                            >
+                                                {{ link.label }}
+                                            </p>
+
+                                            <span
+                                                class="text-zinc-500 transition group-hover:text-white"
+                                            >
+                                                →
+                                            </span>
+                                        </div>
+
+                                        <p
+                                            class="mt-2 text-xs leading-5 text-zinc-500"
+                                        >
+                                            {{ link.description }}
+                                        </p>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div
+                                class="rounded-[1.4rem] border border-white/10 bg-[#050505] p-5"
+                            >
+                                <p
+                                    class="text-[11px] font-bold uppercase tracking-[0.24em] text-zinc-500"
+                                >
+                                    Message Preview
+                                </p>
+
+                                <pre
+                                    class="mt-4 whitespace-pre-wrap rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-7 text-zinc-300"
+                                    >{{ inquiryMessage }}</pre
+                                >
+
+                                <p class="mt-4 text-xs leading-5 text-zinc-500">
+                                    The message is automatically copied before
+                                    opening Messenger, Viber, or Instagram.
+                                </p>
+                            </div>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <!-- MORE CTA -->
+            <section class="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
+                <div
+                    class="flex flex-col justify-between gap-4 rounded-[1.6rem] border border-white/10 bg-[#0A0A0B] p-5 sm:flex-row sm:items-center sm:p-6"
+                >
+                    <div>
+                        <p
+                            class="text-[11px] font-bold uppercase tracking-[0.28em] text-zinc-500"
+                        >
+                            Still browsing?
+                        </p>
+
+                        <h2 class="mt-2 text-xl font-bold text-white">
+                            View more curated Montre Nova watches
+                        </h2>
+                    </div>
+
+                    <Link
+                        :href="route('welcome') + '#collection'"
+                        class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                    >
+                        Back to Collection
+                    </Link>
                 </div>
             </section>
         </main>
@@ -691,14 +1056,26 @@ const copyLink = async () => {
         <div
             class="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050505]/95 p-3 backdrop-blur-xl sm:hidden"
         >
-            <div class="grid grid-cols-[1fr_auto] gap-2">
-                <a
-                    href="#inquire"
+            <div class="grid grid-cols-[1fr_auto_auto] items-center gap-2">
+                <div class="min-w-0">
+                    <p
+                        class="truncate text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500"
+                    >
+                        {{ statusLabel }}
+                    </p>
+
+                    <p class="truncate text-base font-black text-white">
+                        {{ peso(finalPrice) }}
+                    </p>
+                </div>
+
+                <button
+                    type="button"
                     class="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-black text-black"
-                    @click="activeTab = 'inquiry'"
+                    @click="goToInquiry"
                 >
-                    Inquire Now
-                </a>
+                    Inquire
+                </button>
 
                 <button
                     type="button"
@@ -713,13 +1090,6 @@ const copyLink = async () => {
 </template>
 
 <style scoped>
-.description-clamp {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
-
 .thin-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: rgb(255 255 255 / 0.2) transparent;

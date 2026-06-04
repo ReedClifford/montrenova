@@ -86,6 +86,17 @@ Route::delete('/admin/expenses/{expense}', [ExpenseController::class, 'destroy']
     ->name('admin.expenses.destroy');
 
 
+
+    Route::patch('/admin/watch-images/{image}/primary', [WatchController::class, 'setPrimaryImage'])
+        ->name('admin.watch-images.primary');
+
+    Route::patch('/admin/watch-images/{image}/move', [WatchController::class, 'moveImage'])
+        ->name('admin.watch-images.move');
+
+    Route::delete('/admin/watch-images/{image}', [WatchController::class, 'deleteImage'])
+        ->name('admin.watch-images.destroy');
+
+
         
 });
 require __DIR__.'/auth.php';

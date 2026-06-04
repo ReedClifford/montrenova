@@ -19,6 +19,7 @@ class WatchImage extends Model
 
     protected $casts = [
         'is_primary' => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     protected $appends = [
@@ -41,11 +42,15 @@ class WatchImage extends Model
 
     public function getHdUrlAttribute(): string
     {
-        return Storage::url($this->hd_path ?: $this->image_path);
+        return $this->hd_path || $this->image_path
+            ? Storage::url($this->hd_path ?: $this->image_path)
+            : '';
     }
 
     public function getThumbnailUrlAttribute(): string
     {
-        return Storage::url($this->thumbnail_path ?: $this->image_path);
+        return $this->thumbnail_path || $this->image_path
+            ? Storage::url($this->thumbnail_path ?: $this->image_path)
+            : '';
     }
 }

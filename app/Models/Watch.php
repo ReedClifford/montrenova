@@ -29,6 +29,7 @@ class Watch extends Model
         'capital_price',
         'selling_price',
         'discounted_price',
+        'sold_price',
         'status',
         'is_featured',
         'is_visible',
@@ -47,24 +48,29 @@ class Watch extends Model
         'capital_price' => 'decimal:2',
         'selling_price' => 'decimal:2',
         'discounted_price' => 'decimal:2',
+        'sold_price' => 'decimal:2',
         'is_featured' => 'boolean',
         'is_visible' => 'boolean',
         'display_price' => 'boolean',
         'allow_inquiry' => 'boolean',
         'date_acquired' => 'date',
         'date_sold' => 'date',
-
         'reservation_date' => 'date',
         'reservation_deadline' => 'date',
     ];
 
     protected $appends = [
         'formatted_price',
+        'formatted_encoded_date',
+        'formatted_sold_date',
+        'final_public_price',
     ];
 
     public function images(): HasMany
     {
-        return $this->hasMany(WatchImage::class)->orderBy('sort_order');
+        return $this->hasMany(WatchImage::class)
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 
     public function sections(): HasMany
@@ -74,13 +80,36 @@ class Watch extends Model
 
     public function primaryImage(): HasOne
     {
-        return $this->hasOne(WatchImage::class)->where('is_primary', true);
+        return $this->hasOne(WatchImage::class)
+            ->where('is_primary', true)
+            ->orderBy('sort_order');
+    }
+
+    public function getFinalPublicPriceAttribute(): float
+    {
+        if ($this->discounted_price && (float) $this->discounted_price > 0) {
+            return (float) $this->discounted_price;
+        }
+
+        return (float) $this->selling_price;
     }
 
     public function getFormattedPriceAttribute(): string
     {
-        $price = $this->discounted_price ?: $this->selling_price;
+        return '₱' . number_format((float) $this->final_public_price, 2);
+    }
 
-        return '₱' . number_format((float) $price, 2);
+    public function getFormattedEncodedDateAttribute(): string
+    {
+        return $this->created_at
+            ? $this->created_at->format('M d, Y')
+            : '';
+    }
+
+    public function getFormattedSoldDateAttribute(): string
+    {
+        return $this->date_sold
+            ? $this->date_sold->format('M d, Y')
+            : '';
     }
 }
