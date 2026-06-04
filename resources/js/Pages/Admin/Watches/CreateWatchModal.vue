@@ -22,7 +22,7 @@ const fileInput = ref(null);
 const imageLimitMessage = ref("");
 
 const form = useForm({
-    brand: "",
+    brand: "Seiko",
     model_name: "",
     reference_number: "",
     condition: "Brand New",
