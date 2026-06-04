@@ -37,12 +37,37 @@ class PublicWatchController extends Controller
             ->withQueryString()
             ->through(fn ($watch) => $this->publicWatchCard($watch));
 
+        /*
+        |--------------------------------------------------------------------------
+        | Actual Sold Count
+        |--------------------------------------------------------------------------
+        |
+        | This is the real total number of sold watches from the database.
+        | Do not use soldWatches.length in Vue for the total sold count because
+        | soldWatches below is only limited to the latest 12 display items.
+        |
+        */
+
+        $soldCount = Watch::query()
+            ->where('status', 'sold')
+            ->count();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Recently Sold Watches
+        |--------------------------------------------------------------------------
+        |
+        | This is only for display on the public homepage.
+        | It is intentionally limited so the page stays clean and fast.
+        |
+        */
+
         $soldWatches = Watch::query()
             ->with(['primaryImage'])
             ->withCount('images')
             ->where('status', 'sold')
             ->where('is_visible', true)
-            ->latest('updated_at')
+            ->orderByRaw('COALESCE(date_sold, updated_at) DESC')
             ->limit(12)
             ->get()
             ->map(fn ($watch) => $this->publicWatchCard($watch));
@@ -53,6 +78,7 @@ class PublicWatchController extends Controller
             'featuredWatch' => $featuredWatch ? $this->publicWatchCard($featuredWatch) : null,
             'watches' => $watches,
             'soldWatches' => $soldWatches,
+            'soldCount' => $soldCount,
         ]);
     }
 
@@ -93,6 +119,7 @@ class PublicWatchController extends Controller
             'status' => $watch->status,
             'is_featured' => (bool) $watch->is_featured,
             'created_at' => $watch->created_at?->toISOString(),
+            'date_sold' => $watch->date_sold?->toISOString(),
             'images_count' => $watch->images_count ?? $watch->images?->count() ?? 0,
             'primary_image_url' => $watch->primaryImage?->image_url,
             'primary_hd_url' => $watch->primaryImage?->hd_url,

@@ -24,6 +24,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    soldCount: {
+        type: Number,
+        default: null,
+    },
 });
 
 const watchPagination = computed(() => {
@@ -54,7 +58,13 @@ const availableCount = computed(() => {
     return Number(watchPagination.value?.total ?? watches.value.length);
 });
 
-const soldCount = computed(() => soldWatches.value.length);
+const soldTotal = computed(() => {
+    if (props.soldCount !== null && props.soldCount !== undefined) {
+        return Number(props.soldCount || 0);
+    }
+
+    return Number(soldWatches.value.length || 0);
+});
 
 const paginationSummary = computed(() => {
     const pagination = watchPagination.value;
@@ -396,7 +406,7 @@ const productBadges = (watch) => {
                             class="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
                         >
                             <p class="text-2xl font-semibold text-white">
-                                {{ soldCount }}+
+                                {{ soldTotal }}+
                             </p>
                             <p
                                 class="mt-1 text-xs uppercase tracking-widest text-zinc-600"
@@ -630,7 +640,7 @@ const productBadges = (watch) => {
                                     class="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
                                 >
                                     <p class="text-xl font-black text-white">
-                                        {{ soldCount }}+
+                                        {{ soldTotal }}+
                                     </p>
                                     <p
                                         class="mt-1 text-[9px] font-bold uppercase tracking-[0.18em] text-zinc-600"
