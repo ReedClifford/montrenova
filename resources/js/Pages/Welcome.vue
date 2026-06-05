@@ -66,6 +66,64 @@ const soldTotal = computed(() => {
     return Number(soldWatches.value.length || 0);
 });
 
+const soldThisMonthCount = computed(() => {
+    const today = new Date();
+
+    return soldWatches.value.filter((watch) => {
+        const dateValue =
+            watch.date_sold ||
+            watch.sold_at ||
+            watch.updated_at ||
+            watch.created_at;
+
+        if (!dateValue) return false;
+
+        const soldDate = new Date(dateValue);
+
+        if (Number.isNaN(soldDate.getTime())) return false;
+
+        return (
+            soldDate.getMonth() === today.getMonth() &&
+            soldDate.getFullYear() === today.getFullYear()
+        );
+    }).length;
+});
+
+const soldProofCount = computed(() => {
+    return soldThisMonthCount.value || recentSoldWatches.value.length;
+});
+
+const soldMonthLabel = computed(() => {
+    return new Date().toLocaleDateString("en-PH", {
+        month: "long",
+        year: "numeric",
+    });
+});
+
+const soldDateLabel = (watch) => {
+    const dateValue =
+        watch?.date_sold ||
+        watch?.sold_at ||
+        watch?.updated_at ||
+        watch?.created_at;
+
+    if (!dateValue) return "Recently sold";
+
+    const date = new Date(dateValue);
+
+    if (Number.isNaN(date.getTime())) return "Recently sold";
+
+    return date.toLocaleDateString("en-PH", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+    });
+};
+
+const soldConditionLabel = (watch) => {
+    return watch?.condition || "Curated timepiece";
+};
+
 const paginationSummary = computed(() => {
     const pagination = watchPagination.value;
 
@@ -1171,38 +1229,124 @@ const productBadges = (watch) => {
             </section>
 
             <!-- RECENTLY SOLD -->
+            <!-- RECENTLY SOLD -->
             <section
                 v-if="recentSoldWatches.length"
                 id="recently-sold"
                 class="mx-auto max-w-7xl px-6 py-16 lg:px-8"
             >
                 <div
-                    class="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end"
+                    class="mb-8 overflow-hidden rounded-[2rem] border border-white/10 bg-[#0B0B0D] p-5 shadow-2xl shadow-black/30 sm:p-7"
                 >
-                    <div>
-                        <p
-                            class="text-xs font-medium uppercase tracking-[0.32em] text-zinc-500"
-                        >
-                            Recently Sold
-                        </p>
+                    <div
+                        class="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center"
+                    >
+                        <div>
+                            <p
+                                class="text-xs font-black uppercase tracking-[0.32em] text-zinc-500"
+                            >
+                                Recently Sold
+                            </p>
 
-                        <h2
-                            class="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl"
-                        >
-                            Claimed Timepieces
-                        </h2>
+                            <h2
+                                class="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl"
+                            >
+                                Claimed Timepieces
+                            </h2>
 
-                        <p
-                            class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400"
-                        >
-                            A glimpse of recently sold watches from Montre Nova.
-                            Message us if you want us to source a similar piece.
-                        </p>
+                            <p
+                                class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400"
+                            >
+                                A glimpse of recently sold watches from Montre
+                                Nova. Missed a piece? Message us and we’ll help
+                                source a similar watch.
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                            <div
+                                class="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-4"
+                            >
+                                <p
+                                    class="text-3xl font-black tracking-tight text-white"
+                                >
+                                    {{ soldProofCount }}
+                                </p>
+
+                                <p
+                                    class="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-600"
+                                >
+                                    Sold this month
+                                </p>
+
+                                <p class="mt-2 text-xs text-zinc-500">
+                                    {{ soldMonthLabel }}
+                                </p>
+                            </div>
+
+                            <div
+                                class="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-4"
+                            >
+                                <p
+                                    class="text-3xl font-black tracking-tight text-white"
+                                >
+                                    {{ soldTotal }}+
+                                </p>
+
+                                <p
+                                    class="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-600"
+                                >
+                                    Total sold
+                                </p>
+
+                                <p class="mt-2 text-xs text-zinc-500">
+                                    Trusted deals
+                                </p>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="col-span-2 rounded-[1.4rem] border border-red-400/20 bg-red-400/10 p-4 text-left transition hover:border-red-400/40 sm:col-span-1"
+                                @click="openSimilarInquiry()"
+                            >
+                                <p
+                                    class="text-[10px] font-black uppercase tracking-[0.18em] text-red-300"
+                                >
+                                    Missed a piece?
+                                </p>
+
+                                <p class="mt-2 text-sm font-bold text-white">
+                                    Source similar watches
+                                </p>
+
+                                <p
+                                    class="mt-2 text-xs leading-5 text-red-100/60"
+                                >
+                                    Tell us your target model, budget, and
+                                    condition.
+                                </p>
+                            </button>
+                        </div>
                     </div>
+                </div>
+
+                <div
+                    class="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-center"
+                >
+                    <p
+                        class="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-600 md:hidden"
+                    >
+                        Swipe sold watches →
+                    </p>
+
+                    <p class="hidden text-sm text-zinc-500 md:block">
+                        Recently claimed watches help show active deals and
+                        buyer trust.
+                    </p>
 
                     <button
                         type="button"
-                        class="inline-flex rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
+                        class="inline-flex w-full items-center justify-center rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04] sm:w-auto"
                         @click="openSimilarInquiry()"
                     >
                         Source Similar Watch
@@ -1210,15 +1354,15 @@ const productBadges = (watch) => {
                 </div>
 
                 <div
-                    class="flex gap-4 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    class="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                     <div
                         v-for="watch in recentSoldWatches"
                         :key="watch.id"
-                        class="group min-w-[250px] max-w-[250px] overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#0B0B0D]/90 p-3 opacity-90 transition hover:border-white/30 hover:opacity-100 sm:min-w-[280px] sm:max-w-[280px]"
+                        class="group min-w-[255px] max-w-[255px] snap-start overflow-hidden rounded-[1.85rem] border border-white/10 bg-[#0B0B0D]/95 p-3 opacity-95 transition hover:border-white/30 hover:opacity-100 sm:min-w-[290px] sm:max-w-[290px]"
                     >
                         <div
-                            class="relative aspect-square overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#050505]"
+                            class="relative aspect-square overflow-hidden rounded-[1.45rem] border border-white/10 bg-[#050505]"
                         >
                             <div class="absolute left-3 top-3 z-10">
                                 <span
@@ -1228,21 +1372,19 @@ const productBadges = (watch) => {
                                 </span>
                             </div>
 
-                            <div
-                                class="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent p-4"
-                            >
-                                <p
-                                    class="text-xs font-bold uppercase tracking-[0.18em] text-zinc-300"
+                            <div class="absolute right-3 top-3 z-10">
+                                <span
+                                    class="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-300 backdrop-blur"
                                 >
-                                    Recently Claimed
-                                </p>
+                                    Claimed
+                                </span>
                             </div>
 
                             <img
                                 v-if="watchImage(watch)"
                                 :src="watchImage(watch)"
                                 :alt="`${watch.brand} ${watch.model_name}`"
-                                class="h-full w-full object-cover grayscale-[20%] transition duration-500 group-hover:scale-105 group-hover:grayscale-0"
+                                class="h-full w-full object-cover grayscale-[25%] transition duration-500 group-hover:scale-105 group-hover:grayscale-0"
                                 loading="lazy"
                             />
 
@@ -1257,44 +1399,115 @@ const productBadges = (watch) => {
                                     loading="lazy"
                                 />
                             </div>
+
+                            <div
+                                class="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 via-black/55 to-transparent p-4"
+                            >
+                                <p
+                                    class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400"
+                                >
+                                    Recently Claimed
+                                </p>
+
+                                <p
+                                    class="mt-1 truncate text-sm font-bold text-white"
+                                >
+                                    {{ soldDateLabel(watch) }}
+                                </p>
+                            </div>
                         </div>
 
                         <div class="p-2 pt-4">
-                            <p
-                                class="text-xs font-medium uppercase tracking-[0.24em] text-zinc-500"
-                            >
-                                {{ watch.brand }}
-                            </p>
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p
+                                        class="truncate text-xs font-bold uppercase tracking-[0.24em] text-zinc-500"
+                                    >
+                                        {{ watch.brand }}
+                                    </p>
 
-                            <h3
-                                class="mt-2 truncate text-base font-semibold text-white"
-                            >
-                                {{ watch.model_name }}
-                            </h3>
+                                    <h3
+                                        class="mt-2 truncate text-base font-semibold text-white"
+                                    >
+                                        {{ watch.model_name }}
+                                    </h3>
 
-                            <p class="mt-1 truncate text-sm text-zinc-500">
-                                Ref.
-                                {{ watch.reference_number || "No reference" }}
-                            </p>
+                                    <p
+                                        class="mt-1 truncate text-sm text-zinc-500"
+                                    >
+                                        Ref.
+                                        {{
+                                            watch.reference_number ||
+                                            "No reference"
+                                        }}
+                                    </p>
+                                </div>
+                            </div>
 
-                            <div
-                                class="mt-4 flex items-center justify-between border-t border-white/10 pt-4"
-                            >
+                            <div class="mt-4 flex flex-wrap gap-2">
                                 <span
-                                    class="rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1 text-xs font-semibold text-red-300"
+                                    class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
                                 >
-                                    Sold
+                                    {{ soldConditionLabel(watch) }}
                                 </span>
 
+                                <span
+                                    v-if="watch.category"
+                                    class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
+                                >
+                                    {{ watch.category }}
+                                </span>
+                            </div>
+
+                            <div
+                                class="mt-5 grid grid-cols-2 gap-2 border-t border-white/10 pt-4"
+                            >
                                 <button
                                     type="button"
-                                    class="text-sm font-medium text-zinc-300 transition hover:text-white"
+                                    class="inline-flex items-center justify-center rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-300 transition hover:border-red-400/40"
                                     @click="openSimilarInquiry(watch)"
                                 >
                                     Find Similar
                                 </button>
+
+                                <a
+                                    href="#collection"
+                                    class="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
+                                >
+                                    View Stocks
+                                </a>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div
+                    class="mt-6 rounded-[1.6rem] border border-white/10 bg-[#0B0B0D]/80 p-5"
+                >
+                    <div
+                        class="flex flex-col justify-between gap-4 md:flex-row md:items-center"
+                    >
+                        <div>
+                            <p
+                                class="text-[11px] font-black uppercase tracking-[0.24em] text-zinc-600"
+                            >
+                                Sourcing Service
+                            </p>
+
+                            <p class="mt-2 text-sm leading-6 text-zinc-400">
+                                Looking for a sold model? Message us your
+                                preferred brand, budget, and condition. We’ll
+                                help source a similar piece from our network.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="inline-flex shrink-0 items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
+                            @click="openSimilarInquiry()"
+                        >
+                            Request Sourcing
+                        </button>
                     </div>
                 </div>
             </section>
