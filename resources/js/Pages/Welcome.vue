@@ -1679,7 +1679,7 @@ const productBadges = (watch) => {
                     timepieces.
                 </p>
 
-                <p>Minimalist luxury watch boutique.</p>
+                <p>Collection of Seiko Watches.</p>
             </div>
         </footer>
 
