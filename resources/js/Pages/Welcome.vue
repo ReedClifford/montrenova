@@ -1445,19 +1445,6 @@ const productBadges = (watch) => {
                 id="process"
                 class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
             >
-                <div class="mb-8 max-w-2xl">
-                    <p
-                        class="text-[11px] font-black uppercase tracking-[0.34em] text-zinc-500"
-                    >
-                        Buyer Experience
-                    </p>
-                    <h2
-                        class="mt-3 text-4xl font-black tracking-[-0.06em] text-white sm:text-5xl"
-                    >
-                        Simple, clear, premium.
-                    </h2>
-                </div>
-
                 <div class="grid gap-4 lg:grid-cols-3">
                     <div
                         class="rounded-xl border border-white/10 bg-[#0B0B0D]/90 p-7 shadow-xl shadow-black/25 transition hover:border-white/25 hover:bg-[#111113]"
