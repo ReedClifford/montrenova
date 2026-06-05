@@ -42,6 +42,8 @@ class Watch extends Model
         'reservation_date',
         'reservation_deadline',
         'reservation_notes',
+        'buyer_name',
+        'serial_number',
     ];
 
     protected $casts = [

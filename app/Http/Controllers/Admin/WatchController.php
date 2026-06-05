@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Watch;
 use App\Models\WatchImage;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -12,68 +13,190 @@ use Inertia\Inertia;
 
 class WatchController extends Controller
 {
+    // public function index(Request $request)
+    // {
+    //     $search = trim((string) $request->input('search', ''));
+    //     $status = $request->input('status', '');
+
+    //     $watches = Watch::query()
+    //         ->with(['primaryImage', 'images', 'sections'])
+    //         ->withCount('images')
+    //         ->when($search, function ($query) use ($search) {
+    //             $query->where(function ($q) use ($search) {
+    //                 $q->where('brand', 'like', "%{$search}%")
+    //                     ->orWhere('model_name', 'like', "%{$search}%")
+    //                     ->orWhere('reference_number', 'like', "%{$search}%")
+    //                     ->orWhere('condition', 'like', "%{$search}%")
+    //                     ->orWhere('category', 'like', "%{$search}%");
+    //             });
+    //         })
+    //         ->when($status, fn ($query) => $query->where('status', $status))
+    //         ->latest()
+    //         ->paginate(10)
+    //         ->withQueryString();
+
+    //     $activeInventoryQuery = Watch::query()
+    //         ->where('status', '!=', 'sold');
+
+    //     $inventoryCapital = (float) (clone $activeInventoryQuery)
+    //         ->sum('capital_price');
+
+    //     $expectedSalesValue = (float) (clone $activeInventoryQuery)
+    //         ->selectRaw('
+    //             COALESCE(
+    //                 SUM(
+    //                     CASE
+    //                         WHEN discounted_price IS NOT NULL AND discounted_price > 0
+    //                         THEN discounted_price
+    //                         ELSE selling_price
+    //                     END
+    //                 ),
+    //             0) as total
+    //         ')
+    //         ->value('total');
+
+    //     $expectedProfit = $expectedSalesValue - $inventoryCapital;
+
+    //     return Inertia::render('Admin/Watches/Index', [
+    //         'watches' => $watches,
+    //         'filters' => [
+    //             'search' => $search,
+    //             'status' => $status,
+    //         ],
+    //         'summary' => [
+    //             'total_watches' => Watch::count(),
+    //             'available_watches' => Watch::where('status', 'available')->count(),
+    //             'reserved_watches' => Watch::where('status', 'reserved')->count(),
+    //             'sold_watches' => Watch::where('status', 'sold')->count(),
+    //             'draft_hidden_watches' => Watch::whereIn('status', ['draft', 'hidden'])->count(),
+    //             'inventory_capital' => $inventoryCapital,
+    //             'expected_sales_value' => $expectedSalesValue,
+    //             'expected_profit' => $expectedProfit,
+    //         ],
+    //     ]);
+    // }
+
+
     public function index(Request $request)
-    {
-        $search = trim((string) $request->input('search', ''));
-        $status = $request->input('status', '');
+{
+    $search = trim((string) $request->input('search', ''));
+    $status = $request->input('status', '');
 
-        $watches = Watch::query()
-            ->with(['primaryImage', 'images', 'sections'])
-            ->withCount('images')
-            ->when($search, function ($query) use ($search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('brand', 'like', "%{$search}%")
-                        ->orWhere('model_name', 'like', "%{$search}%")
-                        ->orWhere('reference_number', 'like', "%{$search}%")
-                        ->orWhere('condition', 'like', "%{$search}%")
-                        ->orWhere('category', 'like', "%{$search}%");
-                });
-            })
-            ->when($status, fn ($query) => $query->where('status', $status))
-            ->latest()
-            ->paginate(10)
-            ->withQueryString();
+    $watches = Watch::query()
+        ->with(['primaryImage', 'images', 'sections'])
+        ->withCount('images')
+        ->when($search, function ($query) use ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('brand', 'like', "%{$search}%")
+                    ->orWhere('model_name', 'like', "%{$search}%")
+                    ->orWhere('reference_number', 'like', "%{$search}%")
+                    ->orWhere('condition', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%")
+                    ->orWhere('buyer_name', 'like', "%{$search}%")
+                    ->orWhere('serial_number', 'like', "%{$search}%");
+            });
+        })
+        ->when($status, fn ($query) => $query->where('status', $status))
+        ->latest()
+        ->paginate(10)
+        ->withQueryString();
 
-        $activeInventoryQuery = Watch::query()
-            ->where('status', '!=', 'sold');
+    $warrantyWatches = Watch::query()
+        ->select([
+            'id',
+            'brand',
+            'model_name',
+            'reference_number',
+            'serial_number',
+            'buyer_name',
+            'sold_price',
+            'date_sold',
+            'status',
+        ])
+        ->where('status', 'sold')
+        ->whereNotNull('date_sold')
+        ->when($search, function ($query) use ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('brand', 'like', "%{$search}%")
+                    ->orWhere('model_name', 'like', "%{$search}%")
+                    ->orWhere('reference_number', 'like', "%{$search}%")
+                    ->orWhere('buyer_name', 'like', "%{$search}%")
+                    ->orWhere('serial_number', 'like', "%{$search}%");
+            });
+        })
+        ->latest('date_sold')
+        ->paginate(10, ['*'], 'warranty_page')
+        ->withQueryString()
+        ->through(function ($watch) {
+            $dateSold = Carbon::parse($watch->date_sold);
+            $warrantyEndDate = $dateSold->copy()->addYear();
+            $daysLeft = now()->startOfDay()->diffInDays($warrantyEndDate->copy()->startOfDay(), false);
 
-        $inventoryCapital = (float) (clone $activeInventoryQuery)
-            ->sum('capital_price');
+            if ($daysLeft < 0) {
+                $warrantyStatus = 'expired';
+            } elseif ($daysLeft <= 30) {
+                $warrantyStatus = 'expiring_soon';
+            } else {
+                $warrantyStatus = 'active';
+            }
 
-        $expectedSalesValue = (float) (clone $activeInventoryQuery)
-            ->selectRaw('
-                COALESCE(
-                    SUM(
-                        CASE
-                            WHEN discounted_price IS NOT NULL AND discounted_price > 0
-                            THEN discounted_price
-                            ELSE selling_price
-                        END
-                    ),
-                0) as total
-            ')
-            ->value('total');
+            return [
+                'id' => $watch->id,
+                'brand' => $watch->brand,
+                'model_name' => $watch->model_name,
+                'reference_number' => $watch->reference_number,
+                'serial_number' => $watch->serial_number,
+                'buyer_name' => $watch->buyer_name,
+                'sold_price' => $watch->sold_price,
+                'date_sold' => $dateSold->format('Y-m-d'),
+                'warranty_start_date' => $dateSold->format('Y-m-d'),
+                'warranty_end_date' => $warrantyEndDate->format('Y-m-d'),
+                'warranty_days_left' => $daysLeft,
+                'warranty_status' => $warrantyStatus,
+            ];
+        });
 
-        $expectedProfit = $expectedSalesValue - $inventoryCapital;
+    $activeInventoryQuery = Watch::query()
+        ->where('status', '!=', 'sold');
 
-        return Inertia::render('Admin/Watches/Index', [
-            'watches' => $watches,
-            'filters' => [
-                'search' => $search,
-                'status' => $status,
-            ],
-            'summary' => [
-                'total_watches' => Watch::count(),
-                'available_watches' => Watch::where('status', 'available')->count(),
-                'reserved_watches' => Watch::where('status', 'reserved')->count(),
-                'sold_watches' => Watch::where('status', 'sold')->count(),
-                'draft_hidden_watches' => Watch::whereIn('status', ['draft', 'hidden'])->count(),
-                'inventory_capital' => $inventoryCapital,
-                'expected_sales_value' => $expectedSalesValue,
-                'expected_profit' => $expectedProfit,
-            ],
-        ]);
-    }
+    $inventoryCapital = (float) (clone $activeInventoryQuery)
+        ->sum('capital_price');
+
+    $expectedSalesValue = (float) (clone $activeInventoryQuery)
+        ->selectRaw('
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN discounted_price IS NOT NULL AND discounted_price > 0
+                        THEN discounted_price
+                        ELSE selling_price
+                    END
+                ),
+            0) as total
+        ')
+        ->value('total');
+
+    $expectedProfit = $expectedSalesValue - $inventoryCapital;
+
+    return Inertia::render('Admin/Watches/Index', [
+        'watches' => $watches,
+        'warrantyWatches' => $warrantyWatches,
+        'filters' => [
+            'search' => $search,
+            'status' => $status,
+        ],
+        'summary' => [
+            'total_watches' => Watch::count(),
+            'available_watches' => Watch::where('status', 'available')->count(),
+            'reserved_watches' => Watch::where('status', 'reserved')->count(),
+            'sold_watches' => Watch::where('status', 'sold')->count(),
+            'draft_hidden_watches' => Watch::whereIn('status', ['draft', 'hidden'])->count(),
+            'inventory_capital' => $inventoryCapital,
+            'expected_sales_value' => $expectedSalesValue,
+            'expected_profit' => $expectedProfit,
+        ],
+    ]);
+}
 
     public function create()
     {
@@ -121,36 +244,37 @@ class WatchController extends Controller
         ]);
     }
 
-    public function update(Request $request, Watch $watch)
-    {
-        $validated = $this->validateWatch($request, $watch->id);
+public function update(Request $request, Watch $watch)
+{
+    $validated = $this->validateWatch($request, $watch->id);
 
-        if (($validated['status'] ?? null) === 'sold') {
-            if (empty($validated['date_sold']) && ! $watch->date_sold) {
-                $validated['date_sold'] = now()->toDateString();
-            }
-
-            if (empty($validated['sold_price'])) {
-                $validated['sold_price'] = $validated['discounted_price']
-                    ?: $validated['selling_price'];
-            }
+    if (($validated['status'] ?? null) === 'sold') {
+        if (empty($validated['date_sold']) && ! $watch->date_sold) {
+            $validated['date_sold'] = now()->toDateString();
         }
 
-        if (($validated['status'] ?? null) !== 'sold') {
-            $validated['date_sold'] = null;
-            $validated['sold_price'] = null;
+        if (empty($validated['sold_price'])) {
+            $validated['sold_price'] = $validated['discounted_price']
+                ?: $validated['selling_price'];
         }
-
-        $watch->update($validated);
-
-        $this->syncSections($watch, $request->input('sections', []));
-        $this->uploadImages($watch, $request);
-        $this->normalizeImageOrder($watch);
-
-        return redirect()
-            ->route('admin.watches.index')
-            ->with('success', 'Watch stock updated successfully.');
     }
+
+    if (($validated['status'] ?? null) !== 'sold') {
+        $validated['date_sold'] = null;
+        $validated['sold_price'] = null;
+        $validated['buyer_name'] = null;
+    }
+
+    $watch->update($validated);
+
+    $this->syncSections($watch, $request->input('sections', []));
+    $this->uploadImages($watch, $request);
+    $this->normalizeImageOrder($watch);
+
+    return redirect()
+        ->route('admin.watches.index')
+        ->with('success', 'Watch stock updated successfully.');
+}
 
     public function destroy(Watch $watch)
     {
@@ -172,12 +296,16 @@ class WatchController extends Controller
     public function markSold(Request $request, Watch $watch)
     {
         $validated = $request->validate([
+            'buyer_name' => ['required', 'string', 'max:255'],
+            'serial_number' => ['nullable', 'string', 'max:255'],
             'sold_price' => ['required', 'numeric', 'min:0'],
             'date_sold' => ['required', 'date'],
         ]);
 
         $watch->update([
             'status' => 'sold',
+            'buyer_name' => $validated['buyer_name'],
+            'serial_number' => $validated['serial_number'] ?? null,
             'sold_price' => $validated['sold_price'],
             'date_sold' => $validated['date_sold'],
             'is_visible' => false,
@@ -361,7 +489,8 @@ class WatchController extends Controller
             'water_resistance' => ['nullable', 'string', 'max:255'],
             'box_papers' => ['nullable', 'string', 'max:255'],
             'warranty_type' => ['nullable', 'string', 'max:255'],
-
+            'buyer_name' => ['nullable', 'required_if:status,sold', 'string', 'max:255'],
+            'serial_number' => ['nullable', 'string', 'max:255'],
             'capital_price' => ['nullable', 'numeric', 'min:0'],
             'selling_price' => ['required', 'numeric', 'min:1'],
             'discounted_price' => ['nullable', 'numeric', 'min:0'],

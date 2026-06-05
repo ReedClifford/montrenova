@@ -18,6 +18,8 @@ const emit = defineEmits(["close"]);
 const today = new Date().toISOString().slice(0, 10);
 
 const form = useForm({
+    buyer_name: "",
+    serial_number: "",
     sold_price: "",
     date_sold: today,
 });
@@ -50,6 +52,8 @@ watch(
     () => props.show,
     (value) => {
         if (value && props.watch) {
+            form.buyer_name = "";
+            form.serial_number = props.watch.serial_number || "";
             form.sold_price = expectedPrice.value || "";
             form.date_sold = today;
             form.clearErrors();
@@ -94,7 +98,7 @@ const submit = () => {
 
                 <form
                     @submit.prevent="submit"
-                    class="relative w-full max-w-xl rounded-[2rem] border border-white/10 bg-[#0B0B0D] p-6 shadow-2xl shadow-black"
+                    class="relative max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-[2rem] border border-white/10 bg-[#0B0B0D] p-6 shadow-2xl shadow-black"
                 >
                     <div class="flex items-start justify-between gap-4">
                         <div>
@@ -181,16 +185,72 @@ const submit = () => {
                         </div>
                     </div>
 
+                    <div class="mt-6 grid gap-5">
+                        <div>
+                            <label class="mn-label">
+                                Buyer Name
+                                <span class="text-red-300">*</span>
+                            </label>
+
+                            <input
+                                v-model="form.buyer_name"
+                                type="text"
+                                class="mn-input"
+                                placeholder="Enter buyer name"
+                                autocomplete="off"
+                            />
+
+                            <p
+                                v-if="form.errors.buyer_name"
+                                class="mt-2 text-sm text-red-300"
+                            >
+                                {{ form.errors.buyer_name }}
+                            </p>
+                        </div>
+
+                        <div>
+                            <label class="mn-label">
+                                Watch Serial Number
+                                <span
+                                    class="normal-case tracking-normal text-zinc-500"
+                                >
+                                    Optional
+                                </span>
+                            </label>
+
+                            <input
+                                v-model="form.serial_number"
+                                type="text"
+                                class="mn-input"
+                                placeholder="Enter serial number if available"
+                                autocomplete="off"
+                            />
+
+                            <p
+                                v-if="form.errors.serial_number"
+                                class="mt-2 text-sm text-red-300"
+                            >
+                                {{ form.errors.serial_number }}
+                            </p>
+                        </div>
+                    </div>
+
                     <div class="mt-6 grid gap-5 sm:grid-cols-2">
                         <div>
-                            <label class="mn-label">Final Sold Price</label>
+                            <label class="mn-label">
+                                Final Sold Price
+                                <span class="text-red-300">*</span>
+                            </label>
+
                             <input
                                 v-model="form.sold_price"
                                 type="number"
                                 step="0.01"
+                                min="0"
                                 class="mn-input"
                                 placeholder="0.00"
                             />
+
                             <p
                                 v-if="form.errors.sold_price"
                                 class="mt-2 text-sm text-red-300"
@@ -200,12 +260,17 @@ const submit = () => {
                         </div>
 
                         <div>
-                            <label class="mn-label">Date Sold</label>
+                            <label class="mn-label">
+                                Date Sold
+                                <span class="text-red-300">*</span>
+                            </label>
+
                             <input
                                 v-model="form.date_sold"
                                 type="date"
                                 class="mn-input"
                             />
+
                             <p
                                 v-if="form.errors.date_sold"
                                 class="mt-2 text-sm text-red-300"
@@ -213,6 +278,30 @@ const submit = () => {
                                 {{ form.errors.date_sold }}
                             </p>
                         </div>
+                    </div>
+
+                    <div
+                        class="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4"
+                    >
+                        <div class="flex items-center justify-between gap-4">
+                            <p class="text-sm text-zinc-400">Sale Summary</p>
+
+                            <p
+                                class="text-sm font-semibold"
+                                :class="
+                                    estimatedProfit >= 0
+                                        ? 'text-emerald-300'
+                                        : 'text-red-300'
+                                "
+                            >
+                                {{ peso(estimatedProfit) }} Profit
+                            </p>
+                        </div>
+
+                        <p class="mt-2 text-xs leading-5 text-zinc-500">
+                            Make sure the buyer name and final sold price are
+                            correct before confirming the sale.
+                        </p>
                     </div>
 
                     <div class="mt-6 flex justify-end gap-3">

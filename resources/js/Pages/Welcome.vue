@@ -751,12 +751,13 @@ const productBadges = (watch) => {
             </section>
 
             <!-- COLLECTION -->
+            <!-- COLLECTION -->
             <section
                 id="collection"
-                class="mx-auto max-w-7xl px-6 py-20 lg:px-8"
+                class="mx-auto max-w-7xl px-6 py-16 lg:px-8 lg:py-20"
             >
                 <div
-                    class="mb-10 flex flex-col justify-between gap-5 md:flex-row md:items-end"
+                    class="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end"
                 >
                     <div>
                         <p
@@ -786,32 +787,46 @@ const productBadges = (watch) => {
                         </p>
                     </div>
 
-                    <a
-                        href="#contact"
-                        class="inline-flex rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
+                    <div
+                        class="flex flex-col gap-2 sm:flex-row sm:items-center"
                     >
-                        Ask for Latest Stocks
-                    </a>
+                        <p
+                            v-if="watches.length"
+                            class="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-600 md:hidden"
+                        >
+                            Swipe to browse →
+                        </p>
+
+                        <a
+                            href="#contact"
+                            class="inline-flex rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
+                        >
+                            Ask for Latest Stocks
+                        </a>
+                    </div>
                 </div>
 
                 <template v-if="watches.length">
-                    <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    <!-- MOBILE: HORIZONTAL SWIPE CARDS / DESKTOP: GRID -->
+                    <div
+                        class="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 md:grid md:snap-none md:grid-cols-2 md:overflow-visible md:pb-0 xl:grid-cols-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    >
                         <div
                             v-for="watch in watches"
                             :key="watch.id"
-                            class="group overflow-hidden rounded-[2rem] border border-white/10 bg-[#0B0B0D]/90 p-4 transition hover:border-white/30"
+                            class="group min-w-[250px] max-w-[250px] snap-start overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#0B0B0D]/90 p-3 transition hover:border-white/30 sm:min-w-[280px] sm:max-w-[280px] md:min-w-0 md:max-w-none md:rounded-[2rem] md:p-4"
                             :class="isSold(watch) ? 'opacity-70' : ''"
                         >
                             <div
-                                class="relative aspect-square overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#050505]"
+                                class="relative aspect-square overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#050505] md:rounded-[1.5rem]"
                             >
                                 <div
-                                    class="absolute left-3 top-3 z-10 flex flex-wrap gap-1.5"
+                                    class="absolute left-3 top-3 z-10 flex max-w-[90%] flex-wrap gap-1.5"
                                 >
                                     <span
                                         v-for="badge in productBadges(
                                             watch,
-                                        ).slice(0, 3)"
+                                        ).slice(0, 2)"
                                         :key="badge.label"
                                         class="rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] backdrop-blur"
                                         :class="badge.className"
@@ -834,29 +849,47 @@ const productBadges = (watch) => {
                                     <img
                                         src="/images/montre-nova-logo.png"
                                         alt="Montre Nova"
-                                        class="h-40 w-40 object-contain opacity-70"
+                                        class="h-32 w-32 object-contain opacity-70 md:h-40 md:w-40"
                                     />
+                                </div>
+
+                                <!-- MOBILE PRICE OVERLAY -->
+                                <div
+                                    class="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 md:hidden"
+                                >
+                                    <p class="text-lg font-semibold text-white">
+                                        {{ peso(finalPrice(watch)) }}
+                                    </p>
+
+                                    <p
+                                        v-if="isBelowSrp(watch)"
+                                        class="text-xs text-zinc-500 line-through"
+                                    >
+                                        {{ peso(originalPrice(watch)) }}
+                                    </p>
                                 </div>
                             </div>
 
-                            <div class="p-2 pt-5">
+                            <div class="p-2 pt-4 md:pt-5">
                                 <div
-                                    class="flex items-start justify-between gap-4"
+                                    class="flex items-start justify-between gap-3"
                                 >
-                                    <div>
+                                    <div class="min-w-0">
                                         <p
-                                            class="text-xs font-medium uppercase tracking-[0.26em] text-zinc-500"
+                                            class="truncate text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-500 md:text-xs md:tracking-[0.26em]"
                                         >
                                             {{ watch.brand }}
                                         </p>
 
                                         <h3
-                                            class="mt-2 text-lg font-semibold text-white"
+                                            class="mt-2 truncate text-base font-semibold text-white md:text-lg"
                                         >
                                             {{ watch.model_name }}
                                         </h3>
 
-                                        <p class="mt-1 text-sm text-zinc-500">
+                                        <p
+                                            class="mt-1 truncate text-sm text-zinc-500"
+                                        >
                                             Ref.
                                             {{
                                                 watch.reference_number ||
@@ -866,14 +899,38 @@ const productBadges = (watch) => {
                                     </div>
 
                                     <span
-                                        class="shrink-0 rounded-full border px-3 py-1 text-xs font-medium"
+                                        class="hidden shrink-0 rounded-full border px-3 py-1 text-xs font-medium md:inline-flex"
                                         :class="statusBadge(watch).className"
                                     >
                                         {{ statusBadge(watch).label }}
                                     </span>
                                 </div>
 
-                                <div class="mt-4 flex flex-wrap gap-2">
+                                <!-- MOBILE COMPACT DETAILS -->
+                                <div
+                                    class="mt-4 flex flex-wrap gap-2 md:hidden"
+                                >
+                                    <span
+                                        class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
+                                    >
+                                        {{
+                                            watch.condition ||
+                                            "Condition upon request"
+                                        }}
+                                    </span>
+
+                                    <span
+                                        v-if="watch.category"
+                                        class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
+                                    >
+                                        {{ watch.category }}
+                                    </span>
+                                </div>
+
+                                <!-- DESKTOP DETAILS -->
+                                <div
+                                    class="mt-4 hidden flex-wrap gap-2 md:flex"
+                                >
                                     <span
                                         class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
                                     >
@@ -892,9 +949,9 @@ const productBadges = (watch) => {
                                 </div>
 
                                 <div
-                                    class="mt-6 flex items-center justify-between border-t border-white/10 pt-5"
+                                    class="mt-5 flex items-center justify-between border-t border-white/10 pt-4 md:mt-6 md:pt-5"
                                 >
-                                    <div>
+                                    <div class="hidden md:block">
                                         <p
                                             class="text-xl font-semibold text-white"
                                         >
@@ -916,7 +973,7 @@ const productBadges = (watch) => {
                                                 watch.id,
                                             )
                                         "
-                                        class="text-sm font-medium text-zinc-300 transition group-hover:text-white"
+                                        class="inline-flex w-full items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black transition hover:bg-zinc-200 md:w-auto md:bg-transparent md:px-0 md:py-0 md:font-medium md:text-zinc-300 md:hover:bg-transparent md:group-hover:text-white"
                                     >
                                         View Details
                                     </Link>
@@ -928,7 +985,7 @@ const productBadges = (watch) => {
                     <!-- PAGINATION -->
                     <div
                         v-if="hasWatchPagination"
-                        class="mt-10 flex flex-col items-center justify-between gap-5 rounded-[1.5rem] border border-white/10 bg-[#0B0B0D]/80 p-4 sm:flex-row"
+                        class="mt-8 flex flex-col items-center justify-between gap-5 rounded-[1.5rem] border border-white/10 bg-[#0B0B0D]/80 p-4 sm:flex-row md:mt-10"
                     >
                         <p class="text-sm text-zinc-500">
                             {{ paginationSummary }}
