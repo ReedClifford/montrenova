@@ -28,6 +28,10 @@ const props = defineProps({
         type: Number,
         default: null,
     },
+    soldThisMonthCount: {
+        type: Number,
+        default: 0,
+    },
 });
 
 const watchPagination = computed(() => {
@@ -67,30 +71,11 @@ const soldTotal = computed(() => {
 });
 
 const soldThisMonthCount = computed(() => {
-    const today = new Date();
-
-    return soldWatches.value.filter((watch) => {
-        const dateValue =
-            watch.date_sold ||
-            watch.sold_at ||
-            watch.updated_at ||
-            watch.created_at;
-
-        if (!dateValue) return false;
-
-        const soldDate = new Date(dateValue);
-
-        if (Number.isNaN(soldDate.getTime())) return false;
-
-        return (
-            soldDate.getMonth() === today.getMonth() &&
-            soldDate.getFullYear() === today.getFullYear()
-        );
-    }).length;
+    return Number(props.soldThisMonthCount || 0);
 });
 
 const soldProofCount = computed(() => {
-    return soldThisMonthCount.value || recentSoldWatches.value.length;
+    return soldThisMonthCount.value;
 });
 
 const soldMonthLabel = computed(() => {
@@ -388,13 +373,13 @@ const productBadges = (watch) => {
     >
         <div class="pointer-events-none fixed inset-0">
             <div
-                class="absolute left-[-14rem] top-[-14rem] h-[36rem] w-[36rem] rounded-full bg-white/[0.04] blur-3xl"
+                class="absolute left-[-14rem] top-[-14rem] h-[36rem] w-[36rem] rounded-md bg-white/[0.04] blur-3xl"
             ></div>
             <div
-                class="absolute right-[-16rem] top-[18rem] h-[34rem] w-[34rem] rounded-full bg-zinc-700/10 blur-3xl"
+                class="absolute right-[-16rem] top-[18rem] h-[34rem] w-[34rem] rounded-md bg-zinc-700/10 blur-3xl"
             ></div>
             <div
-                class="absolute bottom-[-16rem] left-[28%] h-[36rem] w-[36rem] rounded-full bg-white/[0.025] blur-3xl"
+                class="absolute bottom-[-16rem] left-[28%] h-[36rem] w-[36rem] rounded-md bg-white/[0.025] blur-3xl"
             ></div>
         </div>
 
@@ -450,7 +435,7 @@ const productBadges = (watch) => {
                     <!-- MOBILE CTA -->
                     <button
                         type="button"
-                        class="inline-flex shrink-0 items-center justify-center rounded-2xl bg-white px-4 py-2 text-xs font-bold text-black transition hover:bg-zinc-200 md:hidden"
+                        class="inline-flex shrink-0 items-center justify-center rounded-md bg-white px-4 py-2 text-xs font-bold text-black transition hover:bg-zinc-200 md:hidden"
                         @click="openMessengerInquiry()"
                     >
                         Message
@@ -470,7 +455,7 @@ const productBadges = (watch) => {
                 >
                     <a
                         href="#collection"
-                        class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
+                        class="shrink-0 rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
                     >
                         Collection
                     </a>
@@ -478,35 +463,35 @@ const productBadges = (watch) => {
                     <a
                         v-if="recentSoldWatches.length"
                         href="#recently-sold"
-                        class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
+                        class="shrink-0 rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
                     >
                         Sold
                     </a>
 
                     <a
                         href="#process"
-                        class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
+                        class="shrink-0 rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
                     >
                         Process
                     </a>
 
                     <a
                         href="#warranty"
-                        class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
+                        class="shrink-0 rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
                     >
                         Warranty
                     </a>
 
                     <Link
                         href="/warranty-check"
-                        class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
+                        class="shrink-0 rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
                     >
                         Warranty Check
                     </Link>
 
                     <a
                         href="#contact"
-                        class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
+                        class="shrink-0 rounded-md border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
                     >
                         Contact
                     </a>
@@ -521,9 +506,9 @@ const productBadges = (watch) => {
             >
                 <div>
                     <div
-                        class="mb-6 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2"
+                        class="mb-6 inline-flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-2"
                     >
-                        <span class="h-2 w-2 rounded-full bg-white"></span>
+                        <span class="h-2 w-2 rounded-md bg-white"></span>
                         <span
                             class="text-xs font-medium uppercase tracking-[0.28em] text-zinc-500"
                         >
@@ -548,14 +533,14 @@ const productBadges = (watch) => {
                     <div class="mt-10 flex flex-col gap-4 sm:flex-row">
                         <a
                             href="#collection"
-                            class="inline-flex items-center justify-center rounded-2xl bg-white px-7 py-4 text-sm font-semibold text-black transition hover:bg-zinc-200"
+                            class="inline-flex items-center justify-center rounded-md bg-white px-7 py-4 text-sm font-semibold text-black transition hover:bg-zinc-200"
                         >
                             View Collection
                         </a>
 
                         <button
                             type="button"
-                            class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-7 py-4 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                            class="inline-flex items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-7 py-4 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
                             @click="openMessengerInquiry()"
                         >
                             Message Us
@@ -566,7 +551,7 @@ const productBadges = (watch) => {
                         class="mt-12 grid max-w-2xl grid-cols-2 gap-4 sm:grid-cols-4"
                     >
                         <div
-                            class="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                            class="rounded-md border border-white/10 bg-white/[0.03] p-5"
                         >
                             <p class="text-2xl font-semibold text-white">HD</p>
                             <p
@@ -577,7 +562,7 @@ const productBadges = (watch) => {
                         </div>
 
                         <div
-                            class="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                            class="rounded-md border border-white/10 bg-white/[0.03] p-5"
                         >
                             <p class="text-2xl font-semibold text-white">1Y</p>
                             <p
@@ -588,7 +573,7 @@ const productBadges = (watch) => {
                         </div>
 
                         <div
-                            class="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                            class="rounded-md border border-white/10 bg-white/[0.03] p-5"
                         >
                             <p class="text-2xl font-semibold text-white">
                                 {{ availableCount }}
@@ -601,7 +586,7 @@ const productBadges = (watch) => {
                         </div>
 
                         <div
-                            class="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                            class="rounded-md border border-white/10 bg-white/[0.03] p-5"
                         >
                             <p class="text-2xl font-semibold text-white">
                                 {{ soldTotal }}+
@@ -618,14 +603,14 @@ const productBadges = (watch) => {
                 <!-- FEATURED WATCH -->
                 <div class="relative">
                     <div
-                        class="absolute inset-0 rounded-[2.5rem] bg-white/[0.04] blur-3xl"
+                        class="absolute inset-0 rounded-md bg-white/[0.04] blur-3xl"
                     ></div>
 
                     <div
-                        class="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#0B0B0D]/90 p-5 shadow-2xl shadow-black/50"
+                        class="relative overflow-hidden rounded-md border border-white/10 bg-[#0B0B0D]/90 p-5 shadow-2xl shadow-black/50"
                     >
                         <div
-                            class="relative aspect-[4/5] overflow-hidden rounded-[2rem] border border-white/10 bg-[#050505]"
+                            class="relative aspect-[4/5] overflow-hidden rounded-md border border-white/10 bg-[#050505]"
                         >
                             <div
                                 v-if="featuredWatch"
@@ -636,7 +621,7 @@ const productBadges = (watch) => {
                                         featuredWatch,
                                     )"
                                     :key="badge.label"
-                                    class="rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] backdrop-blur"
+                                    class="rounded-2xl border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] backdrop-blur"
                                     :class="badge.className"
                                 >
                                     {{ badge.label }}
@@ -717,7 +702,7 @@ const productBadges = (watch) => {
 
                                 <span
                                     v-if="featuredWatch"
-                                    class="shrink-0 rounded-full border px-3 py-1 text-xs font-medium"
+                                    class="shrink-0 rounded-2xl border px-3 py-1 text-xs font-medium"
                                     :class="
                                         statusBadge(featuredWatch).className
                                     "
@@ -761,7 +746,7 @@ const productBadges = (watch) => {
                             >
                                 <button
                                     type="button"
-                                    class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                                    class="inline-flex items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
                                     @click="openMessengerInquiry(featuredWatch)"
                                 >
                                     Ask
@@ -774,7 +759,7 @@ const productBadges = (watch) => {
                                             featuredWatch.id,
                                         )
                                     "
-                                    class="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
+                                    class="inline-flex items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
                                 >
                                     Details
                                 </Link>
@@ -789,7 +774,7 @@ const productBadges = (watch) => {
                 class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12"
             >
                 <div
-                    class="overflow-hidden rounded-[2rem] border border-white/10 bg-[#0A0A0B] p-5 shadow-2xl shadow-black/30 sm:p-8 lg:p-10"
+                    class="overflow-hidden rounded-md border border-white/10 bg-[#0A0A0B] p-5 shadow-2xl shadow-black/30 sm:p-8 lg:p-10"
                 >
                     <div
                         class="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-start"
@@ -819,7 +804,7 @@ const productBadges = (watch) => {
                                 class="mt-6 grid grid-cols-2 gap-2 sm:max-w-md sm:grid-cols-4"
                             >
                                 <div
-                                    class="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+                                    class="rounded-md border border-white/10 bg-white/[0.035] p-4"
                                 >
                                     <p class="text-xl font-black text-white">
                                         HD
@@ -832,7 +817,7 @@ const productBadges = (watch) => {
                                 </div>
 
                                 <div
-                                    class="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+                                    class="rounded-md border border-white/10 bg-white/[0.035] p-4"
                                 >
                                     <p class="text-xl font-black text-white">
                                         1Y
@@ -845,7 +830,7 @@ const productBadges = (watch) => {
                                 </div>
 
                                 <div
-                                    class="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+                                    class="rounded-md border border-white/10 bg-white/[0.035] p-4"
                                 >
                                     <p class="text-xl font-black text-white">
                                         {{ availableCount }}
@@ -858,7 +843,7 @@ const productBadges = (watch) => {
                                 </div>
 
                                 <div
-                                    class="rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+                                    class="rounded-md border border-white/10 bg-white/[0.035] p-4"
                                 >
                                     <p class="text-xl font-black text-white">
                                         {{ soldTotal }}+
@@ -876,14 +861,14 @@ const productBadges = (watch) => {
                             <div
                                 v-for="item in trustItems"
                                 :key="item.title"
-                                class="group rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-5 transition hover:border-white/30 hover:bg-white/[0.055]"
+                                class="group rounded-md border border-white/10 bg-white/[0.03] p-5 transition hover:border-white/30 hover:bg-white/[0.055]"
                             >
                                 <div
                                     class="flex items-start justify-between gap-4"
                                 >
                                     <div>
                                         <span
-                                            class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-300"
+                                            class="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-300"
                                         >
                                             {{ item.label }}
                                         </span>
@@ -896,7 +881,7 @@ const productBadges = (watch) => {
                                     </div>
 
                                     <span
-                                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-[#050505] text-sm font-black text-zinc-500 transition group-hover:border-white/30 group-hover:text-white"
+                                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/10 bg-[#050505] text-sm font-black text-zinc-500 transition group-hover:border-white/30 group-hover:text-white"
                                     >
                                         ✓
                                     </span>
@@ -959,7 +944,7 @@ const productBadges = (watch) => {
 
                         <button
                             type="button"
-                            class="inline-flex rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
+                            class="inline-flex rounded-md border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
                             @click="openMessengerInquiry()"
                         >
                             Ask for Latest Stocks
@@ -975,11 +960,11 @@ const productBadges = (watch) => {
                         <div
                             v-for="watch in watches"
                             :key="watch.id"
-                            class="group min-w-[250px] max-w-[250px] snap-start overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#0B0B0D]/90 p-3 transition hover:border-white/30 sm:min-w-[280px] sm:max-w-[280px] md:min-w-0 md:max-w-none md:rounded-[2rem] md:p-4"
+                            class="group min-w-[250px] max-w-[250px] snap-start overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#0B0B0D]/90 p-3 transition hover:border-white/30 sm:min-w-[280px] sm:max-w-[280px] md:min-w-0 md:max-w-none md:rounded-md md:p-4"
                             :class="isSold(watch) ? 'opacity-70' : ''"
                         >
                             <div
-                                class="relative aspect-square overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#050505] md:rounded-[1.5rem]"
+                                class="relative aspect-square overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#050505] md:rounded-md"
                             >
                                 <div
                                     class="absolute left-3 top-3 z-10 flex max-w-[90%] flex-wrap gap-1.5"
@@ -989,7 +974,7 @@ const productBadges = (watch) => {
                                             watch,
                                         ).slice(0, 2)"
                                         :key="badge.label"
-                                        class="rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] backdrop-blur"
+                                        class="rounded-md border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.1em] backdrop-blur"
                                         :class="badge.className"
                                     >
                                         {{ badge.label }}
@@ -1062,7 +1047,7 @@ const productBadges = (watch) => {
                                     </div>
 
                                     <span
-                                        class="hidden shrink-0 rounded-full border px-3 py-1 text-xs font-medium md:inline-flex"
+                                        class="hidden shrink-0 rounded-md border px-3 py-1 text-xs font-medium md:inline-flex"
                                         :class="statusBadge(watch).className"
                                     >
                                         {{ statusBadge(watch).label }}
@@ -1074,7 +1059,7 @@ const productBadges = (watch) => {
                                     class="mt-4 flex flex-wrap gap-2 md:hidden"
                                 >
                                     <span
-                                        class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
+                                        class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
                                     >
                                         {{
                                             watch.condition ||
@@ -1084,7 +1069,7 @@ const productBadges = (watch) => {
 
                                     <span
                                         v-if="watch.category"
-                                        class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
+                                        class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
                                     >
                                         {{ watch.category }}
                                     </span>
@@ -1095,7 +1080,7 @@ const productBadges = (watch) => {
                                     class="mt-4 hidden flex-wrap gap-2 md:flex"
                                 >
                                     <span
-                                        class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
+                                        class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
                                     >
                                         {{
                                             watch.condition ||
@@ -1105,7 +1090,7 @@ const productBadges = (watch) => {
 
                                     <span
                                         v-if="watch.category"
-                                        class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
+                                        class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
                                     >
                                         {{ watch.category }}
                                     </span>
@@ -1134,7 +1119,7 @@ const productBadges = (watch) => {
                                     >
                                         <button
                                             type="button"
-                                            class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06] md:rounded-xl md:px-3 md:py-2 md:text-xs"
+                                            class="inline-flex items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06] md:rounded-xl md:px-3 md:py-2 md:text-xs"
                                             @click="openMessengerInquiry(watch)"
                                         >
                                             Ask
@@ -1147,7 +1132,7 @@ const productBadges = (watch) => {
                                                     watch.id,
                                                 )
                                             "
-                                            class="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black transition hover:bg-zinc-200 md:bg-transparent md:px-0 md:py-0 md:font-medium md:text-zinc-300 md:hover:bg-transparent md:group-hover:text-white"
+                                            class="inline-flex items-center justify-center rounded-md bg-white px-4 py-3 text-sm font-bold text-black transition hover:bg-zinc-200 md:bg-transparent md:px-0 md:py-0 md:font-medium md:text-zinc-300 md:hover:bg-transparent md:group-hover:text-white"
                                         >
                                             Details
                                         </Link>
@@ -1160,7 +1145,7 @@ const productBadges = (watch) => {
                     <!-- PAGINATION -->
                     <div
                         v-if="hasWatchPagination"
-                        class="mt-8 flex flex-col items-center justify-between gap-5 rounded-[1.5rem] border border-white/10 bg-[#0B0B0D]/80 p-4 sm:flex-row md:mt-10"
+                        class="mt-8 flex flex-col items-center justify-between gap-5 rounded-md border border-white/10 bg-[#0B0B0D]/80 p-4 sm:flex-row md:mt-10"
                     >
                         <p class="text-sm text-zinc-500">
                             {{ paginationSummary }}
@@ -1201,7 +1186,7 @@ const productBadges = (watch) => {
 
                 <div
                     v-else
-                    class="rounded-[2rem] border border-white/10 bg-[#0B0B0D] p-10 text-center"
+                    class="rounded-md border border-white/10 bg-[#0B0B0D] p-10 text-center"
                 >
                     <img
                         src="/images/montre-nova-logo.png"
@@ -1220,7 +1205,7 @@ const productBadges = (watch) => {
 
                     <button
                         type="button"
-                        class="mt-6 inline-flex rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200"
+                        class="mt-6 inline-flex rounded-md bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200"
                         @click="openMessengerInquiry()"
                     >
                         Message Us for Availability
@@ -1235,7 +1220,7 @@ const productBadges = (watch) => {
                 class="mx-auto max-w-7xl px-6 py-16 lg:px-8"
             >
                 <div
-                    class="mb-8 overflow-hidden rounded-[2rem] border border-white/10 bg-[#0B0B0D] p-5 shadow-2xl shadow-black/30 sm:p-7"
+                    class="mb-8 overflow-hidden rounded-md border border-white/10 bg-[#0B0B0D] p-5 shadow-2xl shadow-black/30 sm:p-7"
                 >
                     <div
                         class="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center"
@@ -1264,7 +1249,7 @@ const productBadges = (watch) => {
 
                         <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
                             <div
-                                class="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-4"
+                                class="rounded-md border border-white/10 bg-white/[0.03] p-4"
                             >
                                 <p
                                     class="text-3xl font-black tracking-tight text-white"
@@ -1284,7 +1269,7 @@ const productBadges = (watch) => {
                             </div>
 
                             <div
-                                class="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-4"
+                                class="rounded-md border border-white/10 bg-white/[0.03] p-4"
                             >
                                 <p
                                     class="text-3xl font-black tracking-tight text-white"
@@ -1305,7 +1290,7 @@ const productBadges = (watch) => {
 
                             <button
                                 type="button"
-                                class="col-span-2 rounded-[1.4rem] border border-red-400/20 bg-red-400/10 p-4 text-left transition hover:border-red-400/40 sm:col-span-1"
+                                class="col-span-2 rounded-md border border-red-400/20 bg-red-400/10 p-4 text-left transition hover:border-red-400/40 sm:col-span-1"
                                 @click="openSimilarInquiry()"
                             >
                                 <p
@@ -1348,14 +1333,14 @@ const productBadges = (watch) => {
                     >
                         <Link
                             href="/sold-watches"
-                            class="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
+                            class="inline-flex items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
                         >
                             View Sold Gallery
                         </Link>
 
                         <button
                             type="button"
-                            class="inline-flex items-center justify-center rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
+                            class="inline-flex items-center justify-center rounded-md border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
                             @click="openSimilarInquiry()"
                         >
                             Source Similar
@@ -1369,14 +1354,14 @@ const productBadges = (watch) => {
                     <div
                         v-for="watch in recentSoldWatches"
                         :key="watch.id"
-                        class="group min-w-[255px] max-w-[255px] snap-start overflow-hidden rounded-[1.85rem] border border-white/10 bg-[#0B0B0D]/95 p-3 opacity-95 transition hover:border-white/30 hover:opacity-100 sm:min-w-[290px] sm:max-w-[290px]"
+                        class="group min-w-[255px] max-w-[255px] snap-start overflow-hidden rounded-md border border-white/10 bg-[#0B0B0D]/95 p-3 opacity-95 transition hover:border-white/30 hover:opacity-100 sm:min-w-[290px] sm:max-w-[290px]"
                     >
                         <div
                             class="relative aspect-square overflow-hidden rounded-[1.45rem] border border-white/10 bg-[#050505]"
                         >
                             <div class="absolute left-3 top-3 z-10">
                                 <span
-                                    class="rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-red-300 backdrop-blur"
+                                    class="rounded-md border border-red-400/20 bg-red-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-red-300 backdrop-blur"
                                 >
                                     Sold
                                 </span>
@@ -1384,7 +1369,7 @@ const productBadges = (watch) => {
 
                             <div class="absolute right-3 top-3 z-10">
                                 <span
-                                    class="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-300 backdrop-blur"
+                                    class="rounded-md border border-white/10 bg-black/60 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-300 backdrop-blur"
                                 >
                                     Claimed
                                 </span>
@@ -1456,14 +1441,14 @@ const productBadges = (watch) => {
 
                             <div class="mt-4 flex flex-wrap gap-2">
                                 <span
-                                    class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
+                                    class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
                                 >
                                     {{ soldConditionLabel(watch) }}
                                 </span>
 
                                 <span
                                     v-if="watch.category"
-                                    class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
+                                    class="rounded-md border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-400"
                                 >
                                     {{ watch.category }}
                                 </span>
@@ -1474,7 +1459,7 @@ const productBadges = (watch) => {
                             >
                                 <button
                                     type="button"
-                                    class="inline-flex items-center justify-center rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-300 transition hover:border-red-400/40"
+                                    class="inline-flex items-center justify-center rounded-md border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-300 transition hover:border-red-400/40"
                                     @click="openSimilarInquiry(watch)"
                                 >
                                     Find Similar
@@ -1482,7 +1467,7 @@ const productBadges = (watch) => {
 
                                 <a
                                     href="#collection"
-                                    class="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
+                                    class="inline-flex items-center justify-center rounded-md bg-white px-4 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
                                 >
                                     View Stocks
                                 </a>
@@ -1492,7 +1477,7 @@ const productBadges = (watch) => {
                 </div>
 
                 <div
-                    class="mt-6 rounded-[1.6rem] border border-white/10 bg-[#0B0B0D]/80 p-5"
+                    class="mt-6 rounded-md border border-white/10 bg-[#0B0B0D]/80 p-5"
                 >
                     <div
                         class="flex flex-col justify-between gap-4 md:flex-row md:items-center"
@@ -1513,7 +1498,7 @@ const productBadges = (watch) => {
 
                         <button
                             type="button"
-                            class="inline-flex shrink-0 items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
+                            class="inline-flex shrink-0 items-center justify-center rounded-md bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
                             @click="openSimilarInquiry()"
                         >
                             Request Sourcing
@@ -1526,7 +1511,7 @@ const productBadges = (watch) => {
             <section id="process" class="mx-auto max-w-7xl px-6 py-20 lg:px-8">
                 <div class="grid gap-5 lg:grid-cols-3">
                     <div
-                        class="rounded-[2rem] border border-white/10 bg-[#0B0B0D]/90 p-8"
+                        class="rounded-md border border-white/10 bg-[#0B0B0D]/90 p-8"
                     >
                         <p
                             class="text-xs font-medium uppercase tracking-[0.28em] text-zinc-600"
@@ -1545,7 +1530,7 @@ const productBadges = (watch) => {
 
                         <button
                             type="button"
-                            class="mt-6 inline-flex rounded-2xl bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
+                            class="mt-6 inline-flex rounded-md bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
                             @click="openMessengerInquiry()"
                         >
                             Start Inquiry
@@ -1554,7 +1539,7 @@ const productBadges = (watch) => {
 
                     <div
                         id="warranty"
-                        class="rounded-[2rem] border border-white/10 bg-[#0B0B0D]/90 p-8"
+                        class="rounded-md border border-white/10 bg-[#0B0B0D]/90 p-8"
                     >
                         <p
                             class="text-xs font-medium uppercase tracking-[0.28em] text-zinc-600"
@@ -1574,14 +1559,14 @@ const productBadges = (watch) => {
 
                         <Link
                             href="/warranty-check"
-                            class="mt-6 inline-flex rounded-2xl border border-white/10 px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
+                            class="mt-6 inline-flex rounded-md border border-white/10 px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
                         >
                             Check Warranty
                         </Link>
                     </div>
 
                     <div
-                        class="rounded-[2rem] border border-white/10 bg-[#0B0B0D]/90 p-8"
+                        class="rounded-md border border-white/10 bg-[#0B0B0D]/90 p-8"
                     >
                         <p
                             class="text-xs font-medium uppercase tracking-[0.28em] text-zinc-600"
@@ -1605,7 +1590,7 @@ const productBadges = (watch) => {
             <!-- CONTACT -->
             <section id="contact" class="mx-auto max-w-7xl px-6 py-20 lg:px-8">
                 <div
-                    class="overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#0B0B0D] p-8 sm:p-12"
+                    class="overflow-hidden rounded-md border border-white/10 bg-[#0B0B0D] p-8 sm:p-12"
                 >
                     <div
                         class="grid gap-10 lg:grid-cols-[1fr_0.8fr] lg:items-center"
@@ -1639,7 +1624,7 @@ const productBadges = (watch) => {
                                 :href="link.href"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                class="group flex items-center justify-between rounded-2xl border border-white/10 bg-[#050505] px-5 py-4 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
+                                class="group flex items-center justify-between rounded-md border border-white/10 bg-[#050505] px-5 py-4 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
                                 :class="
                                     link.href === '#'
                                         ? 'pointer-events-none opacity-50'
@@ -1690,14 +1675,14 @@ const productBadges = (watch) => {
             <div class="grid grid-cols-2 gap-3">
                 <a
                     href="#collection"
-                    class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white"
+                    class="inline-flex items-center justify-center rounded-md border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white"
                 >
                     View Stocks
                 </a>
 
                 <button
                     type="button"
-                    class="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black"
+                    class="inline-flex items-center justify-center rounded-md bg-white px-4 py-3 text-sm font-bold text-black"
                     @click="openMessengerInquiry()"
                 >
                     Message Us

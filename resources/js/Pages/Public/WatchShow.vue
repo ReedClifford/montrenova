@@ -503,7 +503,7 @@ const goToInquiry = () => {
                 >
                     <!-- IMAGE CARD -->
                     <section
-                        class="overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0A0A0B] shadow-2xl shadow-black/40 lg:sticky lg:top-24"
+                        class="overflow-hidden rounded-md border border-white/10 bg-[#0A0A0B] shadow-2xl shadow-black/40 lg:sticky lg:top-24"
                     >
                         <div
                             class="relative flex h-[310px] touch-pan-y select-none items-center justify-center overflow-hidden bg-[#101011] sm:h-[430px] lg:h-[580px]"
@@ -627,7 +627,7 @@ const goToInquiry = () => {
                                     v-for="(image, index) in images"
                                     :key="image.id || index"
                                     type="button"
-                                    class="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border bg-[#050505] p-1 transition sm:h-20 sm:w-20"
+                                    class="h-16 w-16 shrink-0 overflow-hidden rounded-md border bg-[#050505] p-1 transition sm:h-20 sm:w-20"
                                     :class="
                                         selectedImageIndex === index
                                             ? 'border-white'
@@ -642,7 +642,7 @@ const goToInquiry = () => {
                                             image.hd_url
                                         "
                                         alt=""
-                                        class="h-full w-full rounded-xl object-cover"
+                                        class="h-full w-full rounded-md object-cover"
                                         loading="lazy"
                                     />
                                 </button>
@@ -664,7 +664,7 @@ const goToInquiry = () => {
                     <!-- PRODUCT DETAILS -->
                     <section class="space-y-4">
                         <div
-                            class="rounded-[1.6rem] border border-white/10 bg-[#0A0A0B] p-4 shadow-2xl shadow-black/40 sm:p-6 lg:p-7"
+                            class="rounded-md border border-white/10 bg-[#0A0A0B] p-4 shadow-2xl shadow-black/40 sm:p-6 lg:p-7"
                         >
                             <div class="flex flex-wrap items-center gap-2">
                                 <span
@@ -710,7 +710,7 @@ const goToInquiry = () => {
 
                             <!-- PRICE -->
                             <div
-                                class="mt-6 rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5"
+                                class="mt-6 rounded-md border border-white/10 bg-white/[0.03] p-5"
                             >
                                 <div
                                     class="flex items-start justify-between gap-4"
@@ -757,7 +757,7 @@ const goToInquiry = () => {
                             <div class="mt-6 grid gap-3 sm:grid-cols-2">
                                 <button
                                     type="button"
-                                    class="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
+                                    class="inline-flex items-center justify-center rounded-md bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
                                     @click="openMessengerInquiry"
                                 >
                                     Ask via Messenger
@@ -765,7 +765,7 @@ const goToInquiry = () => {
 
                                 <button
                                     type="button"
-                                    class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                                    class="inline-flex items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-5 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
                                     @click="goToInquiry"
                                 >
                                     Edit Inquiry Message
@@ -778,33 +778,14 @@ const goToInquiry = () => {
                             </p>
                         </div>
 
-                        <!-- TRUST BADGES -->
-                        <div
-                            class="grid grid-cols-2 gap-3 rounded-[1.6rem] border border-white/10 bg-[#0A0A0B] p-4 sm:p-5"
-                        >
-                            <div
-                                v-for="badge in trustBadges"
-                                :key="badge.title"
-                                class="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
-                            >
-                                <p class="text-xs font-bold text-white">
-                                    {{ badge.title }}
-                                </p>
-
-                                <p class="mt-2 text-xs leading-5 text-zinc-500">
-                                    {{ badge.description }}
-                                </p>
-                            </div>
-                        </div>
-
                         <!-- QUICK SPECS -->
                         <div
-                            class="grid grid-cols-2 gap-3 rounded-[1.6rem] border border-white/10 bg-[#0A0A0B] p-4 sm:p-5"
+                            class="grid grid-cols-2 gap-3 rounded-md border border-white/10 bg-[#0A0A0B] p-4 sm:p-5"
                         >
                             <div
                                 v-for="item in quickSpecs"
                                 :key="item.label"
-                                class="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                                class="rounded-md border border-white/10 bg-white/[0.03] p-4"
                             >
                                 <p
                                     class="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500"
@@ -829,16 +810,16 @@ const goToInquiry = () => {
                 class="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8"
             >
                 <div
-                    class="rounded-[1.6rem] border border-white/10 bg-[#0A0A0B] p-4 sm:p-6"
+                    class="rounded-md border border-white/10 bg-[#0A0A0B] p-4 sm:p-6"
                 >
                     <div
-                        class="thin-scrollbar flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-[#050505] p-1"
+                        class="thin-scrollbar flex gap-2 overflow-x-auto rounded-md border border-white/10 bg-[#050505] p-1"
                     >
                         <button
                             v-for="tab in tabs"
                             :key="tab.key"
                             type="button"
-                            class="min-w-28 flex-1 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-[0.16em] transition"
+                            class="min-w-28 flex-1 rounded-md px-4 py-3 text-xs font-black uppercase tracking-[0.16em] transition"
                             :class="
                                 activeTab === tab.key
                                     ? 'bg-white text-black'
@@ -854,7 +835,7 @@ const goToInquiry = () => {
                     <div v-if="activeTab === 'overview'" class="mt-6">
                         <div class="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
                             <div
-                                class="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5"
+                                class="rounded-md border border-white/10 bg-white/[0.03] p-5"
                             >
                                 <p
                                     class="text-[11px] font-bold uppercase tracking-[0.32em] text-zinc-500"
@@ -874,7 +855,7 @@ const goToInquiry = () => {
                             </div>
 
                             <div
-                                class="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5"
+                                class="rounded-md border border-white/10 bg-white/[0.03] p-5"
                             >
                                 <p
                                     class="text-[11px] font-bold uppercase tracking-[0.32em] text-zinc-500"
@@ -964,7 +945,7 @@ const goToInquiry = () => {
                             <div
                                 v-for="group in availableSpecGroups"
                                 :key="group.title"
-                                class="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-5"
+                                class="rounded-md border border-white/10 bg-white/[0.03] p-5"
                             >
                                 <h3 class="text-sm font-bold text-white">
                                     {{ group.title }}
@@ -1015,7 +996,7 @@ const goToInquiry = () => {
                             class="mt-5 grid gap-3 text-sm leading-6 text-zinc-400 lg:grid-cols-3"
                         >
                             <div
-                                class="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                                class="rounded-md border border-white/10 bg-white/[0.03] p-5"
                             >
                                 <p class="font-bold text-white">
                                     1 Year Coverage
@@ -1028,7 +1009,7 @@ const goToInquiry = () => {
                             </div>
 
                             <div
-                                class="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                                class="rounded-md border border-white/10 bg-white/[0.03] p-5"
                             >
                                 <p class="font-bold text-white">
                                     Movement Defects
@@ -1043,7 +1024,7 @@ const goToInquiry = () => {
                             </div>
 
                             <div
-                                class="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                                class="rounded-md border border-white/10 bg-white/[0.03] p-5"
                             >
                                 <p class="font-bold text-white">Not Covered</p>
 
@@ -1058,7 +1039,7 @@ const goToInquiry = () => {
 
                         <Link
                             href="/warranty-check"
-                            class="mt-5 inline-flex rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                            class="mt-5 inline-flex rounded-md border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
                         >
                             Check Existing Warranty
                         </Link>
@@ -1092,7 +1073,7 @@ const goToInquiry = () => {
                                 <div class="mt-5 grid gap-3">
                                     <button
                                         type="button"
-                                        class="rounded-2xl bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
+                                        class="rounded-md bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
                                         @click="openMessengerInquiry"
                                     >
                                         Ask via Messenger
@@ -1100,7 +1081,7 @@ const goToInquiry = () => {
 
                                     <button
                                         type="button"
-                                        class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                                        class="rounded-md border border-white/10 bg-white/[0.03] px-5 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
                                         @click="copyInquiryMessage"
                                     >
                                         {{
@@ -1114,7 +1095,7 @@ const goToInquiry = () => {
                                         v-for="link in contactLinks"
                                         :key="link.label"
                                         type="button"
-                                        class="group rounded-2xl border p-4 text-left transition"
+                                        class="group rounded-md border p-4 text-left transition"
                                         :class="
                                             link.primary
                                                 ? 'border-emerald-400/20 bg-emerald-400/10 hover:border-emerald-400/40'
@@ -1148,7 +1129,7 @@ const goToInquiry = () => {
                             </div>
 
                             <div
-                                class="rounded-[1.4rem] border border-white/10 bg-[#050505] p-5"
+                                class="rounded-md border border-white/10 bg-[#050505] p-5"
                             >
                                 <div
                                     class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"
@@ -1179,7 +1160,7 @@ const goToInquiry = () => {
                                 <textarea
                                     v-model="inquiryMessage"
                                     rows="9"
-                                    class="mt-4 w-full resize-none rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-7 text-zinc-300 outline-none transition placeholder:text-zinc-600 focus:border-white/30 focus:bg-white/[0.05]"
+                                    class="mt-4 w-full resize-none rounded-md border border-white/10 bg-white/[0.03] p-4 text-sm leading-7 text-zinc-300 outline-none transition placeholder:text-zinc-600 focus:border-white/30 focus:bg-white/[0.05]"
                                 ></textarea>
 
                                 <p class="mt-4 text-xs leading-5 text-zinc-500">
@@ -1196,7 +1177,7 @@ const goToInquiry = () => {
             <!-- MORE CTA -->
             <section class="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
                 <div
-                    class="flex flex-col justify-between gap-4 rounded-[1.6rem] border border-white/10 bg-[#0A0A0B] p-5 sm:flex-row sm:items-center sm:p-6"
+                    class="flex flex-col justify-between gap-4 rounded-md border border-white/10 bg-[#0A0A0B] p-5 sm:flex-row sm:items-center sm:p-6"
                 >
                     <div>
                         <p
@@ -1212,7 +1193,7 @@ const goToInquiry = () => {
 
                     <Link
                         :href="route('welcome') + '#collection'"
-                        class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                        class="inline-flex items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
                     >
                         Back to Collection
                     </Link>
@@ -1239,7 +1220,7 @@ const goToInquiry = () => {
 
                 <button
                     type="button"
-                    class="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-black text-black"
+                    class="inline-flex items-center justify-center rounded-md bg-white px-4 py-3 text-sm font-black text-black"
                     @click="openMessengerInquiry"
                 >
                     Ask
@@ -1247,7 +1228,7 @@ const goToInquiry = () => {
 
                 <button
                     type="button"
-                    class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white"
+                    class="inline-flex items-center justify-center rounded-md border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white"
                     @click="copyLink"
                 >
                     {{ copied ? "Copied" : "Share" }}
@@ -1284,7 +1265,7 @@ const goToInquiry = () => {
                     v-if="selectedImage"
                     :src="selectedImage"
                     :alt="displayName"
-                    class="max-h-[88vh] max-w-full rounded-2xl object-contain"
+                    class="max-h-[88vh] max-w-full rounded-md object-contain"
                 />
 
                 <button

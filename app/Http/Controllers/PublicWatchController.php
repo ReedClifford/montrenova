@@ -72,6 +72,25 @@ class PublicWatchController extends Controller
             ->get()
             ->map(fn ($watch) => $this->publicWatchCard($watch));
 
+            $soldCount = Watch::query()
+    ->where('status', 'sold')
+    ->count();
+
+$soldThisMonthCount = Watch::query()
+    ->where('status', 'sold')
+    ->whereNotNull('date_sold')
+    ->whereYear('date_sold', now()->year)
+    ->whereMonth('date_sold', now()->month)
+    ->count();
+
+$soldWatches = Watch::query()
+    ->with(['primaryImage'])
+    ->where('status', 'sold')
+    ->whereNotNull('date_sold')
+    ->latest('date_sold')
+    ->limit(8)
+    ->get();
+
         return Inertia::render('Welcome', [
             'canLogin' => Route::has('login'),
             'canRegister' => false,
