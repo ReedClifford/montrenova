@@ -43,7 +43,7 @@ const form = useForm({
     selling_price: 0,
     discounted_price: "",
 
-    status: "draft",
+    status: "is_visible",
     is_featured: false,
     is_visible: true,
     display_price: true,
