@@ -160,14 +160,23 @@ const submit = () => {
                         </div>
 
                         <div>
-                            <label class="mn-label"> Serial Number </label>
+                            <label class="mn-label">
+                                Serial Number
+                                <span class="text-zinc-600">(Optional)</span>
+                            </label>
 
                             <input
                                 v-model="form.serial_number"
                                 type="text"
                                 class="mn-input"
-                                placeholder="Enter watch serial number"
+                                placeholder="Optional: enter serial number for more accurate result"
+                                autocomplete="off"
                             />
+
+                            <p class="mt-2 text-xs leading-5 text-zinc-600">
+                                Leave this blank if the buyer does not know the
+                                serial number.
+                            </p>
 
                             <p
                                 v-if="form.errors.serial_number"
