@@ -428,36 +428,60 @@ const goToInquiry = () => {
         />
     </Head>
 
-    <div class="min-h-screen bg-[#050505] pb-28 text-white antialiased lg:pb-0">
+    <div
+        class="relative min-h-screen overflow-hidden bg-[#050505] pb-28 text-white antialiased lg:pb-0"
+    >
+        <!-- PREMIUM AMBIENT BACKGROUND -->
+        <div class="pointer-events-none fixed inset-0 z-0">
+            <div
+                class="absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,0.08),transparent_30%),radial-gradient(circle_at_84%_18%,rgba(161,161,170,0.10),transparent_32%),linear-gradient(180deg,#080808_0%,#050505_44%,#0a0a0a_100%)]"
+            ></div>
+            <div
+                class="absolute left-1/2 top-0 h-px w-[72rem] -translate-x-1/2 bg-gradient-to-r from-transparent via-white/25 to-transparent"
+            ></div>
+            <div
+                class="absolute -right-40 top-36 h-96 w-96 rounded-[2rem] bg-white/[0.045] blur-3xl"
+            ></div>
+            <div
+                class="absolute -left-44 top-[32rem] h-[30rem] w-[30rem] rounded-[2rem] bg-zinc-500/[0.055] blur-3xl"
+            ></div>
+            <div
+                class="absolute bottom-0 left-1/2 h-72 w-[54rem] -translate-x-1/2 rounded-[2rem] bg-white/[0.025] blur-3xl"
+            ></div>
+        </div>
+
         <!-- HEADER -->
         <header
-            class="sticky top-0 z-50 border-b border-white/10 bg-[#050505]/90 backdrop-blur-xl"
+            class="sticky top-0 z-50 border-b border-white/10 bg-[#050505]/82 backdrop-blur-2xl"
         >
             <div
                 class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8"
             >
-                <Link :href="route('welcome')" class="flex items-center">
+                <Link
+                    :href="route('welcome')"
+                    class="flex min-w-0 items-center"
+                >
                     <MontreLogo />
                 </Link>
 
                 <div class="flex items-center gap-2">
                     <Link
                         :href="route('welcome') + '#collection'"
-                        class="hidden rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white sm:inline-flex"
+                        class="hidden rounded-lg border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.07] hover:text-white sm:inline-flex"
                     >
                         Collection
                     </Link>
 
                     <Link
                         href="/warranty-check"
-                        class="hidden rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white sm:inline-flex"
+                        class="hidden rounded-lg border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.07] hover:text-white sm:inline-flex"
                     >
                         Warranty Check
                     </Link>
 
                     <button
                         type="button"
-                        class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white"
+                        class="rounded-lg border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.07] hover:text-white"
                         @click="copyLink"
                     >
                         {{ copied ? "Copied" : "Share" }}
@@ -466,14 +490,14 @@ const goToInquiry = () => {
             </div>
         </header>
 
-        <main class="pb-8 lg:pb-12">
-            <!-- HERO -->
+        <main class="relative z-10 pb-8 lg:pb-14">
+            <!-- HERO / PRODUCT VIEW -->
             <section
-                class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 lg:py-8"
+                class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-10"
             >
                 <!-- BREADCRUMB -->
                 <div
-                    class="mb-4 flex items-center gap-2 overflow-hidden text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600"
+                    class="mb-5 flex items-center gap-2 overflow-hidden text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600"
                 >
                     <Link
                         :href="route('welcome')"
@@ -481,182 +505,209 @@ const goToInquiry = () => {
                     >
                         Home
                     </Link>
-
-                    <span class="shrink-0">/</span>
-
+                    <span class="shrink-0 text-zinc-700">/</span>
                     <Link
                         :href="route('welcome') + '#collection'"
                         class="shrink-0 transition hover:text-white"
                     >
                         Collection
                     </Link>
-
-                    <span class="shrink-0">/</span>
-
+                    <span class="shrink-0 text-zinc-700">/</span>
                     <span class="truncate text-zinc-400">
-                        {{ watch.brand || "Watch" }}
+                        {{ displayName || watch.brand || "Watch" }}
                     </span>
                 </div>
 
                 <div
-                    class="grid gap-4 lg:grid-cols-[minmax(0,560px)_minmax(0,1fr)] lg:items-start"
+                    class="grid gap-5 lg:grid-cols-[minmax(0,58%)_minmax(390px,1fr)] lg:items-start xl:grid-cols-[minmax(0,60%)_minmax(410px,1fr)]"
                 >
-                    <!-- IMAGE CARD -->
-                    <section
-                        class="overflow-hidden rounded-md border border-white/10 bg-[#0A0A0B] shadow-2xl shadow-black/40 lg:sticky lg:top-24"
-                    >
+                    <!-- GALLERY -->
+                    <section class="relative lg:sticky lg:top-24">
                         <div
-                            class="relative flex h-[310px] touch-pan-y select-none items-center justify-center overflow-hidden bg-[#101011] sm:h-[430px] lg:h-[580px]"
-                            @touchstart.passive="handleTouchStart"
-                            @touchend.passive="handleTouchEnd"
+                            class="absolute -inset-3 rounded-2xl bg-white/[0.035] blur-2xl"
+                        ></div>
+
+                        <div
+                            class="relative overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0B]/95 shadow-2xl shadow-black/50"
                         >
-                            <button
-                                type="button"
-                                class="absolute inset-0 z-[1] cursor-zoom-in"
-                                aria-label="Open image preview"
-                                @click="openImagePreview"
-                            ></button>
-
-                            <img
-                                v-if="selectedImage"
-                                :key="selectedImage"
-                                :src="selectedImage"
-                                :alt="displayName"
-                                draggable="false"
-                                class="pointer-events-none h-full w-full object-contain p-3 sm:p-6"
-                            />
-
                             <div
-                                v-else
-                                class="flex h-full w-full items-center justify-center"
+                                class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5"
                             >
-                                <img
-                                    src="/images/montre-nova-logo.png"
-                                    alt="Montre Nova"
-                                    class="h-24 w-24 object-contain opacity-60"
-                                />
-                            </div>
+                                <div>
+                                    <p
+                                        class="text-[10px] font-black uppercase tracking-[0.28em] text-zinc-500"
+                                    >
+                                        Product Gallery
+                                    </p>
+                                    <p class="mt-1 text-xs text-zinc-500">
+                                        Actual photos · Swipe on mobile · Tap to
+                                        zoom
+                                    </p>
+                                </div>
 
-                            <!-- IMAGE BADGES -->
-                            <div
-                                class="pointer-events-none absolute left-4 top-4 z-10 flex flex-wrap gap-2"
-                            >
-                                <span
-                                    class="rounded-full border px-3 py-1 text-[11px] font-bold backdrop-blur"
-                                    :class="statusClass"
-                                >
-                                    {{ statusLabel }}
-                                </span>
-
-                                <span
-                                    v-if="hasDiscount"
-                                    class="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-[11px] font-bold text-violet-300 backdrop-blur"
-                                >
-                                    Below SRP
-                                </span>
-                            </div>
-
-                            <!-- TAP TO ZOOM -->
-                            <div
-                                v-if="selectedImage"
-                                class="pointer-events-none absolute right-4 top-4 z-10 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-300 backdrop-blur"
-                            >
-                                Tap to zoom
-                            </div>
-
-                            <!-- IMAGE COUNTER -->
-                            <div
-                                v-if="images.length"
-                                class="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-black/70 px-4 py-2 backdrop-blur"
-                            >
-                                <span
-                                    class="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-300"
+                                <div
+                                    v-if="images.length"
+                                    class="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-300"
                                 >
                                     {{ selectedImageIndex + 1 }} /
                                     {{ images.length }}
-                                </span>
+                                </div>
+                            </div>
+
+                            <div
+                                class="relative flex h-[340px] touch-pan-y select-none items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_42%)] sm:h-[500px] lg:h-[650px]"
+                                @touchstart.passive="handleTouchStart"
+                                @touchend.passive="handleTouchEnd"
+                            >
+                                <button
+                                    type="button"
+                                    class="absolute inset-0 z-[1] cursor-zoom-in"
+                                    aria-label="Open image preview"
+                                    @click="openImagePreview"
+                                ></button>
+
+                                <img
+                                    v-if="selectedImage"
+                                    :key="selectedImage"
+                                    :src="selectedImage"
+                                    :alt="displayName"
+                                    draggable="false"
+                                    class="pointer-events-none h-full w-full object-contain p-4 transition duration-500 sm:p-7 lg:p-8"
+                                />
 
                                 <div
+                                    v-else
+                                    class="flex h-full w-full items-center justify-center"
+                                >
+                                    <div
+                                        class="flex flex-col items-center text-center"
+                                    >
+                                        <div
+                                            class="flex h-28 w-28 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04]"
+                                        >
+                                            <img
+                                                src="/images/montre-nova-logo.png"
+                                                alt="Montre Nova"
+                                                class="h-20 w-20 object-contain opacity-70"
+                                            />
+                                        </div>
+                                        <p
+                                            class="mt-4 text-[10px] font-black uppercase tracking-[0.28em] text-zinc-500"
+                                        >
+                                            Montre Nova
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <!-- IMAGE BADGES -->
+                                <div
+                                    class="pointer-events-none absolute left-4 top-4 z-10 flex max-w-[70%] flex-wrap gap-2"
+                                >
+                                    <span
+                                        class="rounded-md border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] backdrop-blur"
+                                        :class="statusClass"
+                                    >
+                                        {{ statusLabel }}
+                                    </span>
+
+                                    <span
+                                        v-if="hasDiscount"
+                                        class="rounded-md border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-violet-300 backdrop-blur"
+                                    >
+                                        Below SRP
+                                    </span>
+                                </div>
+
+                                <div
+                                    v-if="selectedImage"
+                                    class="pointer-events-none absolute right-4 top-4 z-10 hidden rounded-md border border-white/10 bg-black/55 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-300 backdrop-blur sm:block"
+                                >
+                                    Tap to zoom
+                                </div>
+
+                                <!-- IMAGE INDICATOR -->
+                                <div
                                     v-if="hasMultipleImages"
-                                    class="flex items-center gap-1.5"
+                                    class="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-lg border border-white/10 bg-black/70 px-3 py-2 backdrop-blur"
                                 >
                                     <button
                                         v-for="(_, index) in images"
                                         :key="index"
                                         type="button"
-                                        class="relative z-20 h-1.5 rounded-full transition"
+                                        class="relative z-20 h-1.5 rounded-md transition"
                                         :class="
                                             selectedImageIndex === index
-                                                ? 'w-5 bg-white'
-                                                : 'w-1.5 bg-white/30'
+                                                ? 'w-6 bg-white'
+                                                : 'w-1.5 bg-white/35 hover:bg-white/60'
                                         "
                                         @click.stop="selectImage(index)"
                                     ></button>
                                 </div>
-                            </div>
 
-                            <!-- ARROWS -->
-                            <button
-                                v-if="hasMultipleImages"
-                                type="button"
-                                class="absolute left-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-2xl font-semibold text-white backdrop-blur transition hover:bg-white hover:text-black"
-                                aria-label="Previous image"
-                                @click.stop="previousImage"
-                            >
-                                ‹
-                            </button>
-
-                            <button
-                                v-if="hasMultipleImages"
-                                type="button"
-                                class="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-2xl font-semibold text-white backdrop-blur transition hover:bg-white hover:text-black"
-                                aria-label="Next image"
-                                @click.stop="nextImage"
-                            >
-                                ›
-                            </button>
-                        </div>
-
-                        <!-- THUMBNAILS -->
-                        <div class="border-t border-white/10 p-3 sm:p-4">
-                            <div
-                                v-if="hasMultipleImages"
-                                class="thin-scrollbar flex gap-2 overflow-x-auto pb-1"
-                            >
+                                <!-- ARROWS -->
                                 <button
-                                    v-for="(image, index) in images"
-                                    :key="image.id || index"
+                                    v-if="hasMultipleImages"
                                     type="button"
-                                    class="h-16 w-16 shrink-0 overflow-hidden rounded-md border bg-[#050505] p-1 transition sm:h-20 sm:w-20"
-                                    :class="
-                                        selectedImageIndex === index
-                                            ? 'border-white'
-                                            : 'border-white/10 hover:border-white/40'
-                                    "
-                                    @click="selectImage(index)"
+                                    class="absolute left-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg border border-white/10 bg-black/60 text-2xl font-semibold text-white backdrop-blur transition hover:bg-white hover:text-black sm:left-5 sm:h-11 sm:w-11"
+                                    aria-label="Previous image"
+                                    @click.stop="previousImage"
                                 >
-                                    <img
-                                        :src="
-                                            image.thumbnail_url ||
-                                            image.image_url ||
-                                            image.hd_url
-                                        "
-                                        alt=""
-                                        class="h-full w-full rounded-md object-cover"
-                                        loading="lazy"
-                                    />
+                                    ‹
+                                </button>
+
+                                <button
+                                    v-if="hasMultipleImages"
+                                    type="button"
+                                    class="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg border border-white/10 bg-black/60 text-2xl font-semibold text-white backdrop-blur transition hover:bg-white hover:text-black sm:right-5 sm:h-11 sm:w-11"
+                                    aria-label="Next image"
+                                    @click.stop="nextImage"
+                                >
+                                    ›
                                 </button>
                             </div>
 
+                            <!-- THUMBNAILS -->
                             <div
-                                v-if="images.length"
-                                class="mt-3 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500"
+                                class="border-t border-white/10 bg-[#080808]/80 p-3 sm:p-4"
                             >
-                                <span> Actual HD Photos </span>
+                                <div
+                                    v-if="hasMultipleImages"
+                                    class="thin-scrollbar flex gap-2 overflow-x-auto pb-1"
+                                >
+                                    <button
+                                        v-for="(image, index) in images"
+                                        :key="image.id || index"
+                                        type="button"
+                                        class="h-16 w-16 shrink-0 overflow-hidden rounded-lg border bg-[#050505] p-1 transition sm:h-20 sm:w-20"
+                                        :class="
+                                            selectedImageIndex === index
+                                                ? 'border-white bg-white/[0.06]'
+                                                : 'border-white/10 hover:border-white/40'
+                                        "
+                                        @click="selectImage(index)"
+                                    >
+                                        <img
+                                            :src="
+                                                image.thumbnail_url ||
+                                                image.image_url ||
+                                                image.hd_url
+                                            "
+                                            alt=""
+                                            class="h-full w-full rounded-md object-cover"
+                                            loading="lazy"
+                                        />
+                                    </button>
+                                </div>
 
-                                <span class="hidden sm:inline">
-                                    Swipe, tap, or zoom
-                                </span>
+                                <div
+                                    v-if="images.length"
+                                    class="mt-3 flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500"
+                                >
+                                    <span>Actual HD Photos</span>
+                                    <span class="hidden sm:inline"
+                                        >Swipe · Tap · Zoom</span
+                                    >
+                                </div>
                             </div>
                         </div>
                     </section>
@@ -664,137 +715,161 @@ const goToInquiry = () => {
                     <!-- PRODUCT DETAILS -->
                     <section class="space-y-4">
                         <div
-                            class="rounded-md border border-white/10 bg-[#0A0A0B] p-4 shadow-2xl shadow-black/40 sm:p-6 lg:p-7"
+                            class="overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0B]/95 shadow-2xl shadow-black/40"
                         >
-                            <div class="flex flex-wrap items-center gap-2">
-                                <span
-                                    class="rounded-full border px-3 py-1 text-[11px] font-bold"
-                                    :class="statusClass"
-                                >
-                                    {{ statusLabel }}
-                                </span>
-
-                                <span
-                                    v-if="watch.category"
-                                    class="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold text-zinc-400"
-                                >
-                                    {{ watch.category }}
-                                </span>
-
-                                <span
-                                    v-if="watch.condition"
-                                    class="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold text-zinc-400"
-                                >
-                                    {{ watch.condition }}
-                                </span>
-                            </div>
-
-                            <p
-                                class="mt-6 text-[11px] font-bold uppercase tracking-[0.34em] text-zinc-500"
-                            >
-                                {{ watch.brand || "Montre Nova" }}
-                            </p>
-
-                            <h1
-                                class="mt-2 text-3xl font-black leading-[0.95] tracking-[-0.06em] text-white sm:text-5xl lg:text-6xl"
-                            >
-                                {{ watch.model_name }}
-                            </h1>
-
-                            <p
-                                v-if="watch.reference_number"
-                                class="mt-3 text-sm font-medium text-zinc-500"
-                            >
-                                Ref. {{ watch.reference_number }}
-                            </p>
-
-                            <!-- PRICE -->
                             <div
-                                class="mt-6 rounded-md border border-white/10 bg-white/[0.03] p-5"
+                                class="border-b border-white/10 bg-white/[0.025] p-5 sm:p-6 lg:p-7"
                             >
-                                <div
-                                    class="flex items-start justify-between gap-4"
-                                >
-                                    <div>
-                                        <p
-                                            class="text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500"
-                                        >
-                                            Price
-                                        </p>
-
-                                        <div
-                                            class="mt-2 flex flex-wrap items-end gap-3"
-                                        >
-                                            <p
-                                                class="text-4xl font-black tracking-[-0.06em] text-white sm:text-5xl"
-                                            >
-                                                {{ peso(finalPrice) }}
-                                            </p>
-
-                                            <p
-                                                v-if="hasDiscount"
-                                                class="pb-1 text-sm font-semibold text-zinc-500 line-through"
-                                            >
-                                                {{ peso(originalPrice) }}
-                                            </p>
-                                        </div>
-                                    </div>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span
+                                        class="rounded-md border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em]"
+                                        :class="statusClass"
+                                    >
+                                        {{ statusLabel }}
+                                    </span>
 
                                     <span
-                                        v-if="hasDiscount"
-                                        class="rounded-full border border-violet-400/20 bg-violet-400/10 px-3 py-1 text-[11px] font-bold text-violet-300"
+                                        v-if="watch.category"
+                                        class="rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-400"
                                     >
-                                        Below SRP
+                                        {{ watch.category }}
                                     </span>
+
+                                    <span
+                                        v-if="watch.condition"
+                                        class="rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-400"
+                                    >
+                                        {{ watch.condition }}
+                                    </span>
+                                </div>
+
+                                <p
+                                    class="mt-7 text-[11px] font-black uppercase tracking-[0.34em] text-zinc-500"
+                                >
+                                    {{ watch.brand || "Montre Nova" }}
+                                </p>
+
+                                <h1
+                                    class="mt-3 text-4xl font-black leading-[0.95] tracking-[-0.065em] text-white sm:text-5xl xl:text-6xl"
+                                >
+                                    {{ watch.model_name }}
+                                </h1>
+
+                                <div
+                                    class="mt-4 flex flex-wrap items-center gap-3 text-sm text-zinc-500"
+                                >
+                                    <p v-if="watch.reference_number">
+                                        Ref.
+                                        <span
+                                            class="font-semibold text-zinc-300"
+                                            >{{ watch.reference_number }}</span
+                                        >
+                                    </p>
+
+                                    <span
+                                        v-if="
+                                            watch.reference_number &&
+                                            watch.movement
+                                        "
+                                        class="text-zinc-700"
+                                        >•</span
+                                    >
+
+                                    <p v-if="watch.movement">
+                                        {{ watch.movement }}
+                                    </p>
                                 </div>
                             </div>
 
-                            <p class="mt-5 text-sm leading-7 text-zinc-400">
-                                {{ productDescription }}
-                            </p>
-
-                            <!-- CTA -->
-                            <div class="mt-6 grid gap-3 sm:grid-cols-2">
-                                <button
-                                    type="button"
-                                    class="inline-flex items-center justify-center rounded-md bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
-                                    @click="openMessengerInquiry"
+                            <!-- PRICE / PRIMARY CTA -->
+                            <div class="p-5 sm:p-6 lg:p-7">
+                                <div
+                                    class="rounded-xl border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025))] p-5 shadow-inner shadow-white/[0.02]"
                                 >
-                                    Ask via Messenger
-                                </button>
+                                    <div
+                                        class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between"
+                                    >
+                                        <div>
+                                            <p
+                                                class="text-[10px] font-black uppercase tracking-[0.28em] text-zinc-500"
+                                            >
+                                                Asking Price
+                                            </p>
 
-                                <button
-                                    type="button"
-                                    class="inline-flex items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-5 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
-                                    @click="goToInquiry"
-                                >
-                                    Edit Inquiry Message
-                                </button>
+                                            <div
+                                                class="mt-3 flex flex-wrap items-end gap-3"
+                                            >
+                                                <p
+                                                    class="text-4xl font-black tracking-[-0.065em] text-white sm:text-5xl"
+                                                >
+                                                    {{ peso(finalPrice) }}
+                                                </p>
+
+                                                <p
+                                                    v-if="hasDiscount"
+                                                    class="pb-1 text-sm font-semibold text-zinc-500 line-through"
+                                                >
+                                                    {{ peso(originalPrice) }}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <span
+                                            v-if="hasDiscount"
+                                            class="w-fit rounded-md border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-violet-300"
+                                        >
+                                            Below SRP
+                                        </span>
+                                    </div>
+
+                                    <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center justify-center rounded-lg bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
+                                            @click="openMessengerInquiry"
+                                        >
+                                            Ask via Messenger
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-black/20 px-5 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                                            @click="goToInquiry"
+                                        >
+                                            Edit Inquiry Message
+                                        </button>
+                                    </div>
+
+                                    <p
+                                        class="mt-3 text-xs leading-5 text-zinc-500"
+                                    >
+                                        Your editable inquiry message will be
+                                        copied before opening Messenger.
+                                    </p>
+                                </div>
+
+                                <p class="mt-5 text-sm leading-7 text-zinc-400">
+                                    {{ productDescription }}
+                                </p>
                             </div>
-
-                            <p class="mt-3 text-xs leading-5 text-zinc-500">
-                                Your inquiry message will be copied before
-                                opening Messenger.
-                            </p>
                         </div>
 
                         <!-- QUICK SPECS -->
                         <div
-                            class="grid grid-cols-2 gap-3 rounded-md border border-white/10 bg-[#0A0A0B] p-4 sm:p-5"
+                            class="grid grid-cols-2 gap-3 rounded-xl border border-white/10 bg-[#0A0A0B]/95 p-3 sm:p-4"
                         >
                             <div
                                 v-for="item in quickSpecs"
                                 :key="item.label"
-                                class="rounded-md border border-white/10 bg-white/[0.03] p-4"
+                                class="rounded-lg border border-white/10 bg-white/[0.03] p-4"
                             >
                                 <p
-                                    class="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500"
+                                    class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500"
                                 >
                                     {{ item.label }}
                                 </p>
-
                                 <p
-                                    class="mt-1 truncate text-xs font-bold text-white sm:text-sm"
+                                    class="mt-2 truncate text-xs font-bold text-white sm:text-sm"
                                 >
                                     {{ item.value }}
                                 </p>
@@ -810,41 +885,46 @@ const goToInquiry = () => {
                 class="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8"
             >
                 <div
-                    class="rounded-md border border-white/10 bg-[#0A0A0B] p-4 sm:p-6"
+                    class="overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0B]/95 shadow-2xl shadow-black/30"
                 >
-                    <div
-                        class="thin-scrollbar flex gap-2 overflow-x-auto rounded-md border border-white/10 bg-[#050505] p-1"
-                    >
-                        <button
-                            v-for="tab in tabs"
-                            :key="tab.key"
-                            type="button"
-                            class="min-w-28 flex-1 rounded-md px-4 py-3 text-xs font-black uppercase tracking-[0.16em] transition"
-                            :class="
-                                activeTab === tab.key
-                                    ? 'bg-white text-black'
-                                    : 'text-zinc-500 hover:bg-white/[0.06] hover:text-white'
-                            "
-                            @click="activeTab = tab.key"
+                    <div class="border-b border-white/10 p-3 sm:p-4">
+                        <div
+                            class="thin-scrollbar flex gap-2 overflow-x-auto rounded-lg border border-white/10 bg-[#050505] p-1"
                         >
-                            {{ tab.label }}
-                        </button>
+                            <button
+                                v-for="tab in tabs"
+                                :key="tab.key"
+                                type="button"
+                                class="min-w-28 flex-1 rounded-md px-4 py-3 text-xs font-black uppercase tracking-[0.16em] transition"
+                                :class="
+                                    activeTab === tab.key
+                                        ? 'bg-white text-black shadow-lg shadow-white/10'
+                                        : 'text-zinc-500 hover:bg-white/[0.06] hover:text-white'
+                                "
+                                @click="activeTab = tab.key"
+                            >
+                                {{ tab.label }}
+                            </button>
+                        </div>
                     </div>
 
                     <!-- OVERVIEW TAB -->
-                    <div v-if="activeTab === 'overview'" class="mt-6">
-                        <div class="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+                    <div
+                        v-if="activeTab === 'overview'"
+                        class="p-5 sm:p-6 lg:p-7"
+                    >
+                        <div class="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
                             <div
-                                class="rounded-md border border-white/10 bg-white/[0.03] p-5"
+                                class="rounded-xl border border-white/10 bg-white/[0.03] p-5 sm:p-6"
                             >
                                 <p
-                                    class="text-[11px] font-bold uppercase tracking-[0.32em] text-zinc-500"
+                                    class="text-[11px] font-black uppercase tracking-[0.32em] text-zinc-500"
                                 >
                                     Overview
                                 </p>
 
                                 <h2
-                                    class="mt-2 text-2xl font-bold tracking-[-0.04em] text-white"
+                                    class="mt-3 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
                                 >
                                     About this timepiece
                                 </h2>
@@ -855,23 +935,23 @@ const goToInquiry = () => {
                             </div>
 
                             <div
-                                class="rounded-md border border-white/10 bg-white/[0.03] p-5"
+                                class="rounded-xl border border-white/10 bg-white/[0.03] p-5 sm:p-6"
                             >
                                 <p
-                                    class="text-[11px] font-bold uppercase tracking-[0.32em] text-zinc-500"
+                                    class="text-[11px] font-black uppercase tracking-[0.32em] text-zinc-500"
                                 >
-                                    What to check
+                                    Deal Checklist
                                 </p>
 
-                                <div class="mt-4 space-y-3">
+                                <div class="mt-5 divide-y divide-white/10">
                                     <div
-                                        class="flex items-center justify-between gap-4 border-b border-white/10 pb-3"
+                                        class="flex items-center justify-between gap-4 py-3 first:pt-0"
                                     >
-                                        <span class="text-sm text-zinc-500">
-                                            Box / Papers
-                                        </span>
+                                        <span class="text-sm text-zinc-500"
+                                            >Box / Papers</span
+                                        >
                                         <span
-                                            class="text-right text-sm font-semibold text-white"
+                                            class="max-w-[58%] text-right text-sm font-bold text-white"
                                         >
                                             {{
                                                 watch.box_papers ||
@@ -881,13 +961,13 @@ const goToInquiry = () => {
                                     </div>
 
                                     <div
-                                        class="flex items-center justify-between gap-4 border-b border-white/10 pb-3"
+                                        class="flex items-center justify-between gap-4 py-3"
                                     >
-                                        <span class="text-sm text-zinc-500">
-                                            Warranty
-                                        </span>
+                                        <span class="text-sm text-zinc-500"
+                                            >Warranty</span
+                                        >
                                         <span
-                                            class="text-right text-sm font-semibold text-white"
+                                            class="max-w-[58%] text-right text-sm font-bold text-white"
                                         >
                                             {{
                                                 watch.warranty_type ||
@@ -897,15 +977,15 @@ const goToInquiry = () => {
                                     </div>
 
                                     <div
-                                        class="flex items-center justify-between gap-4"
+                                        class="flex items-center justify-between gap-4 py-3 last:pb-0"
                                     >
-                                        <span class="text-sm text-zinc-500">
-                                            Inquiry
-                                        </span>
-                                        <span
-                                            class="text-right text-sm font-semibold text-emerald-300"
+                                        <span class="text-sm text-zinc-500"
+                                            >Availability</span
                                         >
-                                            Message us to confirm availability
+                                        <span
+                                            class="max-w-[58%] text-right text-sm font-bold text-emerald-300"
+                                        >
+                                            {{ statusLabel }}
                                         </span>
                                     </div>
                                 </div>
@@ -914,19 +994,19 @@ const goToInquiry = () => {
                     </div>
 
                     <!-- SPECS TAB -->
-                    <div v-if="activeTab === 'specs'" class="mt-6">
+                    <div v-if="activeTab === 'specs'" class="p-5 sm:p-6 lg:p-7">
                         <div
                             class="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"
                         >
                             <div>
                                 <p
-                                    class="text-[11px] font-bold uppercase tracking-[0.32em] text-zinc-500"
+                                    class="text-[11px] font-black uppercase tracking-[0.32em] text-zinc-500"
                                 >
                                     Full Specifications
                                 </p>
 
                                 <h2
-                                    class="mt-2 text-2xl font-bold tracking-[-0.04em] text-white"
+                                    class="mt-3 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
                                 >
                                     Watch details
                                 </h2>
@@ -945,9 +1025,11 @@ const goToInquiry = () => {
                             <div
                                 v-for="group in availableSpecGroups"
                                 :key="group.title"
-                                class="rounded-md border border-white/10 bg-white/[0.03] p-5"
+                                class="rounded-xl border border-white/10 bg-white/[0.03] p-5"
                             >
-                                <h3 class="text-sm font-bold text-white">
+                                <h3
+                                    class="text-sm font-black uppercase tracking-[0.14em] text-white"
+                                >
                                     {{ group.title }}
                                 </h3>
 
@@ -958,7 +1040,7 @@ const goToInquiry = () => {
                                         class="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0"
                                     >
                                         <p
-                                            class="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-500"
+                                            class="text-xs font-bold uppercase tracking-[0.14em] text-zinc-500"
                                         >
                                             {{ spec.label }}
                                         </p>
@@ -973,35 +1055,40 @@ const goToInquiry = () => {
                             </div>
                         </div>
 
-                        <p v-else class="mt-5 text-sm text-zinc-500">
+                        <div
+                            v-else
+                            class="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-6 text-sm text-zinc-500"
+                        >
                             Full specifications available upon request.
-                        </p>
+                        </div>
                     </div>
 
                     <!-- WARRANTY TAB -->
-                    <div v-if="activeTab === 'warranty'" class="mt-6">
+                    <div
+                        v-if="activeTab === 'warranty'"
+                        class="p-5 sm:p-6 lg:p-7"
+                    >
                         <p
-                            class="text-[11px] font-bold uppercase tracking-[0.32em] text-zinc-500"
+                            class="text-[11px] font-black uppercase tracking-[0.32em] text-zinc-500"
                         >
                             Warranty
                         </p>
 
                         <h2
-                            class="mt-2 text-2xl font-bold tracking-[-0.04em] text-white"
+                            class="mt-3 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
                         >
                             Montre Card Warranty
                         </h2>
 
                         <div
-                            class="mt-5 grid gap-3 text-sm leading-6 text-zinc-400 lg:grid-cols-3"
+                            class="mt-6 grid gap-3 text-sm leading-6 text-zinc-400 lg:grid-cols-3"
                         >
                             <div
-                                class="rounded-md border border-white/10 bg-white/[0.03] p-5"
+                                class="rounded-xl border border-white/10 bg-white/[0.03] p-5"
                             >
-                                <p class="font-bold text-white">
+                                <p class="font-black text-white">
                                     1 Year Coverage
                                 </p>
-
                                 <p class="mt-2">
                                     The Montre Card warranty coverage is valid
                                     for one year from the date of purchase.
@@ -1009,12 +1096,11 @@ const goToInquiry = () => {
                             </div>
 
                             <div
-                                class="rounded-md border border-white/10 bg-white/[0.03] p-5"
+                                class="rounded-xl border border-white/10 bg-white/[0.03] p-5"
                             >
-                                <p class="font-bold text-white">
+                                <p class="font-black text-white">
                                     Movement Defects
                                 </p>
-
                                 <p class="mt-2">
                                     Covers movement and internal mechanism
                                     defects, including abnormal timekeeping,
@@ -1024,10 +1110,9 @@ const goToInquiry = () => {
                             </div>
 
                             <div
-                                class="rounded-md border border-white/10 bg-white/[0.03] p-5"
+                                class="rounded-xl border border-white/10 bg-white/[0.03] p-5"
                             >
-                                <p class="font-bold text-white">Not Covered</p>
-
+                                <p class="font-black text-white">Not Covered</p>
                                 <p class="mt-2">
                                     Excludes scratches, dents, broken glass,
                                     water damage, misuse, unauthorized repairs,
@@ -1039,24 +1124,27 @@ const goToInquiry = () => {
 
                         <Link
                             href="/warranty-check"
-                            class="mt-5 inline-flex rounded-md border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                            class="mt-6 inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
                         >
                             Check Existing Warranty
                         </Link>
                     </div>
 
                     <!-- INQUIRY TAB -->
-                    <div v-if="activeTab === 'inquiry'" class="mt-6">
+                    <div
+                        v-if="activeTab === 'inquiry'"
+                        class="p-5 sm:p-6 lg:p-7"
+                    >
                         <div class="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
                             <div>
                                 <p
-                                    class="text-[11px] font-bold uppercase tracking-[0.32em] text-zinc-500"
+                                    class="text-[11px] font-black uppercase tracking-[0.32em] text-zinc-500"
                                 >
                                     Inquiry
                                 </p>
 
                                 <h2
-                                    class="mt-2 text-2xl font-bold tracking-[-0.04em] text-white"
+                                    class="mt-3 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
                                 >
                                     Ready to reserve this watch?
                                 </h2>
@@ -1065,15 +1153,15 @@ const goToInquiry = () => {
                                     class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400"
                                 >
                                     Edit the message preview if needed, then
-                                    copy it or open your preferred channel. We
-                                    recommend Messenger for the fastest
+                                    copy it or open your preferred channel.
+                                    Messenger is recommended for the fastest
                                     response.
                                 </p>
 
-                                <div class="mt-5 grid gap-3">
+                                <div class="mt-6 grid gap-3">
                                     <button
                                         type="button"
-                                        class="rounded-md bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
+                                        class="rounded-lg bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
                                         @click="openMessengerInquiry"
                                     >
                                         Ask via Messenger
@@ -1081,7 +1169,7 @@ const goToInquiry = () => {
 
                                     <button
                                         type="button"
-                                        class="rounded-md border border-white/10 bg-white/[0.03] px-5 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                                        class="rounded-lg border border-white/10 bg-white/[0.03] px-5 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
                                         @click="copyInquiryMessage"
                                     >
                                         {{
@@ -1095,7 +1183,7 @@ const goToInquiry = () => {
                                         v-for="link in contactLinks"
                                         :key="link.label"
                                         type="button"
-                                        class="group rounded-md border p-4 text-left transition"
+                                        class="group rounded-xl border p-4 text-left transition"
                                         :class="
                                             link.primary
                                                 ? 'border-emerald-400/20 bg-emerald-400/10 hover:border-emerald-400/40'
@@ -1107,16 +1195,15 @@ const goToInquiry = () => {
                                             class="flex items-center justify-between gap-4"
                                         >
                                             <p
-                                                class="text-sm font-semibold text-white"
+                                                class="text-sm font-bold text-white"
                                             >
                                                 {{ link.label }}
                                             </p>
 
                                             <span
                                                 class="text-zinc-500 transition group-hover:text-white"
+                                                >→</span
                                             >
-                                                →
-                                            </span>
                                         </div>
 
                                         <p
@@ -1129,14 +1216,14 @@ const goToInquiry = () => {
                             </div>
 
                             <div
-                                class="rounded-md border border-white/10 bg-[#050505] p-5"
+                                class="rounded-xl border border-white/10 bg-[#050505] p-5"
                             >
                                 <div
                                     class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"
                                 >
                                     <div>
                                         <p
-                                            class="text-[11px] font-bold uppercase tracking-[0.24em] text-zinc-500"
+                                            class="text-[11px] font-black uppercase tracking-[0.24em] text-zinc-500"
                                         >
                                             Message Preview
                                         </p>
@@ -1150,7 +1237,7 @@ const goToInquiry = () => {
 
                                     <button
                                         type="button"
-                                        class="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-bold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white"
+                                        class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-bold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white"
                                         @click="resetInquiryMessage"
                                     >
                                         Reset Message
@@ -1159,8 +1246,8 @@ const goToInquiry = () => {
 
                                 <textarea
                                     v-model="inquiryMessage"
-                                    rows="9"
-                                    class="mt-4 w-full resize-none rounded-md border border-white/10 bg-white/[0.03] p-4 text-sm leading-7 text-zinc-300 outline-none transition placeholder:text-zinc-600 focus:border-white/30 focus:bg-white/[0.05]"
+                                    rows="10"
+                                    class="mt-4 w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm leading-7 text-zinc-300 outline-none transition placeholder:text-zinc-600 focus:border-white/30 focus:bg-white/[0.05]"
                                 ></textarea>
 
                                 <p class="mt-4 text-xs leading-5 text-zinc-500">
@@ -1177,38 +1264,48 @@ const goToInquiry = () => {
             <!-- MORE CTA -->
             <section class="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
                 <div
-                    class="flex flex-col justify-between gap-4 rounded-md border border-white/10 bg-[#0A0A0B] p-5 sm:flex-row sm:items-center sm:p-6"
+                    class="relative overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0B]/95 p-5 shadow-2xl shadow-black/30 sm:p-6"
                 >
-                    <div>
-                        <p
-                            class="text-[11px] font-bold uppercase tracking-[0.28em] text-zinc-500"
-                        >
-                            Still browsing?
-                        </p>
+                    <div
+                        class="absolute right-0 top-0 h-40 w-72 bg-white/[0.035] blur-3xl"
+                    ></div>
 
-                        <h2 class="mt-2 text-xl font-bold text-white">
-                            View more curated Montre Nova watches
-                        </h2>
-                    </div>
-
-                    <Link
-                        :href="route('welcome') + '#collection'"
-                        class="inline-flex items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                    <div
+                        class="relative flex flex-col justify-between gap-4 sm:flex-row sm:items-center"
                     >
-                        Back to Collection
-                    </Link>
+                        <div>
+                            <p
+                                class="text-[11px] font-black uppercase tracking-[0.28em] text-zinc-500"
+                            >
+                                Still browsing?
+                            </p>
+
+                            <h2
+                                class="mt-2 text-xl font-black tracking-[-0.03em] text-white"
+                            >
+                                View more curated Montre Nova watches
+                            </h2>
+                        </div>
+
+                        <Link
+                            :href="route('welcome') + '#collection'"
+                            class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                        >
+                            Back to Collection
+                        </Link>
+                    </div>
                 </div>
             </section>
         </main>
 
         <!-- MOBILE STICKY CTA -->
         <div
-            class="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050505]/95 p-3 backdrop-blur-xl sm:hidden"
+            class="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050505]/95 p-3 backdrop-blur-2xl sm:hidden"
         >
             <div class="grid grid-cols-[1fr_auto_auto] items-center gap-2">
                 <div class="min-w-0">
                     <p
-                        class="truncate text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500"
+                        class="truncate text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500"
                     >
                         {{ statusLabel }}
                     </p>
@@ -1220,7 +1317,7 @@ const goToInquiry = () => {
 
                 <button
                     type="button"
-                    class="inline-flex items-center justify-center rounded-md bg-white px-4 py-3 text-sm font-black text-black"
+                    class="inline-flex items-center justify-center rounded-lg bg-white px-4 py-3 text-sm font-black text-black"
                     @click="openMessengerInquiry"
                 >
                     Ask
@@ -1228,7 +1325,7 @@ const goToInquiry = () => {
 
                 <button
                     type="button"
-                    class="inline-flex items-center justify-center rounded-md border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white"
+                    class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white"
                     @click="copyLink"
                 >
                     {{ copied ? "Copied" : "Share" }}
@@ -1246,7 +1343,7 @@ const goToInquiry = () => {
             >
                 <button
                     type="button"
-                    class="absolute right-4 top-4 z-20 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-bold text-white backdrop-blur transition hover:bg-white hover:text-black"
+                    class="absolute right-4 top-4 z-20 rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-sm font-bold text-white backdrop-blur transition hover:bg-white hover:text-black"
                     @click="closeImagePreview"
                 >
                     Close
@@ -1255,7 +1352,7 @@ const goToInquiry = () => {
                 <button
                     v-if="hasMultipleImages"
                     type="button"
-                    class="absolute left-4 top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-white/10 text-3xl text-white backdrop-blur transition hover:bg-white hover:text-black"
+                    class="absolute left-4 top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-3xl text-white backdrop-blur transition hover:bg-white hover:text-black"
                     @click.stop="previousImage"
                 >
                     ‹
@@ -1265,13 +1362,13 @@ const goToInquiry = () => {
                     v-if="selectedImage"
                     :src="selectedImage"
                     :alt="displayName"
-                    class="max-h-[88vh] max-w-full rounded-md object-contain"
+                    class="max-h-[88vh] max-w-full rounded-xl object-contain"
                 />
 
                 <button
                     v-if="hasMultipleImages"
                     type="button"
-                    class="absolute right-4 top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-white/10 text-3xl text-white backdrop-blur transition hover:bg-white hover:text-black"
+                    class="absolute right-4 top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-3xl text-white backdrop-blur transition hover:bg-white hover:text-black"
                     @click.stop="nextImage"
                 >
                     ›
@@ -1279,7 +1376,7 @@ const goToInquiry = () => {
 
                 <div
                     v-if="images.length"
-                    class="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-black/70 px-4 py-2 text-xs font-bold text-white backdrop-blur"
+                    class="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-white/10 bg-black/70 px-4 py-2 text-xs font-bold text-white backdrop-blur"
                 >
                     {{ selectedImageIndex + 1 }} / {{ images.length }}
                 </div>
