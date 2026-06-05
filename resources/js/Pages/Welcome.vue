@@ -1229,7 +1229,6 @@ const productBadges = (watch) => {
             </section>
 
             <!-- RECENTLY SOLD -->
-            <!-- RECENTLY SOLD -->
             <section
                 v-if="recentSoldWatches.length"
                 id="recently-sold"
@@ -1344,13 +1343,24 @@ const productBadges = (watch) => {
                         buyer trust.
                     </p>
 
-                    <button
-                        type="button"
-                        class="inline-flex w-full items-center justify-center rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04] sm:w-auto"
-                        @click="openSimilarInquiry()"
+                    <div
+                        class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center"
                     >
-                        Source Similar Watch
-                    </button>
+                        <Link
+                            href="/sold-watches"
+                            class="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
+                        >
+                            View Sold Gallery
+                        </Link>
+
+                        <button
+                            type="button"
+                            class="inline-flex items-center justify-center rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
+                            @click="openSimilarInquiry()"
+                        >
+                            Source Similar
+                        </button>
+                    </div>
                 </div>
 
                 <div

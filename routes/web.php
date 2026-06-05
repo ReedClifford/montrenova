@@ -12,6 +12,12 @@ use App\Http\Controllers\PublicWatchController;
 use App\Http\Controllers\PublicWarrantyController;
 
 
+
+
+Route::get('/sold-watches', [PublicWatchController::class, 'soldGallery'])
+    ->name('public.sold-watches.index');
+
+    
 Route::get('/warranty-check', [PublicWarrantyController::class, 'index'])
         ->name('public.warranty-check.index');
 

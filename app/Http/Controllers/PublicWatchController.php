@@ -173,4 +173,38 @@ class PublicWatchController extends Controller
 
         return (float) ($watch->selling_price ?? 0);
     }
+
+
+
+    public function soldGallery(\Illuminate\Http\Request $request)
+{
+    $search = trim((string) $request->query('search', ''));
+
+    $soldWatches = \App\Models\Watch::query()
+        ->with(['primaryImage', 'images'])
+        ->where('status', 'sold')
+        ->when($search !== '', function ($query) use ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('brand', 'like', "%{$search}%")
+                    ->orWhere('model_name', 'like', "%{$search}%")
+                    ->orWhere('reference_number', 'like', "%{$search}%")
+                    ->orWhere('category', 'like', "%{$search}%")
+                    ->orWhere('condition', 'like', "%{$search}%");
+            });
+        })
+        ->latest('date_sold')
+        ->latest()
+        ->paginate(12)
+        ->withQueryString();
+
+    return \Inertia\Inertia::render('Public/SoldGallery', [
+        'soldWatches' => $soldWatches,
+        'filters' => [
+            'search' => $search,
+        ],
+        'soldCount' => \App\Models\Watch::query()
+            ->where('status', 'sold')
+            ->count(),
+    ]);
+}
 }
