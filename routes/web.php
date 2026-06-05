@@ -12,7 +12,11 @@ use App\Http\Controllers\PublicWatchController;
 use App\Http\Controllers\PublicWarrantyController;
 
 
+Route::get('/warranty-check', [PublicWarrantyController::class, 'index'])
+        ->name('public.warranty-check.index');
 
+Route::post('/warranty-check', [PublicWarrantyController::class, 'check'])
+        ->name('public.warranty-check.check');
 
 Route::get('/', [PublicWatchController::class, 'welcome'])
     ->name('welcome');
@@ -100,11 +104,7 @@ Route::delete('/admin/expenses/{expense}', [ExpenseController::class, 'destroy']
 
 
 
-    Route::get('/warranty-check', [PublicWarrantyController::class, 'index'])
-        ->name('public.warranty-check.index');
 
-    Route::post('/warranty-check', [PublicWarrantyController::class, 'check'])
-        ->name('public.warranty-check.check');
 
 
         
