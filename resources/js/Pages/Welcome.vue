@@ -88,6 +88,70 @@ const cleanPaginationLabel = (label) => {
         .replace("Next &raquo;", "Next ›");
 };
 
+const messengerUsername = "montrenova";
+
+const watchFullName = (watch) => {
+    if (!watch) return "this watch";
+
+    return `${watch.brand || ""} ${watch.model_name || ""}`.trim();
+};
+
+const watchReference = (watch) => {
+    return watch?.reference_number ? ` Ref. ${watch.reference_number}` : "";
+};
+
+const inquiryMessage = (watch = null) => {
+    if (!watch) {
+        return "Hi Montre Nova, I’m interested in your available watches. Can you send me the latest stocks?";
+    }
+
+    return `Hi Montre Nova, I’m interested in ${watchFullName(watch)}${watchReference(watch)}. Is this still available?`;
+};
+
+const similarInquiryMessage = (watch = null) => {
+    if (!watch) {
+        return "Hi Montre Nova, I’m looking for a similar watch. Can you help me source one?";
+    }
+
+    return `Hi Montre Nova, I’m interested in sourcing a similar piece to ${watchFullName(watch)}${watchReference(watch)}. Do you have available options?`;
+};
+
+const openMessengerInquiry = async (watch = null) => {
+    const message = inquiryMessage(watch);
+
+    try {
+        if (navigator?.clipboard?.writeText) {
+            await navigator.clipboard.writeText(message);
+        }
+    } catch (error) {
+        console.warn("Unable to copy inquiry message:", error);
+    }
+
+    window.open(
+        `https://m.me/${messengerUsername}`,
+        "_blank",
+        "noopener,noreferrer",
+    );
+};
+
+const openSimilarInquiry = async (watch = null) => {
+    const message = similarInquiryMessage(watch);
+
+    try {
+        if (navigator?.clipboard?.writeText) {
+            await navigator.clipboard.writeText(message);
+        }
+    } catch (error) {
+        console.warn("Unable to copy inquiry message:", error);
+    }
+
+    window.open(
+        `https://m.me/${messengerUsername}`,
+        "_blank",
+        "noopener,noreferrer",
+    );
+};
+
 const contactLinks = [
     {
         label: "Messenger",
@@ -95,9 +159,9 @@ const contactLinks = [
         href: "https://m.me/montrenova",
     },
     {
-        label: "Viber Community",
-        description: "Join our Viber community for latest drops",
-        href: "#",
+        label: "Warranty Check",
+        description: "Verify your Montre Card warranty coverage",
+        href: "/warranty-check",
     },
     {
         label: "Instagram",
@@ -261,7 +325,9 @@ const productBadges = (watch) => {
 <template>
     <Head title="Montre Nova | Curated Timepieces" />
 
-    <div class="min-h-screen overflow-hidden bg-[#050505] text-white">
+    <div
+        class="min-h-screen overflow-hidden bg-[#050505] pb-24 text-white md:pb-0"
+    >
         <div class="pointer-events-none fixed inset-0">
             <div
                 class="absolute left-[-14rem] top-[-14rem] h-[36rem] w-[36rem] rounded-full bg-white/[0.04] blur-3xl"
@@ -275,12 +341,10 @@ const productBadges = (watch) => {
         </div>
 
         <!-- NAVBAR -->
-        <!-- NAVBAR -->
         <header
             class="sticky top-0 z-50 border-b border-white/10 bg-[#050505]/85 backdrop-blur-xl"
         >
             <div class="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
-                <!-- TOP NAV ROW -->
                 <div class="flex items-center justify-between gap-3">
                     <a href="/" class="flex min-w-0 items-center">
                         <MontreLogo />
@@ -313,18 +377,26 @@ const productBadges = (watch) => {
                             Warranty
                         </a>
 
+                        <Link
+                            href="/warranty-check"
+                            class="transition hover:text-white"
+                        >
+                            Warranty Check
+                        </Link>
+
                         <a href="#contact" class="transition hover:text-white">
                             Contact
                         </a>
                     </nav>
 
                     <!-- MOBILE CTA -->
-                    <a
-                        href="#contact"
+                    <button
+                        type="button"
                         class="inline-flex shrink-0 items-center justify-center rounded-2xl bg-white px-4 py-2 text-xs font-bold text-black transition hover:bg-zinc-200 md:hidden"
+                        @click="openMessengerInquiry()"
                     >
                         Message
-                    </a>
+                    </button>
 
                     <div
                         v-if="props.canLogin"
@@ -367,6 +439,13 @@ const productBadges = (watch) => {
                         Warranty
                     </a>
 
+                    <Link
+                        href="/warranty-check"
+                        class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
+                    >
+                        Warranty Check
+                    </Link>
+
                     <a
                         href="#contact"
                         class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 transition hover:border-white/30 hover:text-white"
@@ -380,7 +459,7 @@ const productBadges = (watch) => {
         <main class="relative z-10">
             <!-- HERO -->
             <section
-                class="mx-auto grid max-w-7xl items-center gap-14 px-6 py-20 lg:grid-cols-[1fr_0.9fr] lg:px-8 lg:py-28"
+                class="mx-auto grid max-w-7xl items-center gap-12 px-6 py-14 lg:grid-cols-[1fr_0.9fr] lg:px-8 lg:py-28"
             >
                 <div>
                     <div
@@ -395,7 +474,7 @@ const productBadges = (watch) => {
                     </div>
 
                     <h2
-                        class="max-w-4xl text-5xl font-semibold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl"
+                        class="max-w-4xl text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl"
                     >
                         Curated watches for your next signature timepiece.
                     </h2>
@@ -416,12 +495,13 @@ const productBadges = (watch) => {
                             View Collection
                         </a>
 
-                        <a
-                            href="#contact"
+                        <button
+                            type="button"
                             class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-7 py-4 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                            @click="openMessengerInquiry()"
                         >
                             Message Us
-                        </a>
+                        </button>
                     </div>
 
                     <div
@@ -522,6 +602,17 @@ const productBadges = (watch) => {
                                     class="h-72 w-72 object-contain opacity-90"
                                 />
                             </div>
+
+                            <div
+                                v-if="featuredWatch"
+                                class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-5"
+                            >
+                                <p
+                                    class="text-xs font-bold uppercase tracking-[0.22em] text-zinc-400"
+                                >
+                                    Featured Drop
+                                </p>
+                            </div>
                         </div>
 
                         <div class="p-3 pt-6">
@@ -606,18 +697,30 @@ const productBadges = (watch) => {
                                 </div>
                             </div>
 
-                            <Link
+                            <div
                                 v-if="featuredWatch"
-                                :href="
-                                    route(
-                                        'public.watches.show',
-                                        featuredWatch.id,
-                                    )
-                                "
-                                class="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200"
+                                class="mt-5 grid grid-cols-2 gap-3"
                             >
-                                View Details
-                            </Link>
+                                <button
+                                    type="button"
+                                    class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                                    @click="openMessengerInquiry(featuredWatch)"
+                                >
+                                    Ask
+                                </button>
+
+                                <Link
+                                    :href="
+                                        route(
+                                            'public.watches.show',
+                                            featuredWatch.id,
+                                        )
+                                    "
+                                    class="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
+                                >
+                                    Details
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -751,7 +854,6 @@ const productBadges = (watch) => {
             </section>
 
             <!-- COLLECTION -->
-            <!-- COLLECTION -->
             <section
                 id="collection"
                 class="mx-auto max-w-7xl px-6 py-16 lg:px-8 lg:py-20"
@@ -797,12 +899,13 @@ const productBadges = (watch) => {
                             Swipe to browse →
                         </p>
 
-                        <a
-                            href="#contact"
+                        <button
+                            type="button"
                             class="inline-flex rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
+                            @click="openMessengerInquiry()"
                         >
                             Ask for Latest Stocks
-                        </a>
+                        </button>
                     </div>
                 </div>
 
@@ -840,6 +943,7 @@ const productBadges = (watch) => {
                                     :src="watchImage(watch)"
                                     :alt="`${watch.brand} ${watch.model_name}`"
                                     class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                    loading="lazy"
                                 />
 
                                 <div
@@ -850,6 +954,7 @@ const productBadges = (watch) => {
                                         src="/images/montre-nova-logo.png"
                                         alt="Montre Nova"
                                         class="h-32 w-32 object-contain opacity-70 md:h-40 md:w-40"
+                                        loading="lazy"
                                     />
                                 </div>
 
@@ -966,17 +1071,29 @@ const productBadges = (watch) => {
                                         </p>
                                     </div>
 
-                                    <Link
-                                        :href="
-                                            route(
-                                                'public.watches.show',
-                                                watch.id,
-                                            )
-                                        "
-                                        class="inline-flex w-full items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black transition hover:bg-zinc-200 md:w-auto md:bg-transparent md:px-0 md:py-0 md:font-medium md:text-zinc-300 md:hover:bg-transparent md:group-hover:text-white"
+                                    <div
+                                        class="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:items-center"
                                     >
-                                        View Details
-                                    </Link>
+                                        <button
+                                            type="button"
+                                            class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06] md:rounded-xl md:px-3 md:py-2 md:text-xs"
+                                            @click="openMessengerInquiry(watch)"
+                                        >
+                                            Ask
+                                        </button>
+
+                                        <Link
+                                            :href="
+                                                route(
+                                                    'public.watches.show',
+                                                    watch.id,
+                                                )
+                                            "
+                                            class="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black transition hover:bg-zinc-200 md:bg-transparent md:px-0 md:py-0 md:font-medium md:text-zinc-300 md:hover:bg-transparent md:group-hover:text-white"
+                                        >
+                                            Details
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1043,12 +1160,13 @@ const productBadges = (watch) => {
                         available and visible from the admin dashboard.
                     </p>
 
-                    <a
-                        href="#contact"
+                    <button
+                        type="button"
                         class="mt-6 inline-flex rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200"
+                        @click="openMessengerInquiry()"
                     >
                         Message Us for Availability
-                    </a>
+                    </button>
                 </div>
             </section>
 
@@ -1082,12 +1200,13 @@ const productBadges = (watch) => {
                         </p>
                     </div>
 
-                    <a
-                        href="#contact"
+                    <button
+                        type="button"
                         class="inline-flex rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
+                        @click="openSimilarInquiry()"
                     >
                         Source Similar Watch
-                    </a>
+                    </button>
                 </div>
 
                 <div
@@ -1124,6 +1243,7 @@ const productBadges = (watch) => {
                                 :src="watchImage(watch)"
                                 :alt="`${watch.brand} ${watch.model_name}`"
                                 class="h-full w-full object-cover grayscale-[20%] transition duration-500 group-hover:scale-105 group-hover:grayscale-0"
+                                loading="lazy"
                             />
 
                             <div
@@ -1134,6 +1254,7 @@ const productBadges = (watch) => {
                                     src="/images/montre-nova-logo.png"
                                     alt="Montre Nova"
                                     class="h-32 w-32 object-contain opacity-70"
+                                    loading="lazy"
                                 />
                             </div>
                         </div>
@@ -1165,12 +1286,13 @@ const productBadges = (watch) => {
                                     Sold
                                 </span>
 
-                                <a
-                                    href="#contact"
+                                <button
+                                    type="button"
                                     class="text-sm font-medium text-zinc-300 transition hover:text-white"
+                                    @click="openSimilarInquiry(watch)"
                                 >
                                     Find Similar
-                                </a>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -1197,6 +1319,14 @@ const productBadges = (watch) => {
                             Message us through our official channels to confirm
                             availability, request details, or reserve a watch.
                         </p>
+
+                        <button
+                            type="button"
+                            class="mt-6 inline-flex rounded-2xl bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
+                            @click="openMessengerInquiry()"
+                        >
+                            Start Inquiry
+                        </button>
                     </div>
 
                     <div
@@ -1218,6 +1348,13 @@ const productBadges = (watch) => {
                             from the date of purchase for movement and internal
                             mechanism defects.
                         </p>
+
+                        <Link
+                            href="/warranty-check"
+                            class="mt-6 inline-flex rounded-2xl border border-white/10 px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.04]"
+                        >
+                            Check Warranty
+                        </Link>
                     </div>
 
                     <div
@@ -1267,7 +1404,8 @@ const productBadges = (watch) => {
                                 class="mt-5 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base"
                             >
                                 Message Montre Nova for available stocks,
-                                reservations, and curated recommendations.
+                                reservations, warranty checks, and curated
+                                recommendations.
                             </p>
                         </div>
 
@@ -1321,5 +1459,27 @@ const productBadges = (watch) => {
                 <p>Minimalist luxury watch boutique.</p>
             </div>
         </footer>
+
+        <!-- MOBILE STICKY CTA -->
+        <div
+            class="fixed inset-x-0 bottom-0 z-[60] border-t border-white/10 bg-[#050505]/95 px-4 py-3 backdrop-blur-xl md:hidden"
+        >
+            <div class="grid grid-cols-2 gap-3">
+                <a
+                    href="#collection"
+                    class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white"
+                >
+                    View Stocks
+                </a>
+
+                <button
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black"
+                    @click="openMessengerInquiry()"
+                >
+                    Message Us
+                </button>
+            </div>
+        </div>
     </div>
 </template>

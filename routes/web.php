@@ -9,6 +9,8 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\SalesController;
 use App\Http\Controllers\Admin\ExpenseController;
 use App\Http\Controllers\PublicWatchController;
+use App\Http\Controllers\PublicWarrantyController;
+
 
 
 
@@ -95,6 +97,14 @@ Route::delete('/admin/expenses/{expense}', [ExpenseController::class, 'destroy']
 
     Route::delete('/admin/watch-images/{image}', [WatchController::class, 'deleteImage'])
         ->name('admin.watch-images.destroy');
+
+
+
+    Route::get('/warranty-check', [PublicWarrantyController::class, 'index'])
+        ->name('public.warranty-check.index');
+
+    Route::post('/warranty-check', [PublicWarrantyController::class, 'check'])
+        ->name('public.warranty-check.check');
 
 
         

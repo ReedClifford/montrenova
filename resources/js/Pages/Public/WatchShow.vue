@@ -18,10 +18,13 @@ const selectedImageIndex = ref(0);
 const copied = ref(false);
 const inquiryCopied = ref(false);
 const activeTab = ref("overview");
+const showImagePreview = ref(false);
 
 const touchStartX = ref(0);
 const touchStartY = ref(0);
 const swipeThreshold = 45;
+
+const messengerUsername = "montrenova";
 
 const images = computed(() => props.watch.images || []);
 
@@ -29,12 +32,32 @@ const displayName = computed(() => {
     return `${props.watch.brand || ""} ${props.watch.model_name || ""}`.trim();
 });
 
-const selectedImage = computed(() => {
+const selectedImageObject = computed(() => {
     if (!images.value.length) return null;
 
-    const image = images.value[selectedImageIndex.value];
+    return images.value[selectedImageIndex.value] || images.value[0];
+});
 
-    return image?.hd_url || image?.image_url || image?.thumbnail_url || null;
+const selectedImage = computed(() => {
+    if (!selectedImageObject.value) return null;
+
+    return (
+        selectedImageObject.value.hd_url ||
+        selectedImageObject.value.image_url ||
+        selectedImageObject.value.thumbnail_url ||
+        null
+    );
+});
+
+const selectedThumbnail = computed(() => {
+    if (!selectedImageObject.value) return null;
+
+    return (
+        selectedImageObject.value.thumbnail_url ||
+        selectedImageObject.value.image_url ||
+        selectedImageObject.value.hd_url ||
+        null
+    );
 });
 
 const hasMultipleImages = computed(() => images.value.length > 1);
@@ -85,6 +108,12 @@ const statusClass = computed(() => {
     return classes[status] || classes.available;
 });
 
+const isAvailable = computed(() => {
+    return (
+        String(props.watch.status || "available").toLowerCase() === "available"
+    );
+});
+
 const peso = (value) => {
     return new Intl.NumberFormat("en-PH", {
         style: "currency",
@@ -98,6 +127,48 @@ const productDescription = computed(() => {
         props.watch.description ||
         "A curated Montre Nova timepiece. Message us for availability confirmation, actual photos, payment options, and reservation details."
     );
+});
+
+const metaDescription = computed(() => {
+    return `${displayName.value}${
+        props.watch.reference_number ? ` ${props.watch.reference_number}` : ""
+    } available at Montre Nova. View actual photos, pricing, specs, warranty details, and inquiry options.`;
+});
+
+const productImageUrls = computed(() => {
+    return images.value
+        .map((image) => image.hd_url || image.image_url || image.thumbnail_url)
+        .filter(Boolean);
+});
+
+const productJsonLd = computed(() => {
+    return {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        name: displayName.value || "Montre Nova Watch",
+        brand: {
+            "@type": "Brand",
+            name: props.watch.brand || "Montre Nova",
+        },
+        sku: props.watch.reference_number || String(props.watch.id),
+        image: productImageUrls.value,
+        description: productDescription.value,
+        category: props.watch.category || "Watch",
+        offers: {
+            "@type": "Offer",
+            priceCurrency: "PHP",
+            price: Number(finalPrice.value || 0),
+            availability: isAvailable.value
+                ? "https://schema.org/InStock"
+                : "https://schema.org/SoldOut",
+            itemCondition: String(props.watch.condition || "")
+                .toLowerCase()
+                .includes("brand")
+                ? "https://schema.org/NewCondition"
+                : "https://schema.org/UsedCondition",
+            url: typeof window !== "undefined" ? window.location.href : "",
+        },
+    };
 });
 
 const quickSpecs = computed(() => [
@@ -202,7 +273,7 @@ const contactLinks = computed(() => [
     {
         label: "Messenger",
         description: "Fastest way to inquire or reserve this watch",
-        href: "https://m.me/montrenova",
+        href: `https://m.me/${messengerUsername}`,
         primary: true,
     },
     {
@@ -273,6 +344,16 @@ const handleTouchEnd = (event) => {
     }
 };
 
+const openImagePreview = () => {
+    if (!selectedImage.value) return;
+
+    showImagePreview.value = true;
+};
+
+const closeImagePreview = () => {
+    showImagePreview.value = false;
+};
+
 const copyInquiryMessage = async () => {
     if (!navigator.clipboard) return;
 
@@ -289,6 +370,16 @@ const openInquiryChannel = async (href) => {
     await copyInquiryMessage();
 
     window.open(href, "_blank", "noopener,noreferrer");
+};
+
+const openMessengerInquiry = async () => {
+    await copyInquiryMessage();
+
+    window.open(
+        `https://m.me/${messengerUsername}`,
+        "_blank",
+        "noopener,noreferrer",
+    );
 };
 
 const copyLink = async () => {
@@ -318,9 +409,26 @@ const goToInquiry = () => {
 </script>
 
 <template>
-    <Head :title="`${displayName} | Montre Nova`" />
+    <Head :title="`${displayName} | Montre Nova`">
+        <meta name="description" :content="metaDescription" />
 
-    <div class="min-h-screen bg-[#050505] text-white antialiased">
+        <meta property="og:title" :content="`${displayName} | Montre Nova`" />
+        <meta property="og:description" :content="metaDescription" />
+        <meta property="og:type" content="product" />
+        <meta
+            v-if="selectedImage"
+            property="og:image"
+            :content="selectedImage"
+        />
+
+        <component
+            :is="'script'"
+            type="application/ld+json"
+            v-html="JSON.stringify(productJsonLd)"
+        />
+    </Head>
+
+    <div class="min-h-screen bg-[#050505] pb-28 text-white antialiased lg:pb-0">
         <!-- HEADER -->
         <header
             class="sticky top-0 z-50 border-b border-white/10 bg-[#050505]/90 backdrop-blur-xl"
@@ -340,9 +448,16 @@ const goToInquiry = () => {
                         Collection
                     </Link>
 
+                    <Link
+                        href="/warranty-check"
+                        class="hidden rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white sm:inline-flex"
+                    >
+                        Warranty Check
+                    </Link>
+
                     <button
                         type="button"
-                        class="hidden rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white sm:inline-flex"
+                        class="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white"
                         @click="copyLink"
                     >
                         {{ copied ? "Copied" : "Share" }}
@@ -351,7 +466,7 @@ const goToInquiry = () => {
             </div>
         </header>
 
-        <main class="pb-28 lg:pb-12">
+        <main class="pb-8 lg:pb-12">
             <!-- HERO -->
             <section
                 class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 lg:py-8"
@@ -395,6 +510,13 @@ const goToInquiry = () => {
                             @touchstart.passive="handleTouchStart"
                             @touchend.passive="handleTouchEnd"
                         >
+                            <button
+                                type="button"
+                                class="absolute inset-0 z-[1] cursor-zoom-in"
+                                aria-label="Open image preview"
+                                @click="openImagePreview"
+                            ></button>
+
                             <img
                                 v-if="selectedImage"
                                 :key="selectedImage"
@@ -417,7 +539,7 @@ const goToInquiry = () => {
 
                             <!-- IMAGE BADGES -->
                             <div
-                                class="absolute left-4 top-4 flex flex-wrap gap-2"
+                                class="pointer-events-none absolute left-4 top-4 z-10 flex flex-wrap gap-2"
                             >
                                 <span
                                     class="rounded-full border px-3 py-1 text-[11px] font-bold backdrop-blur"
@@ -434,10 +556,18 @@ const goToInquiry = () => {
                                 </span>
                             </div>
 
+                            <!-- TAP TO ZOOM -->
+                            <div
+                                v-if="selectedImage"
+                                class="pointer-events-none absolute right-4 top-4 z-10 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-300 backdrop-blur"
+                            >
+                                Tap to zoom
+                            </div>
+
                             <!-- IMAGE COUNTER -->
                             <div
                                 v-if="images.length"
-                                class="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-black/70 px-4 py-2 backdrop-blur"
+                                class="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-black/70 px-4 py-2 backdrop-blur"
                             >
                                 <span
                                     class="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-300"
@@ -454,13 +584,13 @@ const goToInquiry = () => {
                                         v-for="(_, index) in images"
                                         :key="index"
                                         type="button"
-                                        class="h-1.5 rounded-full transition"
+                                        class="relative z-20 h-1.5 rounded-full transition"
                                         :class="
                                             selectedImageIndex === index
                                                 ? 'w-5 bg-white'
                                                 : 'w-1.5 bg-white/30'
                                         "
-                                        @click="selectImage(index)"
+                                        @click.stop="selectImage(index)"
                                     ></button>
                                 </div>
                             </div>
@@ -469,9 +599,9 @@ const goToInquiry = () => {
                             <button
                                 v-if="hasMultipleImages"
                                 type="button"
-                                class="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-2xl font-semibold text-white backdrop-blur transition hover:bg-white hover:text-black"
+                                class="absolute left-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-2xl font-semibold text-white backdrop-blur transition hover:bg-white hover:text-black"
                                 aria-label="Previous image"
-                                @click="previousImage"
+                                @click.stop="previousImage"
                             >
                                 ‹
                             </button>
@@ -479,9 +609,9 @@ const goToInquiry = () => {
                             <button
                                 v-if="hasMultipleImages"
                                 type="button"
-                                class="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-2xl font-semibold text-white backdrop-blur transition hover:bg-white hover:text-black"
+                                class="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-2xl font-semibold text-white backdrop-blur transition hover:bg-white hover:text-black"
                                 aria-label="Next image"
-                                @click="nextImage"
+                                @click.stop="nextImage"
                             >
                                 ›
                             </button>
@@ -513,6 +643,7 @@ const goToInquiry = () => {
                                         "
                                         alt=""
                                         class="h-full w-full rounded-xl object-cover"
+                                        loading="lazy"
                                     />
                                 </button>
                             </div>
@@ -524,7 +655,7 @@ const goToInquiry = () => {
                                 <span> Actual HD Photos </span>
 
                                 <span class="hidden sm:inline">
-                                    Swipe or tap thumbnails
+                                    Swipe, tap, or zoom
                                 </span>
                             </div>
                         </div>
@@ -627,23 +758,24 @@ const goToInquiry = () => {
                                 <button
                                     type="button"
                                     class="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
-                                    @click="goToInquiry"
+                                    @click="openMessengerInquiry"
                                 >
-                                    Inquire / Reserve
+                                    Ask via Messenger
                                 </button>
 
                                 <button
                                     type="button"
                                     class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
-                                    @click="copyInquiryMessage"
+                                    @click="goToInquiry"
                                 >
-                                    {{
-                                        inquiryCopied
-                                            ? "Message Copied"
-                                            : "Copy Inquiry Message"
-                                    }}
+                                    Edit Inquiry Message
                                 </button>
                             </div>
+
+                            <p class="mt-3 text-xs leading-5 text-zinc-500">
+                                Your inquiry message will be copied before
+                                opening Messenger.
+                            </p>
                         </div>
 
                         <!-- TRUST BADGES -->
@@ -923,6 +1055,13 @@ const goToInquiry = () => {
                                 </p>
                             </div>
                         </div>
+
+                        <Link
+                            href="/warranty-check"
+                            class="mt-5 inline-flex rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                        >
+                            Check Existing Warranty
+                        </Link>
                     </div>
 
                     <!-- INQUIRY TAB -->
@@ -954,6 +1093,14 @@ const goToInquiry = () => {
                                     <button
                                         type="button"
                                         class="rounded-2xl bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
+                                        @click="openMessengerInquiry"
+                                    >
+                                        Ask via Messenger
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
                                         @click="copyInquiryMessage"
                                     >
                                         {{
@@ -1093,9 +1240,9 @@ const goToInquiry = () => {
                 <button
                     type="button"
                     class="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-black text-black"
-                    @click="goToInquiry"
+                    @click="openMessengerInquiry"
                 >
-                    Inquire
+                    Ask
                 </button>
 
                 <button
@@ -1107,6 +1254,56 @@ const goToInquiry = () => {
                 </button>
             </div>
         </div>
+
+        <!-- FULLSCREEN IMAGE PREVIEW -->
+        <Teleport to="body">
+            <div
+                v-if="showImagePreview"
+                class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 p-4"
+                @touchstart.passive="handleTouchStart"
+                @touchend.passive="handleTouchEnd"
+            >
+                <button
+                    type="button"
+                    class="absolute right-4 top-4 z-20 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-bold text-white backdrop-blur transition hover:bg-white hover:text-black"
+                    @click="closeImagePreview"
+                >
+                    Close
+                </button>
+
+                <button
+                    v-if="hasMultipleImages"
+                    type="button"
+                    class="absolute left-4 top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-white/10 text-3xl text-white backdrop-blur transition hover:bg-white hover:text-black"
+                    @click.stop="previousImage"
+                >
+                    ‹
+                </button>
+
+                <img
+                    v-if="selectedImage"
+                    :src="selectedImage"
+                    :alt="displayName"
+                    class="max-h-[88vh] max-w-full rounded-2xl object-contain"
+                />
+
+                <button
+                    v-if="hasMultipleImages"
+                    type="button"
+                    class="absolute right-4 top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-white/10 text-3xl text-white backdrop-blur transition hover:bg-white hover:text-black"
+                    @click.stop="nextImage"
+                >
+                    ›
+                </button>
+
+                <div
+                    v-if="images.length"
+                    class="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-black/70 px-4 py-2 text-xs font-bold text-white backdrop-blur"
+                >
+                    {{ selectedImageIndex + 1 }} / {{ images.length }}
+                </div>
+            </div>
+        </Teleport>
     </div>
 </template>
 
