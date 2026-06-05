@@ -268,14 +268,85 @@ const originalPrice = (watch) => {
     return Number(watch.selling_price || watch.price || 0);
 };
 
+const placeholderImage = `data:image/svg+xml;utf8,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900">
+    <rect width="900" height="900" fill="#050505"/>
+    <circle cx="450" cy="405" r="165" fill="#101010" stroke="#2A2A2A" stroke-width="2"/>
+    <text x="450" y="430" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="86" font-weight="800" fill="#FFFFFF" letter-spacing="-8">MN</text>
+    <text x="450" y="560" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#8A8A8A" letter-spacing="8">MONTRE NOVA</text>
+</svg>`)}`;
+
+const normalizeImageUrl = (url) => {
+    if (!url) return null;
+
+    const cleanUrl = String(url).trim();
+
+    if (!cleanUrl) return null;
+
+    if (
+        cleanUrl.startsWith("http://") ||
+        cleanUrl.startsWith("https://") ||
+        cleanUrl.startsWith("data:") ||
+        cleanUrl.startsWith("blob:") ||
+        cleanUrl.startsWith("/")
+    ) {
+        return cleanUrl;
+    }
+
+    if (cleanUrl.startsWith("storage/")) {
+        return `/${cleanUrl}`;
+    }
+
+    if (cleanUrl.startsWith("public/")) {
+        return `/storage/${cleanUrl.replace(/^public\//, "")}`;
+    }
+
+    return `/storage/${cleanUrl}`;
+};
+
 const watchImage = (watch) => {
-    return (
+    return normalizeImageUrl(
         watch?.primary_hd_url ||
-        watch?.primary_image_url ||
-        watch?.image_url ||
-        watch?.thumbnail_url ||
-        null
+            watch?.primary_image_url ||
+            watch?.image_url ||
+            watch?.thumbnail_url ||
+            watch?.image_path ||
+            watch?.thumbnail_path ||
+            watch?.path ||
+            watch?.url ||
+            watch?.primary_image?.primary_hd_url ||
+            watch?.primary_image?.primary_image_url ||
+            watch?.primary_image?.image_url ||
+            watch?.primary_image?.thumbnail_url ||
+            watch?.primary_image?.image_path ||
+            watch?.primary_image?.thumbnail_path ||
+            watch?.primary_image?.file_path ||
+            watch?.primary_image?.path ||
+            watch?.primary_image?.url ||
+            watch?.primaryImage?.primary_hd_url ||
+            watch?.primaryImage?.primary_image_url ||
+            watch?.primaryImage?.image_url ||
+            watch?.primaryImage?.thumbnail_url ||
+            watch?.primaryImage?.image_path ||
+            watch?.primaryImage?.thumbnail_path ||
+            watch?.primaryImage?.file_path ||
+            watch?.primaryImage?.path ||
+            watch?.primaryImage?.url ||
+            null,
     );
+};
+
+const handleImageError = (event) => {
+    const image = event?.target;
+
+    if (!image) return;
+
+    if (image.src !== placeholderImage) {
+        image.src = placeholderImage;
+        return;
+    }
+
+    image.style.display = "none";
 };
 
 const statusBadge = (watch) => {
@@ -633,17 +704,32 @@ const productBadges = (watch) => {
                                 :src="watchImage(featuredWatch)"
                                 :alt="`${featuredWatch.brand} ${featuredWatch.model_name}`"
                                 class="h-full w-full object-cover"
+                                @error="handleImageError"
                             />
 
                             <div
                                 v-else
                                 class="flex h-full items-center justify-center bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.10),transparent_38%)]"
                             >
-                                <img
-                                    src="/images/montre-nova-logo.png"
-                                    alt="Montre Nova"
-                                    class="h-72 w-72 object-contain opacity-90"
-                                />
+                                <div
+                                    class="flex flex-col items-center justify-center text-center"
+                                >
+                                    <div
+                                        class="flex h-32 w-32 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]"
+                                    >
+                                        <span
+                                            class="text-4xl font-black tracking-[-0.08em] text-white"
+                                        >
+                                            MN
+                                        </span>
+                                    </div>
+
+                                    <p
+                                        class="mt-4 text-xs font-bold uppercase tracking-[0.24em] text-zinc-500"
+                                    >
+                                        Montre Nova
+                                    </p>
+                                </div>
                             </div>
 
                             <div
@@ -987,18 +1073,32 @@ const productBadges = (watch) => {
                                     :alt="`${watch.brand} ${watch.model_name}`"
                                     class="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                                     loading="lazy"
+                                    @error="handleImageError"
                                 />
 
                                 <div
                                     v-else
                                     class="flex h-full items-center justify-center bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_40%)]"
                                 >
-                                    <img
-                                        src="/images/montre-nova-logo.png"
-                                        alt="Montre Nova"
-                                        class="h-32 w-32 object-contain opacity-70 md:h-40 md:w-40"
-                                        loading="lazy"
-                                    />
+                                    <div
+                                        class="flex flex-col items-center justify-center text-center"
+                                    >
+                                        <div
+                                            class="flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] md:h-24 md:w-24"
+                                        >
+                                            <span
+                                                class="text-2xl font-black tracking-[-0.08em] text-white md:text-3xl"
+                                            >
+                                                MN
+                                            </span>
+                                        </div>
+
+                                        <p
+                                            class="mt-3 text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500"
+                                        >
+                                            Montre Nova
+                                        </p>
+                                    </div>
                                 </div>
 
                                 <!-- MOBILE PRICE OVERLAY -->
@@ -1188,11 +1288,15 @@ const productBadges = (watch) => {
                     v-else
                     class="rounded-md border border-white/10 bg-[#0B0B0D] p-10 text-center"
                 >
-                    <img
-                        src="/images/montre-nova-logo.png"
-                        alt="Montre Nova"
-                        class="mx-auto h-24 w-24 object-contain opacity-70"
-                    />
+                    <div
+                        class="mx-auto flex h-24 w-24 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]"
+                    >
+                        <span
+                            class="text-3xl font-black tracking-[-0.08em] text-white"
+                        >
+                            MN
+                        </span>
+                    </div>
 
                     <h3 class="mt-6 text-xl font-semibold text-white">
                         No available watches yet.
@@ -1381,18 +1485,32 @@ const productBadges = (watch) => {
                                 :alt="`${watch.brand} ${watch.model_name}`"
                                 class="h-full w-full object-cover grayscale-[25%] transition duration-500 group-hover:scale-105 group-hover:grayscale-0"
                                 loading="lazy"
+                                @error="handleImageError"
                             />
 
                             <div
                                 v-else
                                 class="flex h-full items-center justify-center bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_40%)]"
                             >
-                                <img
-                                    src="/images/montre-nova-logo.png"
-                                    alt="Montre Nova"
-                                    class="h-32 w-32 object-contain opacity-70"
-                                    loading="lazy"
-                                />
+                                <div
+                                    class="flex flex-col items-center justify-center text-center"
+                                >
+                                    <div
+                                        class="flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]"
+                                    >
+                                        <span
+                                            class="text-2xl font-black tracking-[-0.08em] text-white"
+                                        >
+                                            MN
+                                        </span>
+                                    </div>
+
+                                    <p
+                                        class="mt-3 text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500"
+                                    >
+                                        Montre Nova
+                                    </p>
+                                </div>
                             </div>
 
                             <div
