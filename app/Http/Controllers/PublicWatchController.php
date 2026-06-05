@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Watch;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -27,6 +29,12 @@ class PublicWatchController extends Controller
                 ->first();
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Current On-hand / Available Watches
+        |--------------------------------------------------------------------------
+        */
+
         $watches = Watch::query()
             ->with(['primaryImage'])
             ->withCount('images')
@@ -39,13 +47,8 @@ class PublicWatchController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Actual Sold Count
+        | Actual Total Sold Count
         |--------------------------------------------------------------------------
-        |
-        | This is the real total number of sold watches from the database.
-        | Do not use soldWatches.length in Vue for the total sold count because
-        | soldWatches below is only limited to the latest 12 display items.
-        |
         */
 
         $soldCount = Watch::query()
@@ -54,11 +57,26 @@ class PublicWatchController extends Controller
 
         /*
         |--------------------------------------------------------------------------
+        | Actual Sold This Month Count
+        |--------------------------------------------------------------------------
+        */
+
+        $soldThisMonthCount = Watch::query()
+            ->where('status', 'sold')
+            ->whereNotNull('date_sold')
+            ->whereBetween('date_sold', [
+                now()->startOfMonth(),
+                now()->endOfMonth(),
+            ])
+            ->count();
+
+        /*
+        |--------------------------------------------------------------------------
         | Recently Sold Watches
         |--------------------------------------------------------------------------
         |
-        | This is only for display on the public homepage.
-        | It is intentionally limited so the page stays clean and fast.
+        | This is only for display on the homepage.
+        | Do not use this for the sold count because this is limited.
         |
         */
 
@@ -67,29 +85,11 @@ class PublicWatchController extends Controller
             ->withCount('images')
             ->where('status', 'sold')
             ->where('is_visible', true)
-            ->orderByRaw('COALESCE(date_sold, updated_at) DESC')
+            ->orderByRaw('COALESCE(date_sold, updated_at, created_at) DESC')
             ->limit(12)
             ->get()
-            ->map(fn ($watch) => $this->publicWatchCard($watch));
-
-            $soldCount = Watch::query()
-    ->where('status', 'sold')
-    ->count();
-
-$soldThisMonthCount = Watch::query()
-    ->where('status', 'sold')
-    ->whereNotNull('date_sold')
-    ->whereYear('date_sold', now()->year)
-    ->whereMonth('date_sold', now()->month)
-    ->count();
-
-$soldWatches = Watch::query()
-    ->with(['primaryImage'])
-    ->where('status', 'sold')
-    ->whereNotNull('date_sold')
-    ->latest('date_sold')
-    ->limit(8)
-    ->get();
+            ->map(fn ($watch) => $this->publicWatchCard($watch))
+            ->values();
 
         return Inertia::render('Welcome', [
             'canLogin' => Route::has('login'),
@@ -98,6 +98,7 @@ $soldWatches = Watch::query()
             'watches' => $watches,
             'soldWatches' => $soldWatches,
             'soldCount' => $soldCount,
+            'soldThisMonthCount' => $soldThisMonthCount,
         ]);
     }
 
@@ -120,9 +121,44 @@ $soldWatches = Watch::query()
         ]);
     }
 
+    public function soldGallery(Request $request)
+    {
+        $search = trim((string) $request->query('search', ''));
+
+        $soldWatches = Watch::query()
+            ->with(['primaryImage'])
+            ->withCount('images')
+            ->where('status', 'sold')
+            ->where('is_visible', true)
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('brand', 'like', "%{$search}%")
+                        ->orWhere('model_name', 'like', "%{$search}%")
+                        ->orWhere('reference_number', 'like', "%{$search}%")
+                        ->orWhere('category', 'like', "%{$search}%")
+                        ->orWhere('condition', 'like', "%{$search}%");
+                });
+            })
+            ->orderByRaw('COALESCE(date_sold, updated_at, created_at) DESC')
+            ->paginate(12)
+            ->withQueryString()
+            ->through(fn ($watch) => $this->publicWatchCard($watch));
+
+        return Inertia::render('Public/SoldGallery', [
+            'soldWatches' => $soldWatches,
+            'filters' => [
+                'search' => $search,
+            ],
+            'soldCount' => Watch::query()
+                ->where('status', 'sold')
+                ->count(),
+        ]);
+    }
+
     private function publicWatchCard(Watch $watch): array
     {
         $price = $this->listedPrice($watch);
+        $primaryImage = $watch->primaryImage;
 
         return [
             'id' => $watch->id,
@@ -137,11 +173,25 @@ $soldWatches = Watch::query()
             'price' => $price,
             'status' => $watch->status,
             'is_featured' => (bool) $watch->is_featured,
-            'created_at' => $watch->created_at?->toISOString(),
-            'date_sold' => $watch->date_sold?->toISOString(),
+            'created_at' => $this->formatDateTime($watch->created_at),
+            'updated_at' => $this->formatDateTime($watch->updated_at),
+            'date_sold' => $this->formatDateTime($watch->date_sold),
             'images_count' => $watch->images_count ?? $watch->images?->count() ?? 0,
-            'primary_image_url' => $watch->primaryImage?->image_url,
-            'primary_hd_url' => $watch->primaryImage?->hd_url,
+
+            // Main image fields used by Welcome.vue
+            'primary_image_url' => $primaryImage?->image_url,
+            'primary_hd_url' => $primaryImage?->hd_url,
+            'image_url' => $primaryImage?->image_url,
+            'thumbnail_url' => $primaryImage?->thumbnail_url,
+
+            // Extra fallback support for Vue image handling
+            'primary_image' => $primaryImage ? [
+                'id' => $primaryImage->id,
+                'image_url' => $primaryImage->image_url,
+                'hd_url' => $primaryImage->hd_url,
+                'thumbnail_url' => $primaryImage->thumbnail_url,
+                'is_primary' => (bool) $primaryImage->is_primary,
+            ] : null,
         ];
     }
 
@@ -169,6 +219,9 @@ $soldWatches = Watch::query()
             'price' => $this->listedPrice($watch),
             'status' => $watch->status,
             'is_featured' => (bool) $watch->is_featured,
+            'created_at' => $this->formatDateTime($watch->created_at),
+            'updated_at' => $this->formatDateTime($watch->updated_at),
+            'date_sold' => $this->formatDateTime($watch->date_sold),
             'images' => $watch->images->map(fn ($image) => [
                 'id' => $image->id,
                 'image_url' => $image->image_url,
@@ -193,37 +246,14 @@ $soldWatches = Watch::query()
         return (float) ($watch->selling_price ?? 0);
     }
 
+    private function formatDateTime($value): ?string
+    {
+        if (! $value) {
+            return null;
+        }
 
-
-    public function soldGallery(\Illuminate\Http\Request $request)
-{
-    $search = trim((string) $request->query('search', ''));
-
-    $soldWatches = \App\Models\Watch::query()
-        ->with(['primaryImage', 'images'])
-        ->where('status', 'sold')
-        ->when($search !== '', function ($query) use ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('brand', 'like', "%{$search}%")
-                    ->orWhere('model_name', 'like', "%{$search}%")
-                    ->orWhere('reference_number', 'like', "%{$search}%")
-                    ->orWhere('category', 'like', "%{$search}%")
-                    ->orWhere('condition', 'like', "%{$search}%");
-            });
-        })
-        ->latest('date_sold')
-        ->latest()
-        ->paginate(12)
-        ->withQueryString();
-
-    return \Inertia\Inertia::render('Public/SoldGallery', [
-        'soldWatches' => $soldWatches,
-        'filters' => [
-            'search' => $search,
-        ],
-        'soldCount' => \App\Models\Watch::query()
-            ->where('status', 'sold')
-            ->count(),
-    ]);
-}
+        return $value instanceof Carbon
+            ? $value->toISOString()
+            : Carbon::parse($value)->toISOString();
+    }
 }
