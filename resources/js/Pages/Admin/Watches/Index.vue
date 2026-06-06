@@ -1224,7 +1224,7 @@ const clearReservation = (watch) => {
     <Head title="Watch Stocks | Montre Nova" />
 
     <AuthenticatedLayout title="Watch Stocks">
-        <div class="space-y-5 pb-56 sm:space-y-7 md:pb-0">
+        <div class="space-y-5 pb-72 sm:space-y-7 md:pb-0">
             <!-- MOBILE QUICK ACTION -->
             <section
                 v-if="activeTab === 'inventory'"
@@ -3463,6 +3463,49 @@ const clearReservation = (watch) => {
                                 : `${displayedWatches.length} shown`
                         }}
                     </p>
+                </div>
+
+                <div class="border-b border-white/10 px-3 py-3">
+                    <div class="relative">
+                        <svg
+                            class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke-width="1.8"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                d="m21 21-4.35-4.35m1.6-5.4a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"
+                            />
+                        </svg>
+
+                        <input
+                            v-model="search"
+                            type="search"
+                            inputmode="search"
+                            autocomplete="off"
+                            placeholder="Search brand, model, ref..."
+                            class="w-full rounded-xl border border-white/10 bg-white/[0.04] py-2.5 pl-9 pr-16 text-sm font-medium text-white outline-none transition placeholder:text-zinc-600 focus:border-white/35 focus:bg-white/[0.06]"
+                        />
+
+                        <button
+                            v-if="String(search || '').trim()"
+                            type="button"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border border-white/10 bg-black/60 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-300 transition active:scale-[0.98]"
+                            @click="search = ''"
+                        >
+                            Clear
+                        </button>
+
+                        <div
+                            v-else-if="isSearchPending || isFiltering"
+                            class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border border-white/10 bg-black/60 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-400"
+                        >
+                            {{ isSearchPending ? "Typing" : "Sync" }}
+                        </div>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-4 gap-1.5 p-2">
