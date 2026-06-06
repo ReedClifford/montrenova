@@ -86,7 +86,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |--------------------------------------------------------------------------
     |
     | Important:
-    | These routes must be declared BEFORE Route::resource('/admin/watches')
+    | These routes must stay BEFORE Route::resource('/admin/watches')
     | so Laravel does not treat "reorder" as a {watch} parameter.
     |
     */

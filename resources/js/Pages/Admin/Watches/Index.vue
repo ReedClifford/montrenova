@@ -2229,71 +2229,124 @@ const clearReservation = (watch) => {
                     </div>
                 </section>
 
-                <!-- LIST VIEW: MOBILE CARDS -->
+                <!-- LIST VIEW: MOBILE SWIPE CARDS -->
                 <section
-                    v-if="!isArrangeMode && viewMode === 'table'"
-                    class="space-y-4 transition-opacity md:hidden"
+                    v-if="
+                        !isArrangeMode &&
+                        viewMode === 'table' &&
+                        displayedWatches.length
+                    "
+                    class="transition-opacity md:hidden"
                     :class="isFiltering ? 'opacity-60' : 'opacity-100'"
                 >
-                    <div
-                        v-for="watch in displayedWatches"
-                        :key="watch.id"
-                        class="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D]"
-                    >
-                        <div class="flex gap-4 p-4">
-                            <div
-                                class="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#050505]"
+                    <div class="mb-3 flex items-end justify-between gap-3">
+                        <div>
+                            <p
+                                class="text-xs uppercase tracking-[0.24em] text-zinc-600"
                             >
-                                <img
-                                    v-if="watch.primary_image"
-                                    :src="watch.primary_image.image_url"
-                                    class="h-full w-full object-cover"
-                                    alt=""
-                                />
+                                Swipe Stocks
+                            </p>
 
-                                <div
-                                    v-else
-                                    class="flex h-full w-full items-center justify-center text-xs font-semibold text-zinc-600"
-                                >
-                                    MN
-                                </div>
+                            <h3 class="mt-1 text-lg font-semibold text-white">
+                                Slide left to browse watches
+                            </h3>
 
-                                <div
-                                    class="absolute bottom-1 right-1 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-medium text-white"
-                                >
-                                    {{ watch.images_count || 0 }}
-                                </div>
-                            </div>
+                            <p class="mt-1 text-xs leading-5 text-zinc-500">
+                                {{ displayedWatches.length }} watch{{
+                                    displayedWatches.length === 1 ? "" : "es"
+                                }}
+                                loaded. Swipe left or right to move between
+                                cards.
+                            </p>
+                        </div>
 
-                            <div class="min-w-0 flex-1">
-                                <div
-                                    class="flex items-start justify-between gap-3"
-                                >
-                                    <div class="min-w-0">
-                                        <p
-                                            class="truncate text-sm font-semibold text-white"
-                                        >
-                                            {{ watch.brand }}
-                                            {{ watch.model_name }}
-                                        </p>
+                        <span
+                            class="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-bold text-zinc-300"
+                        >
+                            Swipe →
+                        </span>
+                    </div>
 
-                                        <p
-                                            class="mt-1 truncate text-xs text-zinc-500"
-                                        >
-                                            Ref.
-                                            {{
-                                                watch.reference_number ||
-                                                "No reference"
-                                            }}
-                                        </p>
+                    <div
+                        class="mn-mobile-swipe-row thin-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-3"
+                    >
+                        <article
+                            v-for="(watch, index) in displayedWatches"
+                            :key="watch.id"
+                            class="mn-mobile-swipe-card w-[84vw] max-w-[380px] shrink-0 overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] shadow-2xl shadow-black/25"
+                        >
+                            <div class="relative bg-[#050505]">
+                                <div class="aspect-[16/11] overflow-hidden">
+                                    <img
+                                        v-if="watch.primary_image"
+                                        :src="watch.primary_image.image_url"
+                                        class="h-full w-full object-cover"
+                                        alt=""
+                                    />
+
+                                    <div
+                                        v-else
+                                        class="flex h-full w-full items-center justify-center text-xs font-semibold tracking-[0.28em] text-zinc-700"
+                                    >
+                                        MONTRE NOVA
                                     </div>
+                                </div>
 
+                                <div
+                                    class="absolute left-3 top-3 flex flex-wrap gap-2"
+                                >
                                     <span
-                                        class="shrink-0 rounded-full border px-2.5 py-1 text-[11px] capitalize"
+                                        class="rounded-full border px-2.5 py-1 text-[11px] font-bold capitalize backdrop-blur"
                                         :class="statusClass(watch.status)"
                                     >
                                         {{ watch.status }}
                                     </span>
+
+                                    <span
+                                        class="rounded-full border px-2.5 py-1 text-[11px] font-bold backdrop-blur"
+                                        :class="visibilityClass(watch)"
+                                    >
+                                        {{
+                                            watch.status === "sold"
+                                                ? "Sold"
+                                                : watch.is_visible
+                                                  ? "Visible"
+                                                  : "Hidden"
+                                        }}
+                                    </span>
+                                </div>
+
+                                <div
+                                    class="absolute bottom-3 left-3 rounded-full bg-black/80 px-3 py-1 text-[11px] font-bold text-white backdrop-blur"
+                                >
+                                    {{ index + 1 }} /
+                                    {{ displayedWatches.length }}
+                                </div>
+
+                                <div
+                                    class="absolute bottom-3 right-3 rounded-full bg-black/80 px-3 py-1 text-[11px] font-bold text-white backdrop-blur"
+                                >
+                                    {{ watch.images_count || 0 }} photos
+                                </div>
+                            </div>
+
+                            <div class="p-4">
+                                <div class="min-w-0">
+                                    <p
+                                        class="truncate text-base font-semibold text-white"
+                                    >
+                                        {{ watch.brand }} {{ watch.model_name }}
+                                    </p>
+
+                                    <p
+                                        class="mt-1 truncate text-xs text-zinc-500"
+                                    >
+                                        Ref.
+                                        {{
+                                            watch.reference_number ||
+                                            "No reference"
+                                        }}
+                                    </p>
                                 </div>
 
                                 <div class="mt-3 flex flex-wrap gap-2">
@@ -2312,109 +2365,111 @@ const clearReservation = (watch) => {
                                     </span>
                                 </div>
 
-                                <p class="mt-3 text-xs leading-5 text-zinc-500">
-                                    {{ stockAgeLabel(watch) }}
-                                </p>
-                            </div>
-                        </div>
+                                <div class="mt-4 grid grid-cols-3 gap-2">
+                                    <div class="mn-info-box p-3">
+                                        <p class="mn-info-label">Price</p>
+                                        <p class="mn-info-value">
+                                            {{
+                                                compactPeso(displayPrice(watch))
+                                            }}
+                                        </p>
+                                    </div>
 
-                        <div
-                            class="grid grid-cols-3 gap-2 border-y border-white/10 p-4"
-                        >
-                            <div>
-                                <p class="mn-info-label">Price</p>
-                                <p class="mn-info-value">
-                                    {{ compactPeso(displayPrice(watch)) }}
-                                </p>
-                            </div>
+                                    <div class="mn-info-box p-3">
+                                        <p class="mn-info-label">Profit</p>
+                                        <p
+                                            class="mn-info-value"
+                                            :class="
+                                                displayProfit(watch) >= 0
+                                                    ? 'text-emerald-300'
+                                                    : 'text-red-300'
+                                            "
+                                        >
+                                            {{
+                                                compactPeso(
+                                                    displayProfit(watch),
+                                                )
+                                            }}
+                                        </p>
+                                    </div>
 
-                            <div>
-                                <p class="mn-info-label">Profit</p>
-                                <p
-                                    class="mn-info-value"
-                                    :class="
-                                        displayProfit(watch) >= 0
-                                            ? 'text-emerald-300'
-                                            : 'text-red-300'
-                                    "
+                                    <div class="mn-info-box p-3">
+                                        <p class="mn-info-label">Margin</p>
+                                        <p class="mn-info-value">
+                                            {{
+                                                profitMargin(watch).toFixed(1)
+                                            }}%
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="mt-4 rounded-2xl border p-3"
+                                    :class="recommendedAction(watch).className"
                                 >
-                                    {{ compactPeso(displayProfit(watch)) }}
-                                </p>
+                                    <p
+                                        class="text-[11px] font-bold uppercase tracking-[0.16em]"
+                                    >
+                                        {{ recommendedAction(watch).label }}
+                                    </p>
+
+                                    <p
+                                        class="mt-1 text-xs leading-5 opacity-80"
+                                    >
+                                        {{ recommendedAction(watch).helper }}
+                                    </p>
+                                </div>
+
+                                <div class="mt-4 grid grid-cols-2 gap-2">
+                                    <button
+                                        v-if="watch.status !== 'sold'"
+                                        type="button"
+                                        class="mn-action-btn border-amber-500/20 text-amber-300"
+                                        @click="openReserveModal(watch)"
+                                    >
+                                        {{
+                                            watch.status === "reserved"
+                                                ? "Edit Reserve"
+                                                : "Reserve"
+                                        }}
+                                    </button>
+
+                                    <button
+                                        v-if="watch.status === 'reserved'"
+                                        type="button"
+                                        class="mn-action-btn border-white/10 text-zinc-300"
+                                        @click="clearReservation(watch)"
+                                    >
+                                        Clear
+                                    </button>
+
+                                    <button
+                                        v-if="watch.status !== 'sold'"
+                                        type="button"
+                                        class="mn-action-btn border-emerald-500/20 text-emerald-300"
+                                        @click="openMarkSoldModal(watch)"
+                                    >
+                                        Mark Sold
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="mn-action-btn border-white/10 text-zinc-300"
+                                        @click="openEditModal(watch)"
+                                    >
+                                        Edit
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="mn-action-btn border-red-500/20 text-red-300"
+                                        @click="openDeleteModal(watch)"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
                             </div>
-
-                            <div>
-                                <p class="mn-info-label">Margin</p>
-                                <p class="mn-info-value">
-                                    {{ profitMargin(watch).toFixed(1) }}%
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="border-b border-white/10 p-4">
-                            <div
-                                class="rounded-2xl border p-4"
-                                :class="recommendedAction(watch).className"
-                            >
-                                <p
-                                    class="text-xs font-semibold uppercase tracking-[0.18em]"
-                                >
-                                    {{ recommendedAction(watch).label }}
-                                </p>
-
-                                <p class="mt-1 text-xs opacity-80">
-                                    {{ recommendedAction(watch).helper }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-2 p-4">
-                            <button
-                                v-if="watch.status !== 'sold'"
-                                type="button"
-                                class="mn-action-btn border-amber-500/20 text-amber-300"
-                                @click="openReserveModal(watch)"
-                            >
-                                {{
-                                    watch.status === "reserved"
-                                        ? "Edit Reserve"
-                                        : "Reserve"
-                                }}
-                            </button>
-
-                            <button
-                                v-if="watch.status === 'reserved'"
-                                type="button"
-                                class="mn-action-btn border-white/10 text-zinc-300"
-                                @click="clearReservation(watch)"
-                            >
-                                Clear
-                            </button>
-
-                            <button
-                                v-if="watch.status !== 'sold'"
-                                type="button"
-                                class="mn-action-btn border-emerald-500/20 text-emerald-300"
-                                @click="openMarkSoldModal(watch)"
-                            >
-                                Mark Sold
-                            </button>
-
-                            <button
-                                type="button"
-                                class="mn-action-btn border-white/10 text-zinc-300"
-                                @click="openEditModal(watch)"
-                            >
-                                Edit
-                            </button>
-
-                            <button
-                                type="button"
-                                class="mn-action-btn border-red-500/20 text-red-300"
-                                @click="openDeleteModal(watch)"
-                            >
-                                Delete
-                            </button>
-                        </div>
+                        </article>
                     </div>
                 </section>
 
@@ -3725,6 +3780,17 @@ const clearReservation = (watch) => {
 .thin-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgb(255 255 255 / 0.35);
 }
+
+.mn-mobile-swipe-row {
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 1rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+.mn-mobile-swipe-card {
+    scroll-snap-align: start;
+}
+
 @keyframes mn-filter-bar {
     0% {
         transform: translateX(-110%);

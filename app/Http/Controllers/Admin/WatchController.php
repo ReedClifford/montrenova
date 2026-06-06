@@ -7,7 +7,6 @@ use App\Models\Watch;
 use App\Models\WatchImage;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -98,8 +97,6 @@ class WatchController extends Controller
             });
         })
         ->when($status, fn ($query) => $query->where('status', $status))
-        ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
-        ->orderBy('display_order')
         ->latest()
         ->paginate(10)
         ->withQueryString();
@@ -159,18 +156,6 @@ class WatchController extends Controller
             ];
         });
 
-    $arrangeWatches = Watch::query()
-        ->with(['primaryImage'])
-        ->withCount('images')
-        ->where('status', 'available')
-        ->where('is_visible', true)
-        ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
-        ->orderBy('display_order')
-        ->latest()
-        ->get()
-        ->map(fn ($watch) => $this->adminArrangeWatchCard($watch))
-        ->values();
-
     $activeInventoryQuery = Watch::query()
         ->where('status', '!=', 'sold');
 
@@ -195,7 +180,6 @@ class WatchController extends Controller
 
     return Inertia::render('Admin/Watches/Index', [
         'watches' => $watches,
-        'arrangeWatches' => $arrangeWatches,
         'warrantyWatches' => $warrantyWatches,
         'filters' => [
             'search' => $search,
@@ -243,8 +227,7 @@ class WatchController extends Controller
         $watch = Watch::create($validated);
 
         $this->syncSections($watch, $request->input('sections', []));
-        $newImages = $this->uploadImages($watch, $request);
-        $this->applyRequestedPrimaryImage($watch, $request, $newImages);
+        $this->uploadImages($watch, $request);
         $this->normalizeImageOrder($watch);
 
         return redirect()
@@ -285,8 +268,7 @@ public function update(Request $request, Watch $watch)
     $watch->update($validated);
 
     $this->syncSections($watch, $request->input('sections', []));
-    $newImages = $this->uploadImages($watch, $request);
-    $this->applyRequestedPrimaryImage($watch, $request, $newImages);
+    $this->uploadImages($watch, $request);
     $this->normalizeImageOrder($watch);
 
     return redirect()
@@ -368,24 +350,6 @@ public function update(Request $request, Watch $watch)
         ]);
 
         return back()->with('success', 'Reservation cleared successfully.');
-    }
-
-    public function reorder(Request $request)
-    {
-        $validated = $request->validate([
-            'watch_ids' => ['required', 'array', 'min:1'],
-            'watch_ids.*' => ['required', 'integer', 'exists:watches,id'],
-        ]);
-
-        DB::transaction(function () use ($validated) {
-            foreach (array_values($validated['watch_ids']) as $index => $watchId) {
-                Watch::whereKey($watchId)->update([
-                    'display_order' => $index + 1,
-                ]);
-            }
-        });
-
-        return back()->with('success', 'Watch display order updated successfully.');
     }
 
     public function deleteImage(WatchImage $image)
@@ -505,39 +469,6 @@ public function update(Request $request, Watch $watch)
         return back()->with('success', 'Photo order updated successfully.');
     }
 
-    private function adminArrangeWatchCard(Watch $watch): array
-    {
-        $primaryImage = $watch->primaryImage;
-
-        return [
-            'id' => $watch->id,
-            'brand' => $watch->brand,
-            'model_name' => $watch->model_name,
-            'reference_number' => $watch->reference_number,
-            'condition' => $watch->condition,
-            'category' => $watch->category,
-            'capital_price' => (float) ($watch->capital_price ?? 0),
-            'selling_price' => (float) ($watch->selling_price ?? 0),
-            'discounted_price' => $watch->discounted_price ? (float) $watch->discounted_price : null,
-            'sold_price' => $watch->sold_price ? (float) $watch->sold_price : null,
-            'status' => $watch->status,
-            'is_visible' => (bool) $watch->is_visible,
-            'is_featured' => (bool) $watch->is_featured,
-            'display_order' => (int) ($watch->display_order ?? 0),
-            'created_at' => $watch->created_at ? Carbon::parse($watch->created_at)->toISOString() : null,
-            'updated_at' => $watch->updated_at ? Carbon::parse($watch->updated_at)->toISOString() : null,
-            'date_sold' => $watch->date_sold ? Carbon::parse($watch->date_sold)->toISOString() : null,
-            'images_count' => $watch->images_count ?? 0,
-            'primary_image' => $primaryImage ? [
-                'id' => $primaryImage->id,
-                'image_url' => $primaryImage->image_url,
-                'hd_url' => $primaryImage->hd_url,
-                'thumbnail_url' => $primaryImage->thumbnail_url,
-                'is_primary' => (bool) $primaryImage->is_primary,
-            ] : null,
-        ];
-    }
-
     private function validateWatch(Request $request, ?int $watchId = null): array
     {
         return $request->validate([
@@ -580,13 +511,12 @@ public function update(Request $request, Watch $watch)
         ]);
     }
 
-    private function uploadImages(Watch $watch, Request $request): array
+    private function uploadImages(Watch $watch, Request $request): void
     {
         if (! $request->hasFile('images')) {
-            return [];
+            return;
         }
 
-        $createdImages = [];
         $currentCount = $watch->images()->count();
 
         foreach ($request->file('images') as $index => $file) {
@@ -597,7 +527,7 @@ public function update(Request $request, Watch $watch)
             $folder = 'watches/' . $watch->id;
             $path = $file->store($folder, 'public');
 
-            $createdImages[] = $watch->images()->create([
+            $watch->images()->create([
                 'image_path' => $path,
                 'hd_path' => $path,
                 'thumbnail_path' => $path,
@@ -605,8 +535,6 @@ public function update(Request $request, Watch $watch)
                 'sort_order' => $currentCount + $index + 1,
             ]);
         }
-
-        return $createdImages;
     }
 
     private function syncSections(Watch $watch, array $sections): void
@@ -622,49 +550,6 @@ public function update(Request $request, Watch $watch)
                 'title' => $section['title'] ?? '',
                 'content' => $section['content'] ?? '',
                 'sort_order' => $index + 1,
-            ]);
-        }
-    }
-
-    private function applyRequestedPrimaryImage(Watch $watch, Request $request, array $newImages = []): void
-    {
-        $selectedImage = null;
-
-        $primaryExistingImageId = $request->input('primary_existing_image_id');
-
-        if ($primaryExistingImageId) {
-            $selectedImage = $watch->images()
-                ->whereKey($primaryExistingImageId)
-                ->first();
-        }
-
-        if (! $selectedImage && $request->has('primary_new_image_index')) {
-            $primaryNewImageIndex = (int) $request->input('primary_new_image_index');
-
-            $selectedImage = $newImages[$primaryNewImageIndex] ?? null;
-        }
-
-        if (! $selectedImage) {
-            return;
-        }
-
-        WatchImage::where('watch_id', $watch->id)
-            ->update(['is_primary' => false]);
-
-        $selectedImage->update([
-            'is_primary' => true,
-            'sort_order' => 1,
-        ]);
-
-        $otherImages = $watch->images()
-            ->where('id', '!=', $selectedImage->id)
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get();
-
-        foreach ($otherImages as $index => $otherImage) {
-            $otherImage->update([
-                'sort_order' => $index + 2,
             ]);
         }
     }
