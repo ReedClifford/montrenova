@@ -6,7 +6,7 @@ import DeleteWatchModal from "./DeleteWatchModal.vue";
 import MarkSoldModal from "./MarkSoldModal.vue";
 import ReserveWatchModal from "./ReserveWatchModal.vue";
 import { Head, Link, router } from "@inertiajs/vue3";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
     watches: {
@@ -71,7 +71,61 @@ const showReserveModal = ref(false);
 
 const selectedWatch = ref(null);
 
-let timeout = null;
+let searchDebounceTimer = null;
+
+const isFiltering = ref(false);
+const isSearchPending = ref(false);
+
+const clearSearchDebounce = () => {
+    if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = null;
+    }
+};
+
+const applyServerFilters = ({
+    debounce = 0,
+    nextActionFilter = "all",
+} = {}) => {
+    clearSearchDebounce();
+
+    const run = () => {
+        isSearchPending.value = false;
+        isFiltering.value = true;
+        actionFilter.value = nextActionFilter;
+
+        router.get(
+            route("admin.watches.index"),
+            {
+                search: String(search.value || "").trim(),
+                status: status.value,
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                only: ["watches", "warrantyWatches", "summary", "filters"],
+                onFinish: () => {
+                    isFiltering.value = false;
+                },
+                onCancel: () => {
+                    isFiltering.value = false;
+                },
+                onError: () => {
+                    isFiltering.value = false;
+                },
+            },
+        );
+    };
+
+    if (debounce > 0) {
+        isSearchPending.value = true;
+        searchDebounceTimer = setTimeout(run, debounce);
+        return;
+    }
+
+    run();
+};
 
 const peso = (value) => {
     return new Intl.NumberFormat("en-PH", {
@@ -569,6 +623,28 @@ const visibleWatchesCount = computed(() => {
     ).length;
 });
 
+const watchActionStats = computed(() => {
+    const stats = {
+        visible: 0,
+        needsPush: 0,
+        noPhoto: 0,
+        lowMargin: 0,
+        reservationOverdue: 0,
+        readyToPost: 0,
+    };
+
+    currentPageWatches.value.forEach((watch) => {
+        if (watch.is_visible && watch.status !== "sold") stats.visible += 1;
+        if (isSlowMoving(watch)) stats.needsPush += 1;
+        if (hasNoPhoto(watch)) stats.noPhoto += 1;
+        if (isLowMargin(watch)) stats.lowMargin += 1;
+        if (isReservationOverdue(watch)) stats.reservationOverdue += 1;
+        if (isReadyToPost(watch)) stats.readyToPost += 1;
+    });
+
+    return stats;
+});
+
 const warrantyRecords = computed(() => props.warrantyWatches?.data || []);
 
 const warrantyActiveCount = computed(() => {
@@ -622,6 +698,23 @@ const displayedWatches = computed(() => {
 });
 
 const setActionFilter = (value) => {
+    if (
+        value === actionFilter.value &&
+        !(value === "visible" && status.value !== "")
+    ) {
+        return;
+    }
+
+    if (value === "visible" && status.value !== "") {
+        status.value = "";
+
+        applyServerFilters({
+            nextActionFilter: "visible",
+        });
+
+        return;
+    }
+
     actionFilter.value = value;
 };
 
@@ -739,32 +832,28 @@ const warrantyFilterTabs = computed(() => [
 const actionCards = computed(() => [
     {
         label: "Needs Push",
-        value: currentPageWatches.value.filter((watch) => isSlowMoving(watch))
-            .length,
+        value: watchActionStats.value.needsPush,
         helper: "Slow moving or dead stock",
         filter: "needs_push",
         className: "border-amber-500/20 bg-amber-500/10 text-amber-300",
     },
     {
         label: "No Photo",
-        value: currentPageWatches.value.filter((watch) => hasNoPhoto(watch))
-            .length,
+        value: watchActionStats.value.noPhoto,
         helper: "Needs product images",
         filter: "no_photo",
         className: "border-red-500/20 bg-red-500/10 text-red-300",
     },
     {
         label: "Low Margin",
-        value: currentPageWatches.value.filter((watch) => isLowMargin(watch))
-            .length,
+        value: watchActionStats.value.lowMargin,
         helper: "Review price or cost",
         filter: "low_margin",
         className: "border-red-500/20 bg-red-500/10 text-red-300",
     },
     {
         label: "Ready to Post",
-        value: currentPageWatches.value.filter((watch) => isReadyToPost(watch))
-            .length,
+        value: watchActionStats.value.readyToPost,
         helper: "Available with photos",
         filter: "ready_to_post",
         className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
@@ -780,38 +869,32 @@ const quickActionFilters = computed(() => [
     {
         label: "Visible",
         value: "visible",
-        count: visibleWatchesCount.value,
+        count: watchActionStats.value.visible,
     },
     {
         label: "Needs Push",
         value: "needs_push",
-        count: currentPageWatches.value.filter((watch) => isSlowMoving(watch))
-            .length,
+        count: watchActionStats.value.needsPush,
     },
     {
         label: "No Photo",
         value: "no_photo",
-        count: currentPageWatches.value.filter((watch) => hasNoPhoto(watch))
-            .length,
+        count: watchActionStats.value.noPhoto,
     },
     {
         label: "Low Margin",
         value: "low_margin",
-        count: currentPageWatches.value.filter((watch) => isLowMargin(watch))
-            .length,
+        count: watchActionStats.value.lowMargin,
     },
     {
         label: "Overdue",
         value: "reservation_overdue",
-        count: currentPageWatches.value.filter((watch) =>
-            isReservationOverdue(watch),
-        ).length,
+        count: watchActionStats.value.reservationOverdue,
     },
     {
         label: "Ready",
         value: "ready_to_post",
-        count: currentPageWatches.value.filter((watch) => isReadyToPost(watch))
-            .length,
+        count: watchActionStats.value.readyToPost,
     },
 ]);
 
@@ -832,6 +915,51 @@ const statusTabs = computed(() => [
     { label: "Hidden", value: "hidden", count: null },
 ]);
 
+const selectedStatusLabel = computed(() => {
+    return (
+        statusTabs.value.find((tab) => tab.value === status.value)?.label ||
+        "All"
+    );
+});
+
+const selectedActionFilterLabel = computed(() => {
+    return (
+        quickActionFilters.value.find(
+            (filter) => filter.value === actionFilter.value,
+        )?.label || "All"
+    );
+});
+
+const hasActiveFilters = computed(() => {
+    return (
+        String(search.value || "").trim() !== "" ||
+        status.value !== "" ||
+        actionFilter.value !== "all"
+    );
+});
+
+const filterStateLabel = computed(() => {
+    if (isSearchPending.value) return "Typing… applying search shortly";
+    if (isFiltering.value) return "Applying filters…";
+    if (!hasActiveFilters.value) return "Showing all loaded watches";
+
+    const parts = [];
+
+    if (String(search.value || "").trim()) {
+        parts.push(`Search: ${String(search.value).trim()}`);
+    }
+
+    if (selectedStatusLabel.value !== "All") {
+        parts.push(`Status: ${selectedStatusLabel.value}`);
+    }
+
+    if (selectedActionFilterLabel.value !== "All") {
+        parts.push(`Quick: ${selectedActionFilterLabel.value}`);
+    }
+
+    return parts.join(" • ");
+});
+
 onMounted(() => {
     const params = new URLSearchParams(window.location.search);
 
@@ -840,28 +968,25 @@ onMounted(() => {
     }
 });
 
-watch([search, status], () => {
-    clearTimeout(timeout);
-    actionFilter.value = "all";
+watch(search, () => {
+    applyServerFilters({
+        debounce: 500,
+        nextActionFilter: "all",
+    });
+});
 
-    timeout = setTimeout(() => {
-        router.get(
-            route("admin.watches.index"),
-            {
-                search: search.value,
-                status: status.value,
-            },
-            {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-            },
-        );
-    }, 350);
+onBeforeUnmount(() => {
+    clearSearchDebounce();
 });
 
 const setStatusFilter = (value) => {
+    if (status.value === value && actionFilter.value === "all") return;
+
     status.value = value;
+
+    applyServerFilters({
+        nextActionFilter: "all",
+    });
 };
 
 const setActiveTab = (tab) => {
@@ -1231,8 +1356,17 @@ const clearReservation = (watch) => {
 
                 <!-- FILTERS -->
                 <section
-                    class="rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 sm:p-6"
+                    class="relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 sm:p-6"
                 >
+                    <div
+                        v-if="isFiltering || isSearchPending"
+                        class="absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-white/[0.05]"
+                    >
+                        <div
+                            class="h-full w-1/2 animate-[mn-filter-bar_1.1s_ease-in-out_infinite] rounded-full bg-white"
+                        ></div>
+                    </div>
+
                     <div class="flex flex-col gap-5">
                         <div
                             class="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center"
@@ -1244,12 +1378,25 @@ const clearReservation = (watch) => {
                                     Search Stocks
                                 </p>
 
-                                <input
-                                    v-model="search"
-                                    type="text"
-                                    placeholder="Search brand, model, reference, buyer, serial..."
-                                    class="mn-input"
-                                />
+                                <div class="relative">
+                                    <input
+                                        v-model="search"
+                                        type="text"
+                                        placeholder="Search brand, model, reference, buyer, serial..."
+                                        class="mn-input pr-24"
+                                    />
+
+                                    <div
+                                        v-if="isSearchPending || isFiltering"
+                                        class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-400"
+                                    >
+                                        {{
+                                            isSearchPending
+                                                ? "Typing"
+                                                : "Syncing"
+                                        }}
+                                    </div>
+                                </div>
                             </div>
 
                             <div>
@@ -1355,28 +1502,51 @@ const clearReservation = (watch) => {
                         </div>
 
                         <div
-                            class="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-400 sm:flex-row sm:items-center sm:justify-between"
+                            class="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-400 sm:flex-row sm:items-center sm:justify-between"
                         >
-                            <span>
-                                Showing
-                                <strong class="text-white">
-                                    {{ displayedWatches.length }}
-                                </strong>
-                                of
-                                <strong class="text-white">
-                                    {{ currentPageWatches.length }}
-                                </strong>
-                                loaded watches
-                            </span>
+                            <div>
+                                <span>
+                                    Showing
+                                    <strong class="text-white">
+                                        {{ displayedWatches.length }}
+                                    </strong>
+                                    of
+                                    <strong class="text-white">
+                                        {{ currentPageWatches.length }}
+                                    </strong>
+                                    loaded watches
+                                </span>
 
-                            <button
-                                v-if="actionFilter !== 'all'"
-                                type="button"
-                                class="text-xs font-semibold text-white underline underline-offset-4"
-                                @click="setActionFilter('all')"
-                            >
-                                Clear action filter
-                            </button>
+                                <p class="mt-1 text-xs text-zinc-600">
+                                    {{ filterStateLabel }}
+                                </p>
+                            </div>
+
+                            <div class="flex items-center gap-3">
+                                <span
+                                    v-if="isFiltering || isSearchPending"
+                                    class="inline-flex items-center gap-2 text-xs font-semibold text-zinc-300"
+                                >
+                                    <span
+                                        class="h-1.5 w-1.5 animate-pulse rounded-full bg-white"
+                                    ></span>
+                                    {{
+                                        isSearchPending ? "Waiting" : "Applying"
+                                    }}
+                                </span>
+
+                                <button
+                                    v-if="hasActiveFilters"
+                                    type="button"
+                                    class="text-xs font-semibold text-white underline underline-offset-4"
+                                    @click="
+                                        search = '';
+                                        setStatusFilter('');
+                                    "
+                                >
+                                    Clear filters
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -1384,7 +1554,8 @@ const clearReservation = (watch) => {
                 <!-- GALLERY VIEW -->
                 <section
                     v-if="viewMode === 'gallery'"
-                    class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+                    class="grid gap-4 transition-opacity sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+                    :class="isFiltering ? 'opacity-60' : 'opacity-100'"
                 >
                     <div
                         v-for="watch in displayedWatches"
@@ -1567,7 +1738,8 @@ const clearReservation = (watch) => {
                 <!-- LIST VIEW: MOBILE CARDS -->
                 <section
                     v-if="viewMode === 'table'"
-                    class="space-y-4 md:hidden"
+                    class="space-y-4 transition-opacity md:hidden"
+                    :class="isFiltering ? 'opacity-60' : 'opacity-100'"
                 >
                     <div
                         v-for="watch in displayedWatches"
@@ -1755,7 +1927,8 @@ const clearReservation = (watch) => {
                 <!-- LIST VIEW: DESKTOP TABLE -->
                 <section
                     v-if="viewMode === 'table'"
-                    class="hidden overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] md:block"
+                    class="hidden overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] transition-opacity md:block"
+                    :class="isFiltering ? 'opacity-60' : 'opacity-100'"
                 >
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-white/10">
@@ -2786,7 +2959,11 @@ const clearReservation = (watch) => {
                     </p>
 
                     <p class="text-[10px] font-semibold text-zinc-500">
-                        {{ displayedWatches.length }} shown
+                        {{
+                            isFiltering
+                                ? "Applying…"
+                                : `${displayedWatches.length} shown`
+                        }}
                     </p>
                 </div>
 
@@ -2799,10 +2976,7 @@ const clearReservation = (watch) => {
                                 ? 'border-white bg-white text-black'
                                 : 'border-white/10 bg-white/[0.04] text-zinc-400'
                         "
-                        @click="
-                            status = '';
-                            actionFilter = 'all';
-                        "
+                        @click="setStatusFilter('')"
                     >
                         <span class="block">All</span>
                         <span class="mt-0.5 block text-[10px] opacity-60">
@@ -2818,10 +2992,7 @@ const clearReservation = (watch) => {
                                 ? 'border-white bg-white text-black'
                                 : 'border-white/10 bg-white/[0.04] text-zinc-400'
                         "
-                        @click="
-                            status = '';
-                            actionFilter = 'visible';
-                        "
+                        @click="setActionFilter('visible')"
                     >
                         <span class="block">Visible</span>
                         <span class="mt-0.5 block text-[10px] opacity-60">
@@ -2984,5 +3155,18 @@ const clearReservation = (watch) => {
 
 .thin-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgb(255 255 255 / 0.35);
+}
+@keyframes mn-filter-bar {
+    0% {
+        transform: translateX(-110%);
+    }
+
+    50% {
+        transform: translateX(60%);
+    }
+
+    100% {
+        transform: translateX(220%);
+    }
 }
 </style>
