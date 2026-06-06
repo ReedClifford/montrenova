@@ -159,6 +159,18 @@ class WatchController extends Controller
             ];
         });
 
+    $arrangeWatches = Watch::query()
+        ->with(['primaryImage'])
+        ->withCount('images')
+        ->where('status', 'available')
+        ->where('is_visible', true)
+        ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
+        ->orderBy('display_order')
+        ->latest()
+        ->get()
+        ->map(fn ($watch) => $this->adminArrangeWatchCard($watch))
+        ->values();
+
     $activeInventoryQuery = Watch::query()
         ->where('status', '!=', 'sold');
 
@@ -183,6 +195,7 @@ class WatchController extends Controller
 
     return Inertia::render('Admin/Watches/Index', [
         'watches' => $watches,
+        'arrangeWatches' => $arrangeWatches,
         'warrantyWatches' => $warrantyWatches,
         'filters' => [
             'search' => $search,
@@ -490,6 +503,39 @@ public function update(Request $request, Watch $watch)
         $this->normalizeImageOrder($watch);
 
         return back()->with('success', 'Photo order updated successfully.');
+    }
+
+    private function adminArrangeWatchCard(Watch $watch): array
+    {
+        $primaryImage = $watch->primaryImage;
+
+        return [
+            'id' => $watch->id,
+            'brand' => $watch->brand,
+            'model_name' => $watch->model_name,
+            'reference_number' => $watch->reference_number,
+            'condition' => $watch->condition,
+            'category' => $watch->category,
+            'capital_price' => (float) ($watch->capital_price ?? 0),
+            'selling_price' => (float) ($watch->selling_price ?? 0),
+            'discounted_price' => $watch->discounted_price ? (float) $watch->discounted_price : null,
+            'sold_price' => $watch->sold_price ? (float) $watch->sold_price : null,
+            'status' => $watch->status,
+            'is_visible' => (bool) $watch->is_visible,
+            'is_featured' => (bool) $watch->is_featured,
+            'display_order' => (int) ($watch->display_order ?? 0),
+            'created_at' => $watch->created_at ? Carbon::parse($watch->created_at)->toISOString() : null,
+            'updated_at' => $watch->updated_at ? Carbon::parse($watch->updated_at)->toISOString() : null,
+            'date_sold' => $watch->date_sold ? Carbon::parse($watch->date_sold)->toISOString() : null,
+            'images_count' => $watch->images_count ?? 0,
+            'primary_image' => $primaryImage ? [
+                'id' => $primaryImage->id,
+                'image_url' => $primaryImage->image_url,
+                'hd_url' => $primaryImage->hd_url,
+                'thumbnail_url' => $primaryImage->thumbnail_url,
+                'is_primary' => (bool) $primaryImage->is_primary,
+            ] : null,
+        ];
     }
 
     private function validateWatch(Request $request, ?int $watchId = null): array

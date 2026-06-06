@@ -16,6 +16,10 @@ const props = defineProps({
             links: [],
         }),
     },
+    arrangeWatches: {
+        type: Array,
+        default: () => [],
+    },
     warrantyWatches: {
         type: Object,
         default: () => ({
@@ -108,7 +112,13 @@ const applyServerFilters = ({
                 preserveState: true,
                 preserveScroll: true,
                 replace: true,
-                only: ["watches", "warrantyWatches", "summary", "filters"],
+                only: [
+                    "watches",
+                    "arrangeWatches",
+                    "warrantyWatches",
+                    "summary",
+                    "filters",
+                ],
                 onFinish: () => {
                     isFiltering.value = false;
                 },
@@ -723,7 +733,9 @@ const setActionFilter = (value) => {
 };
 
 const arrangeSourceWatches = computed(() => {
-    return displayedWatches.value.filter((watch) => watch.status !== "sold");
+    return (props.arrangeWatches || []).filter((watch) => {
+        return watch.status === "available" && Boolean(watch.is_visible);
+    });
 });
 
 const canArrangeWatches = computed(() => {
@@ -798,7 +810,12 @@ const saveArrangeOrder = () => {
                 cancelArrangeMode();
 
                 router.reload({
-                    only: ["watches", "warrantyWatches", "summary"],
+                    only: [
+                        "watches",
+                        "arrangeWatches",
+                        "warrantyWatches",
+                        "summary",
+                    ],
                     preserveScroll: true,
                 });
             },
@@ -1112,7 +1129,7 @@ const closeCreateModal = () => {
     showCreateModal.value = false;
 
     router.reload({
-        only: ["watches", "warrantyWatches", "summary"],
+        only: ["watches", "arrangeWatches", "warrantyWatches", "summary"],
         preserveScroll: true,
     });
 };
@@ -1127,7 +1144,7 @@ const closeEditModal = () => {
     selectedWatch.value = null;
 
     router.reload({
-        only: ["watches", "warrantyWatches", "summary"],
+        only: ["watches", "arrangeWatches", "warrantyWatches", "summary"],
         preserveScroll: true,
     });
 };
@@ -1142,7 +1159,7 @@ const closeDeleteModal = () => {
     selectedWatch.value = null;
 
     router.reload({
-        only: ["watches", "warrantyWatches", "summary"],
+        only: ["watches", "arrangeWatches", "warrantyWatches", "summary"],
         preserveScroll: true,
     });
 };
@@ -1157,7 +1174,7 @@ const closeMarkSoldModal = () => {
     selectedWatch.value = null;
 
     router.reload({
-        only: ["watches", "warrantyWatches", "summary"],
+        only: ["watches", "arrangeWatches", "warrantyWatches", "summary"],
         preserveScroll: true,
     });
 };
@@ -1172,7 +1189,7 @@ const closeReserveModal = () => {
     selectedWatch.value = null;
 
     router.reload({
-        only: ["watches", "warrantyWatches", "summary"],
+        only: ["watches", "arrangeWatches", "warrantyWatches", "summary"],
         preserveScroll: true,
     });
 };
@@ -1189,7 +1206,12 @@ const clearReservation = (watch) => {
             preserveScroll: true,
             onSuccess: () => {
                 router.reload({
-                    only: ["watches", "warrantyWatches", "summary"],
+                    only: [
+                        "watches",
+                        "arrangeWatches",
+                        "warrantyWatches",
+                        "summary",
+                    ],
                     preserveScroll: true,
                 });
             },
@@ -1444,8 +1466,9 @@ const clearReservation = (watch) => {
                                 >
                                     Move watches up or down, then save. This
                                     updates the display_order used by your
-                                    public website. For best results, arrange
-                                    available and visible watches first.
+                                    public website. This list shows all
+                                    available and visible watches, not just the
+                                    current page.
                                 </p>
                             </div>
 
@@ -1490,16 +1513,16 @@ const clearReservation = (watch) => {
 
                             <div>
                                 <p class="font-semibold">
-                                    Current page arrangement
+                                    Public website arrangement
                                 </p>
 
                                 <p
                                     class="mt-1 text-xs leading-5 text-amber-100/80"
                                 >
-                                    This arranges the watches currently loaded
-                                    on this page. Use the Available / Visible
-                                    filter before arranging public website
-                                    display.
+                                    This arranges all watches that are available
+                                    and visible on the public website, even if
+                                    they are not on the current paginated admin
+                                    page.
                                 </p>
                             </div>
                         </div>
@@ -1513,7 +1536,8 @@ const clearReservation = (watch) => {
                             </p>
 
                             <p class="mt-2 text-sm text-zinc-500">
-                                Clear filters or switch to Available stocks.
+                                Make at least one watch Available and Visible
+                                first.
                             </p>
                         </div>
 
