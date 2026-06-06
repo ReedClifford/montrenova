@@ -1107,7 +1107,7 @@ const clearReservation = (watch) => {
     <Head title="Watch Stocks | Montre Nova" />
 
     <AuthenticatedLayout title="Watch Stocks">
-        <div class="space-y-5 pb-28 sm:space-y-7 md:pb-0">
+        <div class="space-y-5 pb-56 sm:space-y-7 md:pb-0">
             <!-- MOBILE QUICK ACTION -->
             <section
                 v-if="activeTab === 'inventory'"
@@ -2945,13 +2945,17 @@ const clearReservation = (watch) => {
             </template>
         </div>
 
-        <!-- MOBILE STICKY FILTER DOCK -->
+        <!-- MOBILE FLOATING FILTER DOCK -->
         <div
             v-if="activeTab === 'inventory'"
-            class="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050505]/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl md:hidden"
+            class="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] z-[90] md:hidden"
         >
-            <div class="mx-auto max-w-md">
-                <div class="mb-2 flex items-center justify-between gap-3 px-1">
+            <div
+                class="mx-auto max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#050505]/95 shadow-2xl shadow-black/70 backdrop-blur-xl"
+            >
+                <div
+                    class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-2.5"
+                >
                     <p
                         class="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500"
                     >
@@ -2967,13 +2971,13 @@ const clearReservation = (watch) => {
                     </p>
                 </div>
 
-                <div class="grid grid-cols-4 gap-2">
+                <div class="grid grid-cols-4 gap-1.5 p-2">
                     <button
                         type="button"
-                        class="rounded-xl border px-2 py-2.5 text-xs font-bold transition active:scale-[0.98]"
+                        class="rounded-xl border px-2 py-2 text-[11px] font-black transition active:scale-[0.98]"
                         :class="
                             status === '' && actionFilter === 'all'
-                                ? 'border-white bg-white text-black'
+                                ? 'border-white bg-white text-black shadow-lg shadow-white/10'
                                 : 'border-white/10 bg-white/[0.04] text-zinc-400'
                         "
                         @click="setStatusFilter('')"
@@ -2986,10 +2990,10 @@ const clearReservation = (watch) => {
 
                     <button
                         type="button"
-                        class="rounded-xl border px-2 py-2.5 text-xs font-bold transition active:scale-[0.98]"
+                        class="rounded-xl border px-2 py-2 text-[11px] font-black transition active:scale-[0.98]"
                         :class="
                             status === '' && actionFilter === 'visible'
-                                ? 'border-white bg-white text-black'
+                                ? 'border-white bg-white text-black shadow-lg shadow-white/10'
                                 : 'border-white/10 bg-white/[0.04] text-zinc-400'
                         "
                         @click="setActionFilter('visible')"
@@ -3002,10 +3006,10 @@ const clearReservation = (watch) => {
 
                     <button
                         type="button"
-                        class="rounded-xl border px-2 py-2.5 text-xs font-bold transition active:scale-[0.98]"
+                        class="rounded-xl border px-2 py-2 text-[11px] font-black transition active:scale-[0.98]"
                         :class="
                             status === 'available' && actionFilter === 'all'
-                                ? 'border-white bg-white text-black'
+                                ? 'border-white bg-white text-black shadow-lg shadow-white/10'
                                 : 'border-white/10 bg-white/[0.04] text-zinc-400'
                         "
                         @click="setStatusFilter('available')"
@@ -3018,10 +3022,10 @@ const clearReservation = (watch) => {
 
                     <button
                         type="button"
-                        class="rounded-xl border px-2 py-2.5 text-xs font-bold transition active:scale-[0.98]"
+                        class="rounded-xl border px-2 py-2 text-[11px] font-black transition active:scale-[0.98]"
                         :class="
                             status === 'sold' && actionFilter === 'all'
-                                ? 'border-white bg-white text-black'
+                                ? 'border-white bg-white text-black shadow-lg shadow-white/10'
                                 : 'border-white/10 bg-white/[0.04] text-zinc-400'
                         "
                         @click="setStatusFilter('sold')"
