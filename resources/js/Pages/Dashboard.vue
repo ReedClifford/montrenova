@@ -56,6 +56,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    topProfitingWatches: {
+        type: Array,
+        default: () => [],
+    },
     recentExpenses: {
         type: Array,
         default: () => [],
@@ -311,6 +315,52 @@ const insightCards = computed(() => [
                 : "border-amber-500/20 bg-amber-500/10 text-amber-300",
     },
 ]);
+
+const unitSalesAmount = (unit) => {
+    return Number(
+        unit?.sales_total ??
+            unit?.sold_price ??
+            unit?.sale_price ??
+            unit?.final_sold_price ??
+            unit?.discounted_price ??
+            unit?.selling_price ??
+            0,
+    );
+};
+
+const unitProfitAmount = (unit) => {
+    return Number(
+        unit?.profit_total ?? unit?.profit ?? unit?.gross_profit ?? 0,
+    );
+};
+
+const unitCapitalAmount = (unit) => {
+    return Number(
+        unit?.capital_total ?? unit?.capital_price ?? unit?.capital_cost ?? 0,
+    );
+};
+
+const profitMargin = (unit) => {
+    const sales = unitSalesAmount(unit);
+
+    if (sales <= 0) return "0.0%";
+
+    return `${((unitProfitAmount(unit) / sales) * 100).toFixed(1)}%`;
+};
+
+const formatShortDate = (value) => {
+    if (!value) return "";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return "";
+
+    return date.toLocaleDateString("en-PH", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+    });
+};
 
 const applyMonthFilter = () => {
     router.get(
@@ -796,22 +846,34 @@ const deleteExpense = (expense) => {
                 </div>
             </section>
 
-            <!-- TOP SOLD + EXPENSES -->
-            <section class="grid gap-5 xl:grid-cols-[1fr_0.75fr]">
+            <!-- TOP SOLD / TOP PROFIT / EXPENSES -->
+            <section class="grid gap-5 2xl:grid-cols-[1fr_1fr_0.85fr]">
                 <!-- TOP 5 SOLD UNITS -->
                 <div
                     class="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D]"
                 >
                     <div class="border-b border-white/10 p-5 sm:p-6">
-                        <p
-                            class="text-xs font-medium uppercase tracking-[0.28em] text-zinc-600"
-                        >
-                            Best Sellers
-                        </p>
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <p
+                                    class="text-xs font-medium uppercase tracking-[0.28em] text-zinc-600"
+                                >
+                                    Best Sellers
+                                </p>
 
-                        <h3 class="mt-2 text-xl font-semibold text-white">
-                            Top 5 Most Sold Units
-                        </h3>
+                                <h3
+                                    class="mt-2 text-xl font-semibold text-white"
+                                >
+                                    Top 5 Most Sold Units
+                                </h3>
+                            </div>
+
+                            <span
+                                class="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-semibold text-zinc-400"
+                            >
+                                By quantity
+                            </span>
+                        </div>
                     </div>
 
                     <!-- MOBILE CARDS -->
@@ -941,6 +1003,231 @@ const deleteExpense = (expense) => {
                                         <p class="mt-2 text-sm text-zinc-500">
                                             Mark watches as sold to generate
                                             your top selling list.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TOP 5 HIGHEST PROFITING WATCHES -->
+                <div
+                    class="overflow-hidden rounded-[1.7rem] border border-emerald-400/10 bg-[#0B0B0D]"
+                >
+                    <div class="border-b border-white/10 p-5 sm:p-6">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <p
+                                    class="text-xs font-medium uppercase tracking-[0.28em] text-emerald-400/70"
+                                >
+                                    Profit Leaders
+                                </p>
+
+                                <h3
+                                    class="mt-2 text-xl font-semibold text-white"
+                                >
+                                    Top 5 Highest Profiting Watches
+                                </h3>
+                            </div>
+
+                            <span
+                                class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300"
+                            >
+                                By profit
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- MOBILE CARDS -->
+                    <div class="divide-y divide-white/10 md:hidden">
+                        <div
+                            v-for="(unit, index) in topProfitingWatches"
+                            :key="`${unit.id || index}-${unit.brand}-${unit.model_name}-${unit.reference_number}`"
+                            class="p-5"
+                        >
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="min-w-0">
+                                    <p
+                                        class="truncate text-sm font-semibold text-white"
+                                    >
+                                        {{ unit.brand }} {{ unit.model_name }}
+                                    </p>
+
+                                    <p
+                                        class="mt-1 truncate text-xs text-zinc-500"
+                                    >
+                                        Ref.
+                                        {{
+                                            unit.reference_number ||
+                                            "No reference"
+                                        }}
+                                    </p>
+
+                                    <p
+                                        v-if="formatShortDate(unit.date_sold)"
+                                        class="mt-1 text-xs text-zinc-600"
+                                    >
+                                        Sold
+                                        {{ formatShortDate(unit.date_sold) }}
+                                    </p>
+                                </div>
+
+                                <div
+                                    class="shrink-0 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300"
+                                >
+                                    #{{ index + 1 }}
+                                </div>
+                            </div>
+
+                            <div class="mt-4 grid grid-cols-2 gap-3">
+                                <div class="mn-mini-card">
+                                    <p class="mn-mini-label">Profit</p>
+                                    <p class="mn-mini-value text-emerald-300">
+                                        {{
+                                            compactPeso(unitProfitAmount(unit))
+                                        }}
+                                    </p>
+                                </div>
+
+                                <div class="mn-mini-card">
+                                    <p class="mn-mini-label">Margin</p>
+                                    <p class="mn-mini-value">
+                                        {{ profitMargin(unit) }}
+                                    </p>
+                                </div>
+
+                                <div class="mn-mini-card">
+                                    <p class="mn-mini-label">Sold Price</p>
+                                    <p class="mn-mini-value">
+                                        {{ compactPeso(unitSalesAmount(unit)) }}
+                                    </p>
+                                </div>
+
+                                <div class="mn-mini-card">
+                                    <p class="mn-mini-label">Capital</p>
+                                    <p class="mn-mini-value text-zinc-300">
+                                        {{
+                                            compactPeso(unitCapitalAmount(unit))
+                                        }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            v-if="!topProfitingWatches.length"
+                            class="p-10 text-center"
+                        >
+                            <p class="text-sm font-medium text-white">
+                                No profit data yet.
+                            </p>
+
+                            <p class="mt-2 text-sm text-zinc-500">
+                                Add capital price and mark watches as sold to
+                                generate your top profit list.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- DESKTOP TABLE -->
+                    <div class="hidden overflow-x-auto md:block">
+                        <table class="min-w-full divide-y divide-white/10">
+                            <thead>
+                                <tr class="bg-emerald-400/[0.03]">
+                                    <th class="mn-th">Watch</th>
+                                    <th class="mn-th">Sold Price</th>
+                                    <th class="mn-th">Capital</th>
+                                    <th class="mn-th">Profit</th>
+                                    <th class="mn-th">Margin</th>
+                                </tr>
+                            </thead>
+
+                            <tbody class="divide-y divide-white/10">
+                                <tr
+                                    v-for="(unit, index) in topProfitingWatches"
+                                    :key="`${unit.id || index}-${unit.brand}-${unit.model_name}-${unit.reference_number}`"
+                                    class="transition hover:bg-emerald-400/[0.025]"
+                                >
+                                    <td class="px-6 py-5">
+                                        <div class="flex items-start gap-3">
+                                            <span
+                                                class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-emerald-400/20 bg-emerald-400/10 text-xs font-bold text-emerald-300"
+                                            >
+                                                {{ index + 1 }}
+                                            </span>
+
+                                            <div>
+                                                <p
+                                                    class="text-sm font-semibold text-white"
+                                                >
+                                                    {{ unit.brand }}
+                                                    {{ unit.model_name }}
+                                                </p>
+
+                                                <p
+                                                    class="mt-1 text-xs text-zinc-500"
+                                                >
+                                                    Ref.
+                                                    {{
+                                                        unit.reference_number ||
+                                                        "No reference"
+                                                    }}
+                                                </p>
+
+                                                <p
+                                                    v-if="
+                                                        formatShortDate(
+                                                            unit.date_sold,
+                                                        )
+                                                    "
+                                                    class="mt-1 text-xs text-zinc-600"
+                                                >
+                                                    Sold
+                                                    {{
+                                                        formatShortDate(
+                                                            unit.date_sold,
+                                                        )
+                                                    }}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <td class="px-6 py-5 text-sm text-zinc-300">
+                                        {{ peso(unitSalesAmount(unit)) }}
+                                    </td>
+
+                                    <td class="px-6 py-5 text-sm text-zinc-400">
+                                        {{ peso(unitCapitalAmount(unit)) }}
+                                    </td>
+
+                                    <td
+                                        class="px-6 py-5 text-sm font-semibold text-emerald-300"
+                                    >
+                                        {{ peso(unitProfitAmount(unit)) }}
+                                    </td>
+
+                                    <td class="px-6 py-5 text-sm text-white">
+                                        {{ profitMargin(unit) }}
+                                    </td>
+                                </tr>
+
+                                <tr v-if="!topProfitingWatches.length">
+                                    <td
+                                        colspan="5"
+                                        class="px-6 py-14 text-center"
+                                    >
+                                        <p
+                                            class="text-sm font-medium text-white"
+                                        >
+                                            No profit data yet.
+                                        </p>
+
+                                        <p class="mt-2 text-sm text-zinc-500">
+                                            Add capital price and mark watches
+                                            as sold to generate your highest
+                                            profiting watch list.
                                         </p>
                                     </td>
                                 </tr>

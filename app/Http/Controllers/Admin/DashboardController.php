@@ -23,6 +23,34 @@ class DashboardController extends Controller
         $soldWatches = Watch::where('status', 'sold')->count();
 
         $soldPriceSql = $this->soldPriceSql();
+        $topProfitingWatches = Watch::query()
+            ->where('status', 'sold')
+            ->get()
+            ->map(function ($watch) {
+                $soldPrice = (float) (
+                    $watch->discounted_price
+                    ?: $watch->selling_price
+                    ?: $watch->price
+                    ?: 0
+                );
+
+                $capital = (float) ($watch->capital_price ?: 0);
+                $profit = $soldPrice - $capital;
+
+                return [
+                    'id' => $watch->id,
+                    'brand' => $watch->brand,
+                    'model_name' => $watch->model_name,
+                    'reference_number' => $watch->reference_number,
+                    'date_sold' => $watch->date_sold,
+                    'sales_total' => $soldPrice,
+                    'capital_total' => $capital,
+                    'profit_total' => $profit,
+                ];
+            })
+            ->sortByDesc('profit_total')
+            ->take(5)
+            ->values();
 
         /*
         |--------------------------------------------------------------------------
@@ -159,6 +187,8 @@ class DashboardController extends Controller
 
             'topSoldUnits' => $topSoldUnits,
             'recentExpenses' => $recentExpenses,
+            'topProfitingWatches' => $topProfitingWatches,
+
         ]);
     }
 
