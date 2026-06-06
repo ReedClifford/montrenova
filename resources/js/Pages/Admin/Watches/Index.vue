@@ -562,6 +562,13 @@ const visibilityClass = (watch) => {
 };
 
 const currentPageWatches = computed(() => props.watches?.data || []);
+
+const visibleWatchesCount = computed(() => {
+    return currentPageWatches.value.filter(
+        (watch) => watch.is_visible && watch.status !== "sold",
+    ).length;
+});
+
 const warrantyRecords = computed(() => props.warrantyWatches?.data || []);
 
 const warrantyActiveCount = computed(() => {
@@ -594,11 +601,15 @@ const warrantyFilteredRecords = computed(() => {
 
 const actionFilterMatches = (watch) => {
     if (actionFilter.value === "all") return true;
+    if (actionFilter.value === "visible") {
+        return watch.is_visible && watch.status !== "sold";
+    }
     if (actionFilter.value === "needs_push") return isSlowMoving(watch);
     if (actionFilter.value === "no_photo") return hasNoPhoto(watch);
     if (actionFilter.value === "low_margin") return isLowMargin(watch);
-    if (actionFilter.value === "reservation_overdue")
+    if (actionFilter.value === "reservation_overdue") {
         return isReservationOverdue(watch);
+    }
     if (actionFilter.value === "ready_to_post") return isReadyToPost(watch);
 
     return true;
@@ -765,6 +776,11 @@ const quickActionFilters = computed(() => [
         label: "All",
         value: "all",
         count: currentPageWatches.value.length,
+    },
+    {
+        label: "Visible",
+        value: "visible",
+        count: visibleWatchesCount.value,
     },
     {
         label: "Needs Push",
@@ -966,7 +982,7 @@ const clearReservation = (watch) => {
     <Head title="Watch Stocks | Montre Nova" />
 
     <AuthenticatedLayout title="Watch Stocks">
-        <div class="space-y-5 sm:space-y-7">
+        <div class="space-y-5 pb-28 sm:space-y-7 md:pb-0">
             <!-- MOBILE QUICK ACTION -->
             <section
                 v-if="activeTab === 'inventory'"
@@ -2754,6 +2770,98 @@ const clearReservation = (watch) => {
                     />
                 </section>
             </template>
+        </div>
+
+        <!-- MOBILE STICKY FILTER DOCK -->
+        <div
+            v-if="activeTab === 'inventory'"
+            class="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050505]/95 px-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur-xl md:hidden"
+        >
+            <div class="mx-auto max-w-md">
+                <div class="mb-2 flex items-center justify-between gap-3 px-1">
+                    <p
+                        class="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500"
+                    >
+                        Quick Filter
+                    </p>
+
+                    <p class="text-[10px] font-semibold text-zinc-500">
+                        {{ displayedWatches.length }} shown
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-4 gap-2">
+                    <button
+                        type="button"
+                        class="rounded-xl border px-2 py-2.5 text-xs font-bold transition active:scale-[0.98]"
+                        :class="
+                            status === '' && actionFilter === 'all'
+                                ? 'border-white bg-white text-black'
+                                : 'border-white/10 bg-white/[0.04] text-zinc-400'
+                        "
+                        @click="
+                            status = '';
+                            actionFilter = 'all';
+                        "
+                    >
+                        <span class="block">All</span>
+                        <span class="mt-0.5 block text-[10px] opacity-60">
+                            {{ currentPageWatches.length }}
+                        </span>
+                    </button>
+
+                    <button
+                        type="button"
+                        class="rounded-xl border px-2 py-2.5 text-xs font-bold transition active:scale-[0.98]"
+                        :class="
+                            status === '' && actionFilter === 'visible'
+                                ? 'border-white bg-white text-black'
+                                : 'border-white/10 bg-white/[0.04] text-zinc-400'
+                        "
+                        @click="
+                            status = '';
+                            actionFilter = 'visible';
+                        "
+                    >
+                        <span class="block">Visible</span>
+                        <span class="mt-0.5 block text-[10px] opacity-60">
+                            {{ visibleWatchesCount }}
+                        </span>
+                    </button>
+
+                    <button
+                        type="button"
+                        class="rounded-xl border px-2 py-2.5 text-xs font-bold transition active:scale-[0.98]"
+                        :class="
+                            status === 'available' && actionFilter === 'all'
+                                ? 'border-white bg-white text-black'
+                                : 'border-white/10 bg-white/[0.04] text-zinc-400'
+                        "
+                        @click="setStatusFilter('available')"
+                    >
+                        <span class="block">Available</span>
+                        <span class="mt-0.5 block text-[10px] opacity-60">
+                            {{ props.summary.available_watches }}
+                        </span>
+                    </button>
+
+                    <button
+                        type="button"
+                        class="rounded-xl border px-2 py-2.5 text-xs font-bold transition active:scale-[0.98]"
+                        :class="
+                            status === 'sold' && actionFilter === 'all'
+                                ? 'border-white bg-white text-black'
+                                : 'border-white/10 bg-white/[0.04] text-zinc-400'
+                        "
+                        @click="setStatusFilter('sold')"
+                    >
+                        <span class="block">Sold</span>
+                        <span class="mt-0.5 block text-[10px] opacity-60">
+                            {{ props.summary.sold_watches }}
+                        </span>
+                    </button>
+                </div>
+            </div>
         </div>
 
         <CreateWatchModal :show="showCreateModal" @close="closeCreateModal" />
