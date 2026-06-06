@@ -108,6 +108,8 @@ Route::delete('/admin/expenses/{expense}', [ExpenseController::class, 'destroy']
     Route::delete('/admin/watch-images/{image}', [WatchController::class, 'deleteImage'])
         ->name('admin.watch-images.destroy');
 
+    Route::patch('/admin/watches/reorder', [WatchController::class, 'reorder'])
+        ->name('admin.watches.reorder');
 
 
 

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Watch extends Model
 {
     protected $fillable = [
+        'display_order',
         'stock_code',
         'brand',
         'model_name',

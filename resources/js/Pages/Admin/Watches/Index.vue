@@ -76,6 +76,10 @@ let searchDebounceTimer = null;
 const isFiltering = ref(false);
 const isSearchPending = ref(false);
 
+const isArrangeMode = ref(false);
+const arrangeItems = ref([]);
+const isSavingOrder = ref(false);
+
 const clearSearchDebounce = () => {
     if (searchDebounceTimer) {
         clearTimeout(searchDebounceTimer);
@@ -718,6 +722,96 @@ const setActionFilter = (value) => {
     actionFilter.value = value;
 };
 
+const arrangeSourceWatches = computed(() => {
+    return displayedWatches.value.filter((watch) => watch.status !== "sold");
+});
+
+const canArrangeWatches = computed(() => {
+    return arrangeSourceWatches.value.length > 1;
+});
+
+const hasArrangeChanges = computed(() => {
+    const sourceIds = arrangeSourceWatches.value.map((watch) => watch.id);
+    const arrangedIds = arrangeItems.value.map((watch) => watch.id);
+
+    if (sourceIds.length !== arrangedIds.length) return true;
+
+    return sourceIds.some((id, index) => id !== arrangedIds[index]);
+});
+
+const enterArrangeMode = () => {
+    if (!arrangeSourceWatches.value.length) return;
+
+    clearSearchDebounce();
+
+    isArrangeMode.value = true;
+    arrangeItems.value = arrangeSourceWatches.value.map((watch) => ({
+        ...watch,
+    }));
+};
+
+const cancelArrangeMode = () => {
+    isArrangeMode.value = false;
+    arrangeItems.value = [];
+    isSavingOrder.value = false;
+};
+
+const moveArrangeItem = (index, direction) => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+
+    if (targetIndex < 0 || targetIndex >= arrangeItems.value.length) return;
+
+    const items = [...arrangeItems.value];
+    const currentItem = items[index];
+
+    items[index] = items[targetIndex];
+    items[targetIndex] = currentItem;
+
+    arrangeItems.value = items;
+};
+
+const moveArrangeItemToTop = (index) => {
+    if (index <= 0) return;
+
+    const items = [...arrangeItems.value];
+    const selected = items.splice(index, 1)[0];
+
+    items.unshift(selected);
+
+    arrangeItems.value = items;
+};
+
+const saveArrangeOrder = () => {
+    if (!arrangeItems.value.length || isSavingOrder.value) return;
+
+    isSavingOrder.value = true;
+
+    router.patch(
+        route("admin.watches.reorder"),
+        {
+            watch_ids: arrangeItems.value.map((watch) => watch.id),
+        },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                cancelArrangeMode();
+
+                router.reload({
+                    only: ["watches", "warrantyWatches", "summary"],
+                    preserveScroll: true,
+                });
+            },
+            onFinish: () => {
+                isSavingOrder.value = false;
+            },
+            onError: () => {
+                isSavingOrder.value = false;
+            },
+        },
+    );
+};
+
 const inventoryCards = computed(() => [
     {
         label: "Total",
@@ -998,6 +1092,7 @@ const setActiveTab = (tab) => {
 
     if (tab === "warranty") {
         actionFilter.value = "all";
+        cancelArrangeMode();
     }
 };
 
@@ -1111,11 +1206,11 @@ const clearReservation = (watch) => {
             <!-- MOBILE QUICK ACTION -->
             <section
                 v-if="activeTab === 'inventory'"
-                class="grid grid-cols-2 gap-3 sm:hidden"
+                class="grid grid-cols-3 gap-3 sm:hidden"
             >
                 <button
                     type="button"
-                    class="rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black"
+                    class="rounded-2xl bg-white px-3 py-3 text-xs font-bold text-black"
                     @click="openCreateModal"
                 >
                     Add Watch
@@ -1123,7 +1218,15 @@ const clearReservation = (watch) => {
 
                 <button
                     type="button"
-                    class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-bold text-white"
+                    class="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-xs font-bold text-white"
+                    @click="enterArrangeMode"
+                >
+                    Arrange
+                </button>
+
+                <button
+                    type="button"
+                    class="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-xs font-bold text-white"
                     @click="setActionFilter('needs_push')"
                 >
                     Needs Push
@@ -1165,14 +1268,26 @@ const clearReservation = (watch) => {
                         </p>
                     </div>
 
-                    <button
+                    <div
                         v-if="activeTab === 'inventory'"
-                        type="button"
-                        class="hidden rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 sm:inline-flex"
-                        @click="openCreateModal"
+                        class="hidden items-center gap-3 sm:flex"
                     >
-                        Add Watch
-                    </button>
+                        <button
+                            type="button"
+                            class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                            @click="enterArrangeMode"
+                        >
+                            Arrange Display
+                        </button>
+
+                        <button
+                            type="button"
+                            class="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200"
+                            @click="openCreateModal"
+                        >
+                            Add Watch
+                        </button>
+                    </div>
                 </div>
             </section>
 
@@ -1293,8 +1408,362 @@ const clearReservation = (watch) => {
                     </div>
                 </section>
 
+                <!-- ARRANGE DISPLAY MODE -->
+                <section
+                    v-if="isArrangeMode"
+                    class="relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 shadow-2xl shadow-black/30 sm:p-6"
+                >
+                    <div class="pointer-events-none absolute inset-0">
+                        <div
+                            class="absolute left-[-10rem] top-[-10rem] h-80 w-80 rounded-full bg-white/[0.045] blur-3xl"
+                        ></div>
+                        <div
+                            class="absolute bottom-[-12rem] right-[-12rem] h-96 w-96 rounded-full bg-emerald-400/[0.035] blur-3xl"
+                        ></div>
+                    </div>
+
+                    <div class="relative">
+                        <div
+                            class="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between"
+                        >
+                            <div>
+                                <p
+                                    class="text-xs uppercase tracking-[0.24em] text-zinc-600"
+                                >
+                                    Arrange Mode
+                                </p>
+
+                                <h3
+                                    class="mt-2 text-2xl font-semibold tracking-tight text-white"
+                                >
+                                    Arrange website display order
+                                </h3>
+
+                                <p
+                                    class="mt-3 max-w-2xl text-sm leading-7 text-zinc-400"
+                                >
+                                    Move watches up or down, then save. This
+                                    updates the display_order used by your
+                                    public website. For best results, arrange
+                                    available and visible watches first.
+                                </p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3 sm:flex">
+                                <button
+                                    type="button"
+                                    class="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-zinc-300 transition hover:border-white/30 hover:text-white"
+                                    @click="cancelArrangeMode"
+                                >
+                                    Cancel
+                                </button>
+
+                                <button
+                                    type="button"
+                                    :disabled="
+                                        isSavingOrder ||
+                                        !arrangeItems.length ||
+                                        !hasArrangeChanges
+                                    "
+                                    class="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+                                    @click="saveArrangeOrder"
+                                >
+                                    {{
+                                        isSavingOrder
+                                            ? "Saving..."
+                                            : hasArrangeChanges
+                                              ? "Save Order"
+                                              : "No Changes"
+                                    }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div
+                            class="mt-5 grid gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm leading-6 text-amber-200 sm:grid-cols-[auto_1fr]"
+                        >
+                            <div
+                                class="flex h-9 w-9 items-center justify-center rounded-full bg-amber-300 text-sm font-black text-black"
+                            >
+                                !
+                            </div>
+
+                            <div>
+                                <p class="font-semibold">
+                                    Current page arrangement
+                                </p>
+
+                                <p
+                                    class="mt-1 text-xs leading-5 text-amber-100/80"
+                                >
+                                    This arranges the watches currently loaded
+                                    on this page. Use the Available / Visible
+                                    filter before arranging public website
+                                    display.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div
+                            v-if="!arrangeItems.length"
+                            class="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center"
+                        >
+                            <p class="text-sm font-semibold text-white">
+                                No watches available to arrange.
+                            </p>
+
+                            <p class="mt-2 text-sm text-zinc-500">
+                                Clear filters or switch to Available stocks.
+                            </p>
+                        </div>
+
+                        <div v-else class="mt-5 space-y-3">
+                            <div
+                                v-for="(watch, index) in arrangeItems"
+                                :key="watch.id"
+                                class="group overflow-hidden rounded-[1.35rem] border border-white/10 bg-white/[0.03] transition hover:border-white/20"
+                            >
+                                <div
+                                    class="grid gap-4 p-4 md:grid-cols-[auto_1fr_auto]"
+                                >
+                                    <div
+                                        class="flex items-center gap-3 md:flex-col md:items-center md:justify-center"
+                                    >
+                                        <div
+                                            class="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-black text-sm font-black text-white"
+                                        >
+                                            {{ index + 1 }}
+                                        </div>
+
+                                        <div
+                                            class="hidden h-full w-px bg-white/10 md:block"
+                                        ></div>
+                                    </div>
+
+                                    <div class="flex min-w-0 gap-4">
+                                        <div
+                                            class="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#050505]"
+                                        >
+                                            <img
+                                                v-if="watch.primary_image"
+                                                :src="
+                                                    watch.primary_image
+                                                        .image_url
+                                                "
+                                                class="h-full w-full object-cover"
+                                                alt=""
+                                            />
+
+                                            <div
+                                                v-else
+                                                class="flex h-full w-full items-center justify-center text-xs font-semibold text-zinc-600"
+                                            >
+                                                MN
+                                            </div>
+
+                                            <div
+                                                class="absolute bottom-1 right-1 rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-bold text-white"
+                                            >
+                                                #{{
+                                                    watch.display_order || "—"
+                                                }}
+                                            </div>
+                                        </div>
+
+                                        <div class="min-w-0 flex-1">
+                                            <div
+                                                class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+                                            >
+                                                <div class="min-w-0">
+                                                    <p
+                                                        class="truncate text-sm font-semibold text-white sm:text-base"
+                                                    >
+                                                        {{ watch.brand }}
+                                                        {{ watch.model_name }}
+                                                    </p>
+
+                                                    <p
+                                                        class="mt-1 truncate text-xs text-zinc-500"
+                                                    >
+                                                        Ref.
+                                                        {{
+                                                            watch.reference_number ||
+                                                            "No reference"
+                                                        }}
+                                                    </p>
+                                                </div>
+
+                                                <div
+                                                    class="flex shrink-0 flex-wrap gap-2"
+                                                >
+                                                    <span
+                                                        class="rounded-full border px-2.5 py-1 text-[11px] capitalize"
+                                                        :class="
+                                                            statusClass(
+                                                                watch.status,
+                                                            )
+                                                        "
+                                                    >
+                                                        {{ watch.status }}
+                                                    </span>
+
+                                                    <span
+                                                        class="rounded-full border px-2.5 py-1 text-[11px]"
+                                                        :class="
+                                                            visibilityClass(
+                                                                watch,
+                                                            )
+                                                        "
+                                                    >
+                                                        {{
+                                                            watch.status ===
+                                                            "sold"
+                                                                ? "Sold"
+                                                                : watch.is_visible
+                                                                  ? "Visible"
+                                                                  : "Hidden"
+                                                        }}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div
+                                                class="mt-3 grid grid-cols-3 gap-2 text-xs"
+                                            >
+                                                <div>
+                                                    <p class="text-zinc-600">
+                                                        Price
+                                                    </p>
+                                                    <p
+                                                        class="mt-1 font-semibold text-white"
+                                                    >
+                                                        {{
+                                                            compactPeso(
+                                                                displayPrice(
+                                                                    watch,
+                                                                ),
+                                                            )
+                                                        }}
+                                                    </p>
+                                                </div>
+
+                                                <div>
+                                                    <p class="text-zinc-600">
+                                                        Profit
+                                                    </p>
+                                                    <p
+                                                        class="mt-1 font-semibold"
+                                                        :class="
+                                                            displayProfit(
+                                                                watch,
+                                                            ) >= 0
+                                                                ? 'text-emerald-300'
+                                                                : 'text-red-300'
+                                                        "
+                                                    >
+                                                        {{
+                                                            compactPeso(
+                                                                displayProfit(
+                                                                    watch,
+                                                                ),
+                                                            )
+                                                        }}
+                                                    </p>
+                                                </div>
+
+                                                <div>
+                                                    <p class="text-zinc-600">
+                                                        Age
+                                                    </p>
+                                                    <p
+                                                        class="mt-1 truncate font-semibold text-zinc-300"
+                                                    >
+                                                        {{
+                                                            stockAgeLabel(watch)
+                                                        }}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="grid grid-cols-3 gap-2 md:w-44 md:grid-cols-1"
+                                    >
+                                        <button
+                                            type="button"
+                                            :disabled="index === 0"
+                                            class="mn-arrange-btn"
+                                            @click="
+                                                moveArrangeItem(index, 'up')
+                                            "
+                                        >
+                                            Move Up
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            :disabled="index === 0"
+                                            class="mn-arrange-btn"
+                                            @click="moveArrangeItemToTop(index)"
+                                        >
+                                            Top
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            :disabled="
+                                                index ===
+                                                arrangeItems.length - 1
+                                            "
+                                            class="mn-arrange-btn"
+                                            @click="
+                                                moveArrangeItem(index, 'down')
+                                            "
+                                        >
+                                            Move Down
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="sticky bottom-0 mt-5 rounded-2xl border border-white/10 bg-[#050505]/95 p-3 shadow-2xl shadow-black/60 backdrop-blur md:hidden"
+                        >
+                            <div class="grid grid-cols-2 gap-3">
+                                <button
+                                    type="button"
+                                    class="rounded-xl border border-white/10 px-4 py-3 text-sm font-semibold text-zinc-300"
+                                    @click="cancelArrangeMode"
+                                >
+                                    Cancel
+                                </button>
+
+                                <button
+                                    type="button"
+                                    :disabled="
+                                        isSavingOrder ||
+                                        !arrangeItems.length ||
+                                        !hasArrangeChanges
+                                    "
+                                    class="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-black disabled:bg-zinc-700 disabled:text-zinc-400"
+                                    @click="saveArrangeOrder"
+                                >
+                                    {{
+                                        isSavingOrder
+                                            ? "Saving..."
+                                            : "Save Order"
+                                    }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- ACTION NEEDED -->
                 <section
+                    v-if="!isArrangeMode"
                     class="rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 sm:p-6"
                 >
                     <div
@@ -1356,6 +1825,7 @@ const clearReservation = (watch) => {
 
                 <!-- FILTERS -->
                 <section
+                    v-if="!isArrangeMode"
                     class="relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 sm:p-6"
                 >
                     <div
@@ -1553,7 +2023,7 @@ const clearReservation = (watch) => {
 
                 <!-- GALLERY VIEW -->
                 <section
-                    v-if="viewMode === 'gallery'"
+                    v-if="!isArrangeMode && viewMode === 'gallery'"
                     class="grid gap-4 transition-opacity sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
                     :class="isFiltering ? 'opacity-60' : 'opacity-100'"
                 >
@@ -1737,7 +2207,7 @@ const clearReservation = (watch) => {
 
                 <!-- LIST VIEW: MOBILE CARDS -->
                 <section
-                    v-if="viewMode === 'table'"
+                    v-if="!isArrangeMode && viewMode === 'table'"
                     class="space-y-4 transition-opacity md:hidden"
                     :class="isFiltering ? 'opacity-60' : 'opacity-100'"
                 >
@@ -1926,7 +2396,7 @@ const clearReservation = (watch) => {
 
                 <!-- LIST VIEW: DESKTOP TABLE -->
                 <section
-                    v-if="viewMode === 'table'"
+                    v-if="!isArrangeMode && viewMode === 'table'"
                     class="hidden overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] transition-opacity md:block"
                     :class="isFiltering ? 'opacity-60' : 'opacity-100'"
                 >
@@ -2309,7 +2779,7 @@ const clearReservation = (watch) => {
 
                 <!-- EMPTY STATE -->
                 <section
-                    v-if="!displayedWatches.length"
+                    v-if="!isArrangeMode && !displayedWatches.length"
                     class="rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-10 text-center"
                 >
                     <p class="text-sm font-medium text-white">
@@ -2331,7 +2801,7 @@ const clearReservation = (watch) => {
 
                 <!-- PAGINATION -->
                 <section
-                    v-if="watches.links?.length > 3"
+                    v-if="!isArrangeMode && watches.links?.length > 3"
                     class="thin-scrollbar flex gap-2 overflow-x-auto rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-4 sm:flex-wrap sm:p-5"
                 >
                     <Link
@@ -2947,7 +3417,7 @@ const clearReservation = (watch) => {
 
         <!-- MOBILE FLOATING FILTER DOCK -->
         <div
-            v-if="activeTab === 'inventory'"
+            v-if="activeTab === 'inventory' && !isArrangeMode"
             class="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] z-[90] md:hidden"
         >
             <div
@@ -3128,6 +3598,34 @@ const clearReservation = (watch) => {
         border-color 150ms ease,
         background-color 150ms ease,
         color 150ms ease;
+}
+
+.mn-arrange-btn {
+    border-radius: 0.9rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(255 255 255 / 0.03);
+    padding: 0.75rem 0.85rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: rgb(212 212 216);
+    transition:
+        transform 150ms ease,
+        border-color 150ms ease,
+        background-color 150ms ease,
+        color 150ms ease;
+}
+
+.mn-arrange-btn:hover {
+    transform: translateY(-1px);
+    border-color: rgb(255 255 255 / 0.3);
+    background: rgb(255 255 255 / 0.06);
+    color: white;
+}
+
+.mn-arrange-btn:disabled {
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.35;
 }
 
 .mn-th {

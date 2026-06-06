@@ -17,6 +17,8 @@ class PublicWatchController extends Controller
             ->where('status', 'available')
             ->where('is_visible', true)
             ->where('is_featured', true)
+            ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
+            ->orderBy('display_order')
             ->latest()
             ->first();
 
@@ -25,6 +27,8 @@ class PublicWatchController extends Controller
                 ->with(['primaryImage', 'images'])
                 ->where('status', 'available')
                 ->where('is_visible', true)
+                ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
+                ->orderBy('display_order')
                 ->latest()
                 ->first();
         }
@@ -40,6 +44,8 @@ class PublicWatchController extends Controller
             ->withCount('images')
             ->where('status', 'available')
             ->where('is_visible', true)
+            ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
+            ->orderBy('display_order')
             ->latest()
             ->paginate(20)
             ->withQueryString()
@@ -173,6 +179,7 @@ class PublicWatchController extends Controller
             'price' => $price,
             'status' => $watch->status,
             'is_featured' => (bool) $watch->is_featured,
+            'display_order' => (int) ($watch->display_order ?? 0),
             'created_at' => $this->formatDateTime($watch->created_at),
             'updated_at' => $this->formatDateTime($watch->updated_at),
             'date_sold' => $this->formatDateTime($watch->date_sold),
@@ -219,6 +226,7 @@ class PublicWatchController extends Controller
             'price' => $this->listedPrice($watch),
             'status' => $watch->status,
             'is_featured' => (bool) $watch->is_featured,
+            'display_order' => (int) ($watch->display_order ?? 0),
             'created_at' => $this->formatDateTime($watch->created_at),
             'updated_at' => $this->formatDateTime($watch->updated_at),
             'date_sold' => $this->formatDateTime($watch->date_sold),
