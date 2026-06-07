@@ -562,7 +562,7 @@ const productBadges = (watch) => {
                         href="#process"
                         class="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 transition hover:border-white/25 hover:text-white"
                     >
-                        Process
+                        How To Order
                     </a>
 
                     <Link
