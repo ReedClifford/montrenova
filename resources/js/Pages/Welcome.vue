@@ -198,16 +198,19 @@ const contactLinks = [
         label: "Messenger",
         description: "Chat with us directly on Facebook Messenger",
         href: "https://m.me/montrenova",
+        icon: "FB",
     },
     {
-        label: "Warranty Check",
-        description: "Verify your Montre Card warranty coverage",
-        href: "/warranty-check",
+        label: "TikTok",
+        description: "Message us on TikTok for inquiries and watch updates",
+        href: "https://www.tiktok.com/@montre_nova",
+        icon: "TT",
     },
     {
         label: "Instagram",
         description: "View our latest posts and send us a DM",
         href: "https://www.instagram.com/montrenova",
+        icon: "IG",
     },
 ];
 
@@ -490,8 +493,10 @@ const productBadges = (watch) => {
                         <a
                             href="#collection"
                             class="transition hover:text-white"
-                            >Collection</a
                         >
+                            Collection
+                        </a>
+
                         <a
                             v-if="recentSoldWatches.length"
                             href="#recently-sold"
@@ -499,15 +504,14 @@ const productBadges = (watch) => {
                         >
                             Sold Gallery
                         </a>
-                        <a href="#process" class="transition hover:text-white"
-                            >Process</a
-                        >
-                        <a href="#warranty" class="transition hover:text-white"
-                            >Warranty</a
-                        >
-                        <a href="#contact" class="transition hover:text-white"
-                            >Contact</a
-                        >
+
+                        <a href="#process" class="transition hover:text-white">
+                            How to Order
+                        </a>
+
+                        <a href="#contact" class="transition hover:text-white">
+                            Contact
+                        </a>
                     </nav>
 
                     <div class="hidden items-center gap-3 md:flex">
@@ -545,6 +549,7 @@ const productBadges = (watch) => {
                     >
                         Collection
                     </a>
+
                     <a
                         v-if="recentSoldWatches.length"
                         href="#recently-sold"
@@ -552,18 +557,21 @@ const productBadges = (watch) => {
                     >
                         Sold
                     </a>
+
                     <a
                         href="#process"
                         class="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 transition hover:border-white/25 hover:text-white"
                     >
                         Process
                     </a>
+
                     <Link
                         href="/warranty-check"
                         class="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 transition hover:border-white/25 hover:text-white"
                     >
                         Warranty Check
                     </Link>
+
                     <a
                         href="#contact"
                         class="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 transition hover:border-white/25 hover:text-white"
@@ -574,10 +582,12 @@ const productBadges = (watch) => {
             </div>
         </header>
 
-        <main class="relative z-10">
+        <main
+            class="relative z-10 space-y-12 pb-16 sm:space-y-16 sm:pb-20 lg:space-y-20 lg:pb-24"
+        >
             <!-- HERO -->
             <section
-                class="mx-auto grid max-w-7xl items-center gap-10 px-4 pb-12 pt-10 sm:px-6 lg:grid-cols-[1.03fr_0.97fr] lg:px-8 lg:pb-20 lg:pt-20"
+                class="mx-auto grid max-w-7xl items-center gap-10 px-4 pt-10 sm:gap-12 sm:px-6 sm:pt-12 lg:grid-cols-[1.03fr_0.97fr] lg:gap-14 lg:px-8 lg:pt-16"
             >
                 <div class="relative">
                     <div
@@ -586,6 +596,7 @@ const productBadges = (watch) => {
                         <span
                             class="h-1.5 w-1.5 rounded-full bg-white/80"
                         ></span>
+
                         <span
                             class="text-[10px] font-black uppercase tracking-[0.28em] text-zinc-400 sm:text-xs"
                         >
@@ -614,18 +625,11 @@ const productBadges = (watch) => {
                             class="group inline-flex items-center justify-center gap-3 rounded-lg bg-white px-7 py-4 text-sm font-black uppercase tracking-[0.14em] text-black transition hover:bg-zinc-200"
                         >
                             View Collection
-                            <span class="transition group-hover:translate-x-1"
-                                >→</span
-                            >
-                        </a>
 
-                        <button
-                            type="button"
-                            class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-7 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.08]"
-                            @click="openMessengerInquiry()"
-                        >
-                            Ask for Latest Stocks
-                        </button>
+                            <span class="transition group-hover:translate-x-1">
+                                →
+                            </span>
+                        </a>
                     </div>
 
                     <div class="mt-9 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -637,6 +641,7 @@ const productBadges = (watch) => {
                             >
                                 HD
                             </p>
+
                             <p
                                 class="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500"
                             >
@@ -652,6 +657,7 @@ const productBadges = (watch) => {
                             >
                                 1Y
                             </p>
+
                             <p
                                 class="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500"
                             >
@@ -667,6 +673,7 @@ const productBadges = (watch) => {
                             >
                                 {{ availableCount }}
                             </p>
+
                             <p
                                 class="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500"
                             >
@@ -682,6 +689,7 @@ const productBadges = (watch) => {
                             >
                                 {{ soldTotal }}+
                             </p>
+
                             <p
                                 class="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500"
                             >
@@ -696,9 +704,11 @@ const productBadges = (watch) => {
                     <div
                         class="absolute -inset-4 rounded-2xl bg-white/[0.035] blur-2xl sm:-inset-6"
                     ></div>
+
                     <div
                         class="absolute -right-6 top-10 h-40 w-40 rounded-full bg-white/[0.04] blur-3xl"
                     ></div>
+
                     <div
                         class="relative overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0B]/95 p-3 shadow-xl shadow-black/45 ring-1 ring-white/[0.03] sm:p-4"
                     >
@@ -743,9 +753,11 @@ const productBadges = (watch) => {
                                     >
                                         <span
                                             class="text-4xl font-black tracking-[-0.12em] text-white"
-                                            >MN</span
                                         >
+                                            MN
+                                        </span>
                                     </div>
+
                                     <p
                                         class="mt-5 text-xs font-black uppercase tracking-[0.32em] text-zinc-500"
                                     >
@@ -762,6 +774,7 @@ const productBadges = (watch) => {
                                 >
                                     Featured Drop
                                 </p>
+
                                 <div
                                     class="mt-2 flex items-end justify-between gap-4"
                                 >
@@ -769,16 +782,16 @@ const productBadges = (watch) => {
                                         <h2
                                             class="truncate text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
                                         >
-                                            <template v-if="featuredWatch"
-                                                >{{ featuredWatch.brand }}
-                                                {{
-                                                    featuredWatch.model_name
-                                                }}</template
-                                            >
-                                            <template v-else
-                                                >Premium Timepiece</template
-                                            >
+                                            <template v-if="featuredWatch">
+                                                {{ featuredWatch.brand }}
+                                                {{ featuredWatch.model_name }}
+                                            </template>
+
+                                            <template v-else>
+                                                Premium Timepiece
+                                            </template>
                                         </h2>
+
                                         <p
                                             class="mt-1 truncate text-sm text-zinc-400"
                                         >
@@ -794,10 +807,11 @@ const productBadges = (watch) => {
                                                     "Condition upon request"
                                                 }}
                                             </template>
-                                            <template v-else
-                                                >Brand New · Complete Set ·
-                                                Available</template
-                                            >
+
+                                            <template v-else>
+                                                Brand New · Complete Set ·
+                                                Available
+                                            </template>
                                         </p>
 
                                         <div
@@ -812,6 +826,7 @@ const productBadges = (watch) => {
                                                         "Condition upon request"
                                                     }}
                                                 </template>
+
                                                 <template v-else>
                                                     Brand New
                                                 </template>
@@ -832,6 +847,7 @@ const productBadges = (watch) => {
                                         >
                                             Price
                                         </p>
+
                                         <p
                                             class="text-xl font-black text-white sm:text-2xl"
                                         >
@@ -845,6 +861,7 @@ const productBadges = (watch) => {
                                                     : "₱XX,XXX"
                                             }}
                                         </p>
+
                                         <p
                                             v-if="isBelowSrp(featuredWatch)"
                                             class="text-xs text-zinc-500 line-through"
@@ -907,16 +924,18 @@ const productBadges = (watch) => {
             </section>
 
             <!-- PREMIUM TRUST STRIP -->
-            <section class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            <section class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div
                     class="relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.035] p-4 shadow-xl shadow-black/25 sm:p-5"
                 >
                     <div
                         class="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-white/[0.035] blur-3xl"
                     ></div>
+
                     <div
                         class="pointer-events-none absolute -left-20 bottom-0 h-44 w-44 rounded-full bg-zinc-400/[0.025] blur-3xl"
                     ></div>
+
                     <div class="relative grid gap-3 md:grid-cols-4">
                         <div
                             v-for="item in trustItems"
@@ -930,18 +949,21 @@ const productBadges = (watch) => {
                                     >
                                         {{ item.label }}
                                     </p>
+
                                     <h3
                                         class="mt-2 text-base font-black tracking-[-0.03em] text-white"
                                     >
                                         {{ item.title }}
                                     </h3>
                                 </div>
+
                                 <span
                                     class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-xs font-black text-zinc-300 transition group-hover:bg-white group-hover:text-black"
                                 >
                                     ✓
                                 </span>
                             </div>
+
                             <p class="mt-3 text-sm leading-6 text-zinc-500">
                                 {{ item.description }}
                             </p>
@@ -953,10 +975,10 @@ const productBadges = (watch) => {
             <!-- COLLECTION -->
             <section
                 id="collection"
-                class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
+                class="scroll-mt-28 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
             >
                 <div
-                    class="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end"
+                    class="mb-8 flex flex-col justify-between gap-5 sm:mb-10 md:flex-row md:items-end"
                 >
                     <div>
                         <p
@@ -964,17 +986,20 @@ const productBadges = (watch) => {
                         >
                             Current Collection
                         </p>
+
                         <h2
                             class="mt-3 text-4xl font-black tracking-[-0.06em] text-white sm:text-5xl"
                         >
                             Available Watches
                         </h2>
+
                         <p
                             class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400"
                         >
                             Clean, direct browsing for currently available
                             Montre Nova pieces.
                         </p>
+
                         <p
                             v-if="paginationSummary"
                             class="mt-2 text-xs font-bold uppercase tracking-[0.18em] text-zinc-600"
@@ -1035,9 +1060,11 @@ const productBadges = (watch) => {
                                         >
                                             <span
                                                 class="text-3xl font-black tracking-[-0.1em] text-white sm:text-4xl"
-                                                >MN</span
                                             >
+                                                MN
+                                            </span>
                                         </div>
+
                                         <p
                                             class="mt-4 text-[10px] font-black uppercase tracking-[0.28em] text-zinc-500"
                                         >
@@ -1049,9 +1076,11 @@ const productBadges = (watch) => {
                                 <div
                                     class="absolute inset-0 bg-gradient-to-t from-black/82 via-black/30 to-transparent"
                                 ></div>
+
                                 <div
                                     class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.08)_50%,rgba(0,0,0,0.42)_100%)]"
                                 ></div>
+
                                 <div
                                     class="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/35 to-transparent"
                                 ></div>
@@ -1127,11 +1156,13 @@ const productBadges = (watch) => {
                                             >
                                                 Price
                                             </p>
+
                                             <p
                                                 class="mt-1 text-xl font-black tracking-tight text-white sm:text-2xl"
                                             >
                                                 {{ peso(finalPrice(watch)) }}
                                             </p>
+
                                             <p
                                                 v-if="isBelowSrp(watch)"
                                                 class="text-[11px] text-zinc-500 line-through sm:text-xs"
@@ -1218,13 +1249,15 @@ const productBadges = (watch) => {
                     >
                         <span
                             class="text-3xl font-black tracking-[-0.1em] text-white"
-                            >MN</span
                         >
+                            MN
+                        </span>
                     </div>
 
                     <h3 class="mt-6 text-xl font-black text-white">
                         No available watches yet.
                     </h3>
+
                     <p
                         class="mx-auto mt-3 max-w-md text-sm leading-7 text-zinc-500"
                     >
@@ -1246,10 +1279,10 @@ const productBadges = (watch) => {
             <section
                 v-if="recentSoldWatches.length"
                 id="recently-sold"
-                class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8"
+                class="scroll-mt-28 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
             >
                 <div
-                    class="mb-7 overflow-hidden rounded-xl border border-white/10 bg-[#0B0B0D] p-5 shadow-xl shadow-black/25 sm:p-7"
+                    class="mb-8 overflow-hidden rounded-xl border border-white/10 bg-[#0B0B0D] p-5 shadow-xl shadow-black/25 sm:mb-10 sm:p-7"
                 >
                     <div
                         class="grid gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-center"
@@ -1260,11 +1293,13 @@ const productBadges = (watch) => {
                             >
                                 Recently Sold
                             </p>
+
                             <h2
                                 class="mt-3 text-4xl font-black tracking-[-0.06em] text-white sm:text-5xl"
                             >
                                 Claimed Timepieces
                             </h2>
+
                             <p
                                 class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400"
                             >
@@ -1283,11 +1318,13 @@ const productBadges = (watch) => {
                                 >
                                     {{ soldProofCount }}
                                 </p>
+
                                 <p
                                     class="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600"
                                 >
                                     Sold this month
                                 </p>
+
                                 <p class="mt-2 text-xs text-zinc-500">
                                     {{ soldMonthLabel }}
                                 </p>
@@ -1301,11 +1338,13 @@ const productBadges = (watch) => {
                                 >
                                     {{ soldTotal }}+
                                 </p>
+
                                 <p
                                     class="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600"
                                 >
                                     Total sold
                                 </p>
+
                                 <p class="mt-2 text-xs text-zinc-500">
                                     Trusted deals
                                 </p>
@@ -1313,34 +1352,47 @@ const productBadges = (watch) => {
 
                             <button
                                 type="button"
-                                class="col-span-2 rounded-xl border border-white/10 bg-white p-4 text-left text-black transition hover:bg-zinc-200 sm:col-span-1"
+                                class="group col-span-2 flex items-center justify-between rounded-xl border border-white bg-white p-4 text-left text-black shadow-[0_12px_35px_rgba(255,255,255,0.12)] transition duration-300 hover:-translate-y-0.5 hover:bg-zinc-100 hover:shadow-[0_18px_45px_rgba(255,255,255,0.18)] active:scale-[0.98] sm:col-span-1"
                                 @click="openSimilarInquiry()"
                             >
-                                <p
-                                    class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600"
+                                <div>
+                                    <p
+                                        class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500"
+                                    >
+                                        Looking for a model?
+                                    </p>
+
+                                    <p class="mt-2 text-sm font-black">
+                                        Inquire Now!
+                                    </p>
+
+                                    <p
+                                        class="mt-2 text-xs leading-5 text-zinc-600"
+                                    >
+                                        Send your target model, budget, and
+                                        condition.
+                                    </p>
+                                </div>
+
+                                <div
+                                    class="ml-4 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-white transition duration-300 group-hover:translate-x-1"
                                 >
-                                    Missed a piece?
-                                </p>
-                                <p class="mt-2 text-sm font-black">
-                                    Source Similar
-                                </p>
-                                <p class="mt-2 text-xs leading-5 text-zinc-600">
-                                    Send your target model, budget, and
-                                    condition.
-                                </p>
+                                    →
+                                </div>
                             </button>
                         </div>
                     </div>
                 </div>
 
                 <div
-                    class="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-center"
+                    class="mb-6 flex flex-col justify-between gap-3 sm:mb-7 md:flex-row md:items-center"
                 >
                     <p
                         class="text-xs font-bold uppercase tracking-[0.2em] text-zinc-600 md:hidden"
                     >
                         Swipe sold watches →
                     </p>
+
                     <p class="hidden text-sm text-zinc-500 md:block">
                         Recently claimed watches from Montre Nova.
                     </p>
@@ -1354,14 +1406,6 @@ const productBadges = (watch) => {
                         >
                             View Sold Gallery
                         </Link>
-
-                        <button
-                            type="button"
-                            class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.08]"
-                            @click="openSimilarInquiry()"
-                        >
-                            Source Similar
-                        </button>
                     </div>
                 </div>
 
@@ -1395,9 +1439,11 @@ const productBadges = (watch) => {
                                     >
                                         <span
                                             class="text-3xl font-black tracking-[-0.1em] text-white sm:text-4xl"
-                                            >MN</span
                                         >
+                                            MN
+                                        </span>
                                     </div>
+
                                     <p
                                         class="mt-4 text-[10px] font-black uppercase tracking-[0.28em] text-zinc-500"
                                     >
@@ -1409,9 +1455,11 @@ const productBadges = (watch) => {
                             <div
                                 class="absolute inset-0 bg-gradient-to-t from-black/82 via-black/32 to-transparent"
                             ></div>
+
                             <div
                                 class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.07)_50%,rgba(0,0,0,0.42)_100%)]"
                             ></div>
+
                             <div
                                 class="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/35 to-transparent"
                             ></div>
@@ -1420,7 +1468,7 @@ const productBadges = (watch) => {
                                 class="absolute left-4 top-4 z-20 flex max-w-[92%] flex-wrap gap-1.5 sm:left-5 sm:top-5"
                             >
                                 <span
-                                    class="rounded-md border border-white/15 bg-white px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-black shadow-lg shadow-black/40"
+                                    class="rounded-md border border-red-400/30 bg-red-500/15 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-red-200 shadow-lg shadow-red-950/30 backdrop-blur"
                                 >
                                     Sold
                                 </span>
@@ -1439,6 +1487,7 @@ const productBadges = (watch) => {
                                     <span
                                         class="h-px w-10 bg-gradient-to-r from-white/80 to-transparent"
                                     ></span>
+
                                     <p
                                         class="truncate text-[10px] font-black uppercase tracking-[0.32em] text-zinc-300/90 sm:text-xs"
                                     >
@@ -1487,6 +1536,7 @@ const productBadges = (watch) => {
                                         >
                                             Recently Claimed
                                         </p>
+
                                         <p
                                             class="mt-1 truncate text-base font-black text-white sm:text-lg"
                                         >
@@ -1500,28 +1550,25 @@ const productBadges = (watch) => {
                                         @click="openSimilarInquiry(watch)"
                                     >
                                         Find Similar
+
                                         <span
                                             class="text-white transition group-hover/link:translate-x-1"
-                                            >→</span
                                         >
+                                            →
+                                        </span>
                                     </button>
                                 </div>
 
-                                <div class="mt-4 grid grid-cols-2 gap-2">
+                                <div class="mt-4 flex justify-end">
                                     <button
                                         type="button"
-                                        class="inline-flex items-center justify-center rounded-lg border border-white/15 bg-black/40 px-3 py-2.5 text-xs font-black text-white backdrop-blur transition hover:border-white/35 hover:bg-white/[0.08] sm:px-4 sm:py-3 sm:text-sm"
+                                        class="inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-xs font-black text-white backdrop-blur transition hover:border-white/35 hover:bg-white/[0.08] active:scale-[0.98] sm:px-5 sm:py-3 sm:text-sm"
                                         @click="openSimilarInquiry(watch)"
                                     >
-                                        Find Similar
-                                    </button>
+                                        Source Similar
 
-                                    <a
-                                        href="#collection"
-                                        class="inline-flex items-center justify-center rounded-lg bg-white px-3 py-2.5 text-xs font-black text-black transition hover:bg-zinc-200 sm:px-4 sm:py-3 sm:text-sm"
-                                    >
-                                        View Stocks
-                                    </a>
+                                        <span aria-hidden="true">→</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -1529,41 +1576,66 @@ const productBadges = (watch) => {
                 </div>
             </section>
 
-            <!-- PROCESS / WARRANTY -->
+            <!-- HOW TO ORDER -->
             <section
                 id="process"
-                class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
+                class="scroll-mt-28 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
             >
+                <div class="mb-8 sm:mb-10">
+                    <p
+                        class="text-[11px] font-black uppercase tracking-[0.34em] text-zinc-500"
+                    >
+                        How to Order
+                    </p>
+
+                    <h2
+                        class="mt-4 max-w-2xl text-3xl font-black tracking-[-0.04em] text-white sm:text-4xl"
+                    >
+                        Order your next timepiece in three simple steps.
+                    </h2>
+
+                    <p class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400">
+                        Browse our available watches, confirm your preferred
+                        payment option, and have your order shipped safely.
+                    </p>
+                </div>
+
                 <div class="grid gap-4 lg:grid-cols-3">
                     <div
-                        class="rounded-xl border border-white/10 bg-[#0B0B0D]/90 p-7 shadow-xl shadow-black/25 transition hover:border-white/25 hover:bg-[#111113]"
+                        class="flex flex-col rounded-xl border border-white/10 bg-[#0B0B0D]/90 p-7 shadow-xl shadow-black/25 transition hover:border-white/25 hover:bg-[#111113]"
                     >
                         <p
                             class="text-xs font-black uppercase tracking-[0.28em] text-zinc-600"
                         >
                             01
                         </p>
+
                         <h3
                             class="mt-4 text-xl font-black tracking-[-0.03em] text-white"
                         >
-                            Confirm Availability
+                            Place Order
                         </h3>
+
                         <p class="mt-4 text-sm leading-7 text-zinc-400">
-                            Message us through official channels to confirm
-                            stock, request more photos, or ask for the complete
-                            watch details.
+                            Choose your preferred watch and message us through
+                            our official channels to confirm availability,
+                            complete details, and updated photos.
                         </p>
-                        <button
-                            type="button"
-                            class="mt-6 inline-flex rounded-lg bg-white px-5 py-3 text-sm font-black text-black transition hover:bg-zinc-200"
-                            @click="openMessengerInquiry()"
-                        >
-                            Start Inquiry
-                        </button>
+
+                        <div class="mt-auto flex justify-end pt-6">
+                            <button
+                                type="button"
+                                class="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-black text-black transition hover:bg-zinc-200 active:scale-[0.98]"
+                                @click="openMessengerInquiry()"
+                            >
+                                Start Inquiry
+
+                                <span aria-hidden="true">→</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div
-                        id="warranty"
                         class="rounded-xl border border-white/10 bg-[#0B0B0D]/90 p-7 shadow-xl shadow-black/25 transition hover:border-white/25 hover:bg-[#111113]"
                     >
                         <p
@@ -1571,22 +1643,25 @@ const productBadges = (watch) => {
                         >
                             02
                         </p>
+
                         <h3
                             class="mt-4 text-xl font-black tracking-[-0.03em] text-white"
                         >
-                            Montre Card Warranty
+                            Flexible Payment
                         </h3>
+
                         <p class="mt-4 text-sm leading-7 text-zinc-400">
-                            Montre Card warranty coverage is valid for one year
-                            from the date of purchase for movement and internal
-                            mechanism defects.
+                            Pay through your preferred option. We accept cash,
+                            Maribank, GoTyme, QR code payments, and selected
+                            trade-ins subject to evaluation.
                         </p>
-                        <Link
-                            href="/warranty-check"
-                            class="mt-6 inline-flex rounded-lg border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-black text-white transition hover:border-white/30 hover:bg-white/[0.08]"
+
+                        <p
+                            class="mt-6 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-xs leading-6 text-zinc-400"
                         >
-                            Check Warranty
-                        </Link>
+                            Reservation or payment instructions will be sent
+                            only through our official channels.
+                        </p>
                     </div>
 
                     <div
@@ -1597,15 +1672,24 @@ const productBadges = (watch) => {
                         >
                             03
                         </p>
+
                         <h3
                             class="mt-4 text-xl font-black tracking-[-0.03em] text-white"
                         >
-                            Flexible Payment
+                            Shipping
                         </h3>
+
                         <p class="mt-4 text-sm leading-7 text-zinc-400">
-                            Accepted payment methods include cash, Maribank,
-                            GoTyme, QR code payments, and selected trade-ins
-                            subject to evaluation.
+                            Once payment is confirmed, your watch will be
+                            securely packed and prepared for delivery. Shipping
+                            details and tracking updates will be provided.
+                        </p>
+
+                        <p
+                            class="mt-6 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-xs leading-6 text-zinc-400"
+                        >
+                            Every purchase includes Montre Card warranty
+                            coverage for added peace of mind.
                         </p>
                     </div>
                 </div>
@@ -1614,22 +1698,25 @@ const productBadges = (watch) => {
             <!-- CONTACT -->
             <section
                 id="contact"
-                class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
+                class="scroll-mt-28 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
             >
                 <div
-                    class="relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] p-6 shadow-xl shadow-black/30 sm:p-10 lg:p-12"
+                    class="relative overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#080809] p-6 shadow-2xl shadow-black/40 sm:p-10 lg:p-12"
                 >
                     <div
-                        class="absolute -right-28 -top-28 h-72 w-72 rounded-full bg-white/[0.075] blur-3xl"
+                        class="absolute -right-32 -top-32 h-80 w-80 rounded-full bg-white/[0.06] blur-3xl"
                     ></div>
+
                     <div
-                        class="absolute -left-20 bottom-0 h-56 w-56 rounded-full bg-zinc-400/[0.035] blur-3xl"
+                        class="absolute -left-24 bottom-0 h-64 w-64 rounded-full bg-zinc-400/[0.035] blur-3xl"
                     ></div>
+
                     <div
-                        class="absolute inset-x-10 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent"
+                        class="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"
                     ></div>
+
                     <div
-                        class="relative grid gap-10 lg:grid-cols-[1fr_0.85fr] lg:items-center"
+                        class="relative grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center"
                     >
                         <div>
                             <p
@@ -1637,35 +1724,36 @@ const productBadges = (watch) => {
                             >
                                 Get in Touch
                             </p>
+
                             <h2
                                 class="mt-4 max-w-2xl text-4xl font-black tracking-[-0.06em] text-white sm:text-6xl"
                             >
                                 Ready to find your next timepiece?
                             </h2>
+
                             <p
                                 class="mt-5 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base"
                             >
                                 Message Montre Nova for available stocks,
-                                reservations, warranty checks, and curated
-                                recommendations based on your target model and
+                                reservations, curated recommendations, and
+                                assistance based on your target model and
                                 budget.
                             </p>
 
-                            <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-                                <button
-                                    type="button"
-                                    class="inline-flex items-center justify-center rounded-lg bg-white px-7 py-4 text-sm font-black uppercase tracking-[0.14em] text-black transition hover:bg-zinc-200"
-                                    @click="openMessengerInquiry()"
+                            <div
+                                class="mt-8 rounded-2xl border border-white/10 bg-white/[0.035] p-5"
+                            >
+                                <p
+                                    class="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500"
                                 >
-                                    Message Now
-                                </button>
+                                    Quick Response
+                                </p>
 
-                                <Link
-                                    href="/warranty-check"
-                                    class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-7 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.08]"
-                                >
-                                    Check Warranty
-                                </Link>
+                                <p class="mt-2 text-sm leading-7 text-zinc-400">
+                                    For faster assistance, send the watch model,
+                                    reference number, budget, and preferred
+                                    condition.
+                                </p>
                             </div>
                         </div>
 
@@ -1676,27 +1764,42 @@ const productBadges = (watch) => {
                                 :href="link.href"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                class="group flex items-center justify-between rounded-xl border border-white/10 bg-black/40 px-5 py-4 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                                class="group flex items-center justify-between gap-5 rounded-2xl border border-white/10 bg-black/45 px-5 py-5 text-sm text-white shadow-lg shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.06] hover:shadow-black/40"
                                 :class="
                                     link.href === '#'
                                         ? 'pointer-events-none opacity-50'
                                         : ''
                                 "
                             >
-                                <div>
-                                    <p class="font-black text-white">
-                                        {{ link.label }}
-                                    </p>
-                                    <p
-                                        class="mt-1 text-xs font-normal leading-5 text-zinc-500"
-                                    >
-                                        {{ link.description }}
-                                    </p>
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-xs font-black text-white"
+                                        >
+                                            {{ link.icon }}
+                                        </div>
+
+                                        <div class="min-w-0">
+                                            <p
+                                                class="truncate font-black text-white"
+                                            >
+                                                {{ link.label }}
+                                            </p>
+
+                                            <p
+                                                class="mt-1 line-clamp-2 text-xs font-normal leading-5 text-zinc-500"
+                                            >
+                                                {{ link.description }}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <span
-                                    class="text-zinc-500 transition group-hover:translate-x-1 group-hover:text-white"
-                                    >→</span
+
+                                <div
+                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-zinc-400 transition group-hover:translate-x-1 group-hover:border-white/25 group-hover:bg-white group-hover:text-black"
                                 >
+                                    →
+                                </div>
                             </a>
                         </div>
                     </div>
@@ -1712,6 +1815,7 @@ const productBadges = (watch) => {
                     © {{ new Date().getFullYear() }} Montre Nova. Curated
                     timepieces.
                 </p>
+
                 <p class="text-zinc-700">
                     Brand-new and pre-owned watch selections.
                 </p>

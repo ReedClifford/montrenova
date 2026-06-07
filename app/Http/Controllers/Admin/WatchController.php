@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class WatchController extends Controller
 {
@@ -572,9 +573,39 @@ public function update(Request $request, Watch $watch)
         return back()->with('success', 'Photo order updated successfully.');
     }
 
-private function validateWatch(Request $request, string $saveMode = 'publish'): array
+private function validateWatch(Request $request, $modeOrWatchId = 'publish'): array
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Mode detection
+    |--------------------------------------------------------------------------
+    | store() passes: "draft" or "publish"
+    | update() passes: $watch->id
+    |
+    | If this is update mode, images must NOT be required because the watch
+    | may already have existing photos and the user may only change primary.
+    */
+    $isUpdate = is_numeric($modeOrWatchId);
+    $watchId = $isUpdate ? (int) $modeOrWatchId : null;
+    $saveMode = $isUpdate ? 'update' : (string) $modeOrWatchId;
     $isDraft = $saveMode === 'draft';
+
+    $imagesRule = $isUpdate || $isDraft
+        ? ['nullable', 'array', 'max:5']
+        : ['required', 'array', 'min:1', 'max:5'];
+
+    $sectionsRule = $isDraft
+        ? ['nullable', 'array']
+        : ['required', 'array'];
+
+    $primaryExistingImageRules = ['nullable', 'integer'];
+
+    if ($watchId) {
+        $primaryExistingImageRules[] = Rule::exists('watch_images', 'id')
+            ->where(fn ($query) => $query->where('watch_id', $watchId));
+    } else {
+        $primaryExistingImageRules[] = Rule::exists('watch_images', 'id');
+    }
 
     return $request->validate([
         'brand' => ['required', 'string', 'max:255'],
@@ -608,21 +639,36 @@ private function validateWatch(Request $request, string $saveMode = 'publish'): 
         'date_acquired' => ['nullable', 'date'],
         'date_sold' => ['nullable', 'date'],
 
-        'images' => [$isDraft ? 'nullable' : 'required', 'array', 'max:5'],
-        'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+        /*
+        |--------------------------------------------------------------------------
+        | Images
+        |--------------------------------------------------------------------------
+        | Create publish: required
+        | Create draft: optional
+        | Update: optional
+        */
+        'images' => $imagesRule,
+        'images.*' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
 
-        'sections' => [$isDraft ? 'nullable' : 'required', 'array'],
+        /*
+        |--------------------------------------------------------------------------
+        | Primary image intent from EditWatchModal.vue
+        |--------------------------------------------------------------------------
+        */
+        'primary_existing_image_id' => $primaryExistingImageRules,
+        'primary_new_image_index' => ['nullable', 'integer', 'min:0'],
+
+        'sections' => $sectionsRule,
         'sections.*.title' => [$isDraft ? 'nullable' : 'required', 'string', 'max:255'],
         'sections.*.content' => [$isDraft ? 'nullable' : 'required', 'string'],
     ]);
 }
 
-    private function uploadImages(Watch $watch, Request $request): void
-    {
-        if (! $request->hasFile('images')) {
-            return;
-        }
+ private function uploadImages(Watch $watch, Request $request): void
+{
+    $uploadedImages = [];
 
+    if ($request->hasFile('images')) {
         $currentCount = $watch->images()->count();
 
         foreach ($request->file('images') as $index => $file) {
@@ -633,15 +679,86 @@ private function validateWatch(Request $request, string $saveMode = 'publish'): 
             $folder = 'watches/' . $watch->id;
             $path = $file->store($folder, 'public');
 
-            $watch->images()->create([
+            $uploadedImages[$index] = $watch->images()->create([
                 'image_path' => $path,
                 'hd_path' => $path,
                 'thumbnail_path' => $path,
-                'is_primary' => $currentCount === 0 && $index === 0,
+                'is_primary' => false,
                 'sort_order' => $currentCount + $index + 1,
             ]);
         }
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Apply primary image intent
+    |--------------------------------------------------------------------------
+    | Existing primary image = user selected a saved image.
+    | New primary image = user uploaded new images and selected one as primary.
+    */
+    $primaryExistingImageId = $request->input('primary_existing_image_id');
+    $primaryNewImageIndex = $request->input('primary_new_image_index');
+
+    if (! empty($primaryExistingImageId)) {
+        $primaryImage = $watch->images()
+            ->where('id', $primaryExistingImageId)
+            ->first();
+
+        if ($primaryImage) {
+            $this->makeImagePrimary($watch, $primaryImage);
+            return;
+        }
+    }
+
+    if ($primaryNewImageIndex !== null && $primaryNewImageIndex !== '') {
+        $primaryNewImageIndex = (int) $primaryNewImageIndex;
+
+        if (isset($uploadedImages[$primaryNewImageIndex])) {
+            $this->makeImagePrimary($watch, $uploadedImages[$primaryNewImageIndex]);
+            return;
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fallback
+    |--------------------------------------------------------------------------
+    | If the watch still has no primary image, use the first photo.
+    */
+    if (! $watch->images()->where('is_primary', true)->exists()) {
+        $firstImage = $watch->images()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->first();
+
+        if ($firstImage) {
+            $this->makeImagePrimary($watch, $firstImage);
+        }
+    }
+}
+
+private function makeImagePrimary(Watch $watch, WatchImage $image): void
+{
+    WatchImage::where('watch_id', $watch->id)
+        ->update(['is_primary' => false]);
+
+    $image->update([
+        'is_primary' => true,
+        'sort_order' => 1,
+    ]);
+
+    $otherImages = $watch->images()
+        ->where('id', '!=', $image->id)
+        ->orderBy('sort_order')
+        ->orderBy('id')
+        ->get();
+
+    foreach ($otherImages as $index => $otherImage) {
+        $otherImage->update([
+            'sort_order' => $index + 2,
+        ]);
+    }
+}
 
     private function syncSections(Watch $watch, array $sections): void
     {

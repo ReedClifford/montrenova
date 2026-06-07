@@ -822,24 +822,6 @@ const goToInquiry = () => {
                                         </span>
                                     </div>
 
-                                    <div class="mt-5 grid gap-3 sm:grid-cols-2">
-                                        <button
-                                            type="button"
-                                            class="inline-flex items-center justify-center rounded-lg bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
-                                            @click="openMessengerInquiry"
-                                        >
-                                            Ask via Messenger
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-black/20 px-5 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
-                                            @click="goToInquiry"
-                                        >
-                                            Edit Inquiry Message
-                                        </button>
-                                    </div>
-
                                     <p
                                         class="mt-3 text-xs leading-5 text-zinc-500"
                                     >
@@ -848,9 +830,29 @@ const goToInquiry = () => {
                                     </p>
                                 </div>
 
-                                <p class="mt-5 text-sm leading-7 text-zinc-400">
-                                    {{ productDescription }}
-                                </p>
+                                <div class="mt-5 max-w-2xl">
+                                    <p
+                                        class="text-sm leading-7 text-zinc-400 sm:text-base"
+                                    >
+                                        {{ productDescription }}
+                                    </p>
+
+                                    <div class="mt-5 flex justify-end">
+                                        <button
+                                            type="button"
+                                            class="group inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-black shadow-lg shadow-white/10 transition duration-300 hover:-translate-y-0.5 hover:bg-zinc-200 hover:shadow-white/20 active:scale-[0.98] sm:px-6"
+                                            @click="openMessengerInquiry()"
+                                        >
+                                            Ask via Messenger
+                                            <span
+                                                class="transition duration-300 group-hover:translate-x-1"
+                                                aria-hidden="true"
+                                            >
+                                                →
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
