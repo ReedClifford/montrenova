@@ -87,12 +87,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     |
     | Important:
     | These routes must stay BEFORE Route::resource('/admin/watches')
-    | so Laravel does not treat "reorder" as a {watch} parameter.
+    | so Laravel does not treat "reorder" or "bulk-action" as a {watch}.
     |
     */
 
     Route::patch('/admin/watches/reorder', [WatchController::class, 'reorder'])
         ->name('admin.watches.reorder');
+
+    Route::post('/admin/watches/bulk-action', [WatchController::class, 'bulkAction'])
+        ->name('admin.watches.bulk-action');
 
     Route::patch('/admin/watches/{watch}/mark-sold', [WatchController::class, 'markSold'])
         ->name('admin.watches.mark-sold');

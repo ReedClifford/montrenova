@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 
 class WatchController extends Controller
 {
@@ -205,35 +206,63 @@ class WatchController extends Controller
         ]);
     }
 
-    public function store(Request $request)
-    {
-        $validated = $this->validateWatch($request);
+public function store(Request $request)
+{
+    $saveMode = $request->input('save_mode') === 'draft' ? 'draft' : 'publish';
 
-        if (($validated['status'] ?? null) === 'sold' && empty($validated['date_sold'])) {
-            $validated['date_sold'] = now()->toDateString();
-        }
+    $validated = $this->validateWatch($request, $saveMode);
 
-        if (($validated['status'] ?? null) === 'sold' && empty($validated['sold_price'])) {
-            $validated['sold_price'] = $validated['discounted_price']
-                ?: $validated['selling_price'];
-        }
-
-        $validated['slug'] = $this->generateUniqueSlug(
-            $validated['brand'] ?? '',
-            $validated['model_name'],
-            $validated['reference_number'] ?? ''
-        );
-
-        $watch = Watch::create($validated);
-
-        $this->syncSections($watch, $request->input('sections', []));
-        $this->uploadImages($watch, $request);
-        $this->normalizeImageOrder($watch);
-
-        return redirect()
-            ->route('admin.watches.index')
-            ->with('success', 'Watch stock created successfully.');
+    if ($saveMode === 'draft') {
+        $validated['status'] = 'draft';
+        $validated['is_visible'] = false;
+        $validated['is_featured'] = false;
+        $validated['display_price'] = $request->has('display_price')
+            ? $request->boolean('display_price')
+            : true;
+        $validated['allow_inquiry'] = $request->has('allow_inquiry')
+            ? $request->boolean('allow_inquiry')
+            : true;
+    } else {
+        $validated['status'] = 'available';
+        $validated['is_visible'] = true;
+        $validated['display_price'] = true;
+        $validated['allow_inquiry'] = true;
+        $validated['is_featured'] = $request->has('is_featured')
+            ? $request->boolean('is_featured')
+            : false;
     }
+
+    if (($validated['status'] ?? null) === 'sold' && empty($validated['date_sold'])) {
+        $validated['date_sold'] = now()->toDateString();
+    }
+
+    if (($validated['status'] ?? null) === 'sold' && empty($validated['sold_price'])) {
+        $validated['sold_price'] = !empty($validated['discounted_price'])
+            ? $validated['discounted_price']
+            : $validated['selling_price'];
+    }
+
+    $validated['slug'] = $this->generateUniqueSlug(
+        $validated['brand'] ?? '',
+        $validated['model_name'],
+        $validated['reference_number'] ?? ''
+    );
+
+    $watch = Watch::create($validated);
+
+    $this->syncSections($watch, $request->input('sections', []));
+    $this->uploadImages($watch, $request);
+    $this->normalizeImageOrder($watch);
+
+    return redirect()
+        ->route('admin.watches.index')
+        ->with(
+            'success',
+            $saveMode === 'draft'
+                ? 'Watch saved as draft successfully.'
+                : 'Watch published successfully.'
+        );
+}
 
     public function edit(Watch $watch)
     {
@@ -387,6 +416,80 @@ public function update(Request $request, Watch $watch)
         return back()->with('success', 'Photo deleted successfully.');
     }
 
+
+    public function bulkAction(Request $request)
+{
+    $validated = $request->validate([
+        'watch_ids' => ['required', 'array', 'min:1'],
+        'watch_ids.*' => ['integer', 'exists:watches,id'],
+        'action' => [
+            'required',
+            'string',
+            'in:make_visible,hide,mark_available,mark_draft,feature,unfeature,delete',
+        ],
+    ]);
+
+    $watchIds = collect($validated['watch_ids'])
+        ->map(fn ($id) => (int) $id)
+        ->unique()
+        ->values();
+
+    $action = $validated['action'];
+    $count = $watchIds->count();
+
+    DB::transaction(function () use ($watchIds, $action) {
+        $query = Watch::query()->whereIn('id', $watchIds);
+
+        match ($action) {
+            'make_visible' => $query->update([
+                'is_visible' => true,
+            ]),
+
+            'hide' => $query->update([
+                'is_visible' => false,
+                'is_featured' => false,
+            ]),
+
+            'mark_available' => $query->update([
+                'status' => 'available',
+                'is_visible' => true,
+                'display_price' => true,
+                'allow_inquiry' => true,
+                'date_sold' => null,
+                'sold_price' => null,
+            ]),
+
+            'mark_draft' => $query->update([
+                'status' => 'draft',
+                'is_visible' => false,
+                'is_featured' => false,
+            ]),
+
+            'feature' => $query->update([
+                'is_featured' => true,
+            ]),
+
+            'unfeature' => $query->update([
+                'is_featured' => false,
+            ]),
+
+            'delete' => $query->delete(),
+        };
+    });
+
+    $message = match ($action) {
+        'make_visible' => "{$count} watch(es) are now visible on the website.",
+        'hide' => "{$count} watch(es) hidden from the website.",
+        'mark_available' => "{$count} watch(es) set as available.",
+        'mark_draft' => "{$count} watch(es) moved to draft.",
+        'feature' => "{$count} watch(es) marked as featured.",
+        'unfeature' => "{$count} watch(es) removed from featured.",
+        'delete' => "{$count} watch(es) deleted.",
+    };
+
+    return back()->with('success', $message);
+}
+
     public function setPrimaryImage(WatchImage $image)
     {
         $watch = $image->watch;
@@ -469,47 +572,50 @@ public function update(Request $request, Watch $watch)
         return back()->with('success', 'Photo order updated successfully.');
     }
 
-    private function validateWatch(Request $request, ?int $watchId = null): array
-    {
-        return $request->validate([
-            'brand' => ['nullable', 'string', 'max:255'],
-            'model_name' => ['required', 'string', 'max:255'],
-            'reference_number' => ['nullable', 'string', 'max:255'],
+private function validateWatch(Request $request, string $saveMode = 'publish'): array
+{
+    $isDraft = $saveMode === 'draft';
 
-            'condition' => ['nullable', 'string', 'max:255'],
-            'category' => ['nullable', 'string', 'max:255'],
-            'description' => ['nullable', 'string'],
+    return $request->validate([
+        'brand' => ['required', 'string', 'max:255'],
+        'model_name' => ['required', 'string', 'max:255'],
+        'reference_number' => ['nullable', 'string', 'max:255'],
+        'condition' => ['required', 'string', 'max:255'],
+        'category' => ['nullable', 'string', 'max:255'],
+        'description' => ['nullable', 'string'],
 
-            'movement' => ['nullable', 'string', 'max:255'],
-            'case_size' => ['nullable', 'string', 'max:255'],
-            'case_material' => ['nullable', 'string', 'max:255'],
-            'dial_color' => ['nullable', 'string', 'max:255'],
-            'crystal' => ['nullable', 'string', 'max:255'],
-            'bracelet_or_strap' => ['nullable', 'string', 'max:255'],
-            'water_resistance' => ['nullable', 'string', 'max:255'],
-            'box_papers' => ['nullable', 'string', 'max:255'],
-            'warranty_type' => ['nullable', 'string', 'max:255'],
-            'buyer_name' => ['nullable', 'required_if:status,sold', 'string', 'max:255'],
-            'serial_number' => ['nullable', 'string', 'max:255'],
-            'capital_price' => ['nullable', 'numeric', 'min:0'],
-            'selling_price' => ['required', 'numeric', 'min:1'],
-            'discounted_price' => ['nullable', 'numeric', 'min:0'],
-            'sold_price' => ['nullable', 'numeric', 'min:0'],
+        'movement' => ['nullable', 'string', 'max:255'],
+        'case_size' => ['nullable', 'string', 'max:255'],
+        'case_material' => ['nullable', 'string', 'max:255'],
+        'dial_color' => ['nullable', 'string', 'max:255'],
+        'crystal' => ['nullable', 'string', 'max:255'],
+        'bracelet_or_strap' => ['nullable', 'string', 'max:255'],
+        'water_resistance' => ['nullable', 'string', 'max:255'],
+        'box_papers' => ['nullable', 'string', 'max:255'],
+        'warranty_type' => [$isDraft ? 'nullable' : 'required', 'string', 'max:255'],
 
-            'status' => ['required', 'in:draft,available,reserved,sold,hidden'],
+        'capital_price' => [$isDraft ? 'nullable' : 'required', 'numeric', 'min:0'],
+        'selling_price' => [$isDraft ? 'nullable' : 'required', 'numeric', $isDraft ? 'min:0' : 'gt:0'],
+        'discounted_price' => ['nullable', 'numeric', 'min:0'],
+        'sold_price' => ['nullable', 'numeric', 'min:0'],
 
-            'is_featured' => ['boolean'],
-            'is_visible' => ['boolean'],
-            'display_price' => ['boolean'],
-            'allow_inquiry' => ['boolean'],
+        'status' => ['nullable', 'in:draft,available,reserved,sold,hidden'],
+        'is_featured' => ['nullable', 'boolean'],
+        'is_visible' => ['nullable', 'boolean'],
+        'display_price' => ['nullable', 'boolean'],
+        'allow_inquiry' => ['nullable', 'boolean'],
 
-            'date_acquired' => ['nullable', 'date'],
-            'date_sold' => ['nullable', 'date'],
+        'date_acquired' => ['nullable', 'date'],
+        'date_sold' => ['nullable', 'date'],
 
-            'images' => ['nullable', 'array', 'max:5'],
-            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
-        ]);
-    }
+        'images' => [$isDraft ? 'nullable' : 'required', 'array', 'max:5'],
+        'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+
+        'sections' => [$isDraft ? 'nullable' : 'required', 'array'],
+        'sections.*.title' => [$isDraft ? 'nullable' : 'required', 'string', 'max:255'],
+        'sections.*.content' => [$isDraft ? 'nullable' : 'required', 'string'],
+    ]);
+}
 
     private function uploadImages(Watch $watch, Request $request): void
     {

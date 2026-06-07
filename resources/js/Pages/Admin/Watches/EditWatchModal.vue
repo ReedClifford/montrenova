@@ -2,7 +2,14 @@
 import InputError from "@/Components/InputError.vue";
 import { compressImageFile, formatFileSize } from "@/Utils/imageCompression";
 import { router, useForm } from "@inertiajs/vue3";
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    watch,
+} from "vue";
 
 const props = defineProps({
     show: {
@@ -26,6 +33,10 @@ const pendingPrimaryImage = ref(null);
 const fileInput = ref(null);
 const imageLimitMessage = ref("");
 const isCompressingImages = ref(false);
+const showPublicPreview = ref(false);
+const originalSnapshot = ref("");
+const isClosingAfterSave = ref(false);
+const submitFeedback = ref("");
 
 const form = useForm({
     _method: "patch",
@@ -152,6 +163,94 @@ const peso = (value) => {
     }).format(Number(value || 0));
 };
 
+const normalizeMoneyValue = (value) => {
+    if (value === "" || value === null || value === undefined) {
+        return "";
+    }
+
+    const amount = Number(value);
+
+    if (Number.isNaN(amount)) {
+        return String(value);
+    }
+
+    return String(amount);
+};
+
+const snapshotFormState = () => {
+    return JSON.stringify({
+        brand: String(form.brand ?? ""),
+        model_name: String(form.model_name ?? ""),
+        reference_number: String(form.reference_number ?? ""),
+        condition: String(form.condition ?? ""),
+        category: String(form.category ?? ""),
+        description: String(form.description ?? ""),
+
+        movement: String(form.movement ?? ""),
+        case_size: String(form.case_size ?? ""),
+        case_material: String(form.case_material ?? ""),
+        dial_color: String(form.dial_color ?? ""),
+        crystal: String(form.crystal ?? ""),
+        bracelet_or_strap: String(form.bracelet_or_strap ?? ""),
+        water_resistance: String(form.water_resistance ?? ""),
+        box_papers: String(form.box_papers ?? ""),
+        warranty_type: String(form.warranty_type ?? ""),
+
+        capital_price: normalizeMoneyValue(form.capital_price),
+        selling_price: normalizeMoneyValue(form.selling_price),
+        discounted_price: normalizeMoneyValue(form.discounted_price),
+
+        status: String(form.status ?? ""),
+        is_featured: Boolean(form.is_featured),
+        is_visible: Boolean(form.is_visible),
+        display_price: Boolean(form.display_price),
+        allow_inquiry: Boolean(form.allow_inquiry),
+
+        sections: form.sections.map((section) => ({
+            title: String(section.title ?? ""),
+            content: String(section.content ?? ""),
+        })),
+    });
+};
+
+const hasUnsavedChanges = computed(() => {
+    if (
+        !props.show ||
+        !props.watch ||
+        !originalSnapshot.value ||
+        isClosingAfterSave.value
+    ) {
+        return false;
+    }
+
+    if (imagePreviews.value.length > 0) {
+        return true;
+    }
+
+    return snapshotFormState() !== originalSnapshot.value;
+});
+
+const confirmDiscardChanges = () => {
+    if (!hasUnsavedChanges.value) {
+        return true;
+    }
+
+    return window.confirm("You have unsaved changes. Close without saving?");
+};
+
+const handleBeforeUnload = (event) => {
+    if (
+        !hasUnsavedChanges.value ||
+        form.processing ||
+        isCompressingImages.value
+    ) {
+        return;
+    }
+
+    event.preventDefault();
+    event.returnValue = "";
+};
+
 const totalImageCount = computed(() => {
     return existingImages.value.length + imagePreviews.value.length;
 });
@@ -202,8 +301,20 @@ const specsComplete = computed(() => {
     return clean(form.warranty_type) !== "";
 });
 
-const photosComplete = computed(() => {
+const hasAnyPhoto = computed(() => {
     return totalImageCount.value > 0 && totalImageCount.value <= MAX_IMAGES;
+});
+
+const publicListingNeedsPhoto = computed(() => {
+    return form.is_visible && !["draft", "hidden"].includes(form.status);
+});
+
+const photosComplete = computed(() => {
+    if (!publicListingNeedsPhoto.value) {
+        return totalImageCount.value <= MAX_IMAGES;
+    }
+
+    return hasAnyPhoto.value;
 });
 
 const termsComplete = computed(() => {
@@ -258,7 +369,13 @@ const missingRequirements = computed(() => {
     if (!basicComplete.value) missing.push("Basic Info");
     if (!pricingComplete.value) missing.push("Pricing");
     if (!specsComplete.value) missing.push("Specs");
-    if (!photosComplete.value) missing.push("Photos");
+    if (!photosComplete.value) {
+        missing.push(
+            publicListingNeedsPhoto.value
+                ? "Photos for visible listing"
+                : "Photos",
+        );
+    }
     if (!termsComplete.value) missing.push("Terms");
 
     return missing;
@@ -274,15 +391,15 @@ const firstIncompleteTab = () => {
     return incomplete?.key || "terms";
 };
 
-const canAccessTab = (key) => {
-    const targetIndex = getTabIndex(key);
-    const currentIndex = getTabIndex(activeTab.value);
-
-    if (targetIndex <= currentIndex) return true;
-
-    const previousTabs = tabs.slice(0, targetIndex);
-
-    return previousTabs.every((tab) => stepCompletion.value[tab.key]);
+const canAccessTab = () => {
+    /*
+    |--------------------------------------------------------------------------
+    | Edit mode tab access
+    |--------------------------------------------------------------------------
+    | Editing should not feel like a locked wizard. Users may jump directly to
+    | Pricing, Photos, or Terms, then save once the required data is valid.
+    */
+    return true;
 };
 
 const goToTab = (key) => {
@@ -363,6 +480,112 @@ const pendingPrimarySummary = computed(() => {
 
     return "No primary photo selected yet.";
 });
+
+const previewPrimaryImage = computed(() => {
+    if (currentPrimaryNewImage.value?.url)
+        return currentPrimaryNewImage.value.url;
+
+    if (pendingPrimaryImage.value?.type === "existing") {
+        const selected = existingImages.value.find(
+            (image) => image.id === pendingPrimaryImage.value.id,
+        );
+
+        if (selected?.url) return selected.url;
+    }
+
+    if (currentPrimaryExistingImage.value?.url) {
+        return currentPrimaryExistingImage.value.url;
+    }
+
+    return existingImages.value[0]?.url || imagePreviews.value[0]?.url || null;
+});
+
+const previewTitle = computed(() => {
+    const title = `${clean(form.brand)} ${clean(form.model_name)}`.trim();
+
+    return title || "Untitled Watch";
+});
+
+const previewPriceLabel = computed(() => {
+    if (!form.display_price) return "Price on inquiry";
+    if (finalSellingPrice.value <= 0) return "Price not set";
+
+    return peso(finalSellingPrice.value);
+});
+
+const previewStatusLabel = computed(() => {
+    if (form.status === "available" && form.is_visible)
+        return "Available Online";
+    if (form.status === "draft") return "Draft Preview";
+    if (form.status === "hidden" || !form.is_visible) return "Hidden Preview";
+    if (form.status === "reserved") return "Reserved Preview";
+    if (form.status === "sold") return "Sold Preview";
+
+    return "Listing Preview";
+});
+
+const previewStatusClass = computed(() => {
+    if (form.status === "available" && form.is_visible) {
+        return "border-emerald-400/20 bg-emerald-400/10 text-emerald-300";
+    }
+
+    if (form.status === "reserved") {
+        return "border-amber-400/20 bg-amber-400/10 text-amber-300";
+    }
+
+    if (form.status === "sold") {
+        return "border-zinc-400/20 bg-zinc-400/10 text-zinc-300";
+    }
+
+    return "border-white/10 bg-white/[0.04] text-zinc-400";
+});
+
+const previewSpecs = computed(() => {
+    return [
+        { label: "Movement", value: form.movement },
+        { label: "Case Size", value: form.case_size },
+        { label: "Case Material", value: form.case_material },
+        { label: "Dial Color", value: form.dial_color },
+        { label: "Crystal", value: form.crystal },
+        { label: "Bracelet / Strap", value: form.bracelet_or_strap },
+        { label: "Water Resistance", value: form.water_resistance },
+        { label: "Box & Papers", value: form.box_papers },
+        { label: "Warranty", value: form.warranty_type },
+    ].filter((item) => clean(item.value) !== "");
+});
+
+const previewSections = computed(() => {
+    return form.sections.filter((section) => {
+        return clean(section.title) !== "" && clean(section.content) !== "";
+    });
+});
+
+const previewWarnings = computed(() => {
+    const warnings = [];
+
+    if (!form.is_visible)
+        warnings.push("Hidden from website until visibility is turned on.");
+    if (form.status !== "available")
+        warnings.push(`Status is ${form.status || "not set"}.`);
+    if (!previewPrimaryImage.value)
+        warnings.push("No product photo selected yet.");
+    if (form.display_price && finalSellingPrice.value <= 0)
+        warnings.push("Display price is on but final price is not set.");
+    if (!form.allow_inquiry)
+        warnings.push("Customer inquiry button is disabled.");
+    if (imagePreviews.value.length)
+        warnings.push("New photo changes will appear after saving.");
+
+    return warnings;
+});
+
+const openPublicPreview = () => {
+    showPublicPreview.value = true;
+};
+
+const closePublicPreview = () => {
+    showPublicPreview.value = false;
+};
 
 const syncPhotoIntent = () => {
     if (pendingPrimaryImage.value?.type === "new") {
@@ -686,12 +909,73 @@ const setPrimaryExistingImage = (image) => {
     );
 };
 
+const photoCards = computed(() => [
+    ...existingImages.value.map((image, index) => ({
+        key: `existing-${image.id}-${index}`,
+        type: "existing",
+        index,
+        image,
+        url: image.url,
+        label: `Saved ${index + 1}`,
+        sizeLabel: "Saved photo",
+        isPrimary: isExistingPrimary(image),
+    })),
+    ...imagePreviews.value.map((image, index) => ({
+        key: image.clientKey,
+        type: "new",
+        index,
+        image,
+        url: image.url,
+        label: `New ${index + 1}`,
+        sizeLabel: formatFileSize(image.size),
+        isPrimary: isNewPrimary(image),
+    })),
+]);
+
+const canMovePhotoCard = (photo, direction) => {
+    if (photo.type === "existing") {
+        if (direction === "left") return photo.index > 0;
+        return photo.index < existingImages.value.length - 1;
+    }
+
+    if (direction === "left") return photo.index > 0;
+    return photo.index < imagePreviews.value.length - 1;
+};
+
+const setPrimaryPhotoCard = (photo) => {
+    if (photo.type === "existing") {
+        setPrimaryExistingImage(photo.image);
+        return;
+    }
+
+    setPrimaryNewImage(photo.index);
+};
+
+const movePhotoCard = (photo, direction) => {
+    if (photo.type === "existing") {
+        moveImage(photo.image, direction);
+        return;
+    }
+
+    moveNewImage(photo.index, direction);
+};
+
+const removePhotoCard = (photo) => {
+    if (photo.type === "existing") {
+        deleteImage(photo.image);
+        return;
+    }
+
+    removeNewImage(photo.index);
+};
+
 const loadWatchIntoForm = () => {
     if (!props.watch) return;
 
     activeTab.value = "basic";
     clearNewImages();
     form.clearErrors();
+    submitFeedback.value = "";
 
     form.brand = props.watch.brand || "";
     form.model_name = props.watch.model_name || "";
@@ -715,7 +999,7 @@ const loadWatchIntoForm = () => {
     form.selling_price = props.watch.selling_price ?? 0;
     form.discounted_price = props.watch.discounted_price || "";
 
-    form.status = props.watch.status || "draft";
+    form.status = props.watch.status || "available";
     form.is_featured = Boolean(props.watch.is_featured);
     form.is_visible =
         props.watch.is_visible === null || props.watch.is_visible === undefined
@@ -737,11 +1021,21 @@ const loadWatchIntoForm = () => {
     form.primary_new_image_index = "";
     pendingPrimaryImage.value = null;
 
-    existingImages.value = Array.isArray(props.watch.images)
-        ? props.watch.images
-              .map((image) => normalizeExistingImage(image))
-              .filter((image) => image.url)
-        : [];
+    const imageSource =
+        Array.isArray(props.watch.images) && props.watch.images.length
+            ? props.watch.images
+            : props.watch.primary_image
+              ? [
+                    {
+                        ...props.watch.primary_image,
+                        is_primary: true,
+                    },
+                ]
+              : [];
+
+    existingImages.value = imageSource
+        .map((image) => normalizeExistingImage(image))
+        .filter((image) => image.url);
 
     setFallbackPrimaryIntent();
 
@@ -751,48 +1045,198 @@ const loadWatchIntoForm = () => {
               content: section.content || "",
           }))
         : defaultSections();
+
+    originalSnapshot.value = snapshotFormState();
+    isClosingAfterSave.value = false;
 };
 
 watch(
-    () => [props.show, props.watch],
-    ([show]) => {
-        if (!show || !props.watch) return;
+    () => [props.show, props.watch?.id, props.watch?.updated_at],
+    async ([show]) => {
+        if (!show || !props.watch?.id) return;
 
+        /*
+        |--------------------------------------------------------------------------
+        | Hard fix for blank edit form
+        |--------------------------------------------------------------------------
+        | The parent renders this modal with v-if and passes the selected watch at
+        | the same time. Using immediate + flush post + nextTick guarantees the form
+        | is filled after Vue has mounted the modal and resolved the latest prop.
+        */
+        await nextTick();
         loadWatchIntoForm();
     },
     {
-        immediate: false,
+        immediate: true,
+        flush: "post",
     },
 );
+
+watch(
+    () => form.status,
+    (value, oldValue) => {
+        if (value === "available" && oldValue && oldValue !== "available") {
+            form.is_visible = true;
+            form.display_price = true;
+            form.allow_inquiry = true;
+        }
+    },
+);
+
+const closeWithoutPrompt = () => {
+    clearNewImages();
+    originalSnapshot.value = "";
+    isClosingAfterSave.value = false;
+    emit("close");
+};
 
 const closeModal = () => {
     if (form.processing || isCompressingImages.value) return;
 
-    clearNewImages();
-    emit("close");
+    if (showPublicPreview.value) {
+        closePublicPreview();
+        return;
+    }
+
+    if (!confirmDiscardChanges()) return;
+
+    closeWithoutPrompt();
+};
+
+const firstErrorTab = (errors = {}) => {
+    const keys = Object.keys(errors || {});
+
+    if (
+        keys.some((key) =>
+            [
+                "brand",
+                "model_name",
+                "reference_number",
+                "condition",
+                "category",
+                "description",
+            ].some((field) => key.startsWith(field)),
+        )
+    ) {
+        return "basic";
+    }
+
+    if (
+        keys.some((key) =>
+            [
+                "capital_price",
+                "selling_price",
+                "discounted_price",
+                "status",
+                "is_featured",
+                "is_visible",
+                "display_price",
+                "allow_inquiry",
+            ].some((field) => key.startsWith(field)),
+        )
+    ) {
+        return "pricing";
+    }
+
+    if (
+        keys.some((key) =>
+            [
+                "movement",
+                "case_size",
+                "case_material",
+                "dial_color",
+                "crystal",
+                "bracelet_or_strap",
+                "water_resistance",
+                "box_papers",
+                "warranty_type",
+            ].some((field) => key.startsWith(field)),
+        )
+    ) {
+        return "specs";
+    }
+
+    if (keys.some((key) => key.startsWith("images") || key.includes("image"))) {
+        return "photos";
+    }
+
+    if (keys.some((key) => key.startsWith("sections"))) {
+        return "terms";
+    }
+
+    return firstIncompleteTab();
 };
 
 const submit = () => {
-    if (!props.watch) return;
+    if (!props.watch?.id) {
+        submitFeedback.value =
+            "Unable to save because the selected watch was not loaded properly.";
+        return;
+    }
+
+    submitFeedback.value = "";
+    form.clearErrors();
 
     if (!canSubmit.value) {
         activeTab.value = firstIncompleteTab();
+        submitFeedback.value = `Please complete: ${missingRequirements.value.join(", ")}.`;
         return;
     }
 
     form.post(route("admin.watches.update", props.watch.id), {
         forceFormData: true,
         preserveScroll: true,
+        onStart: () => {
+            submitFeedback.value = "Saving changes...";
+        },
         onSuccess: () => {
+            /*
+            |--------------------------------------------------------------------------
+            | Let the parent close and reload
+            |--------------------------------------------------------------------------
+            | Do not call router.reload() inside the modal after saving. The parent owns
+            | showEditModal/selectedWatch, so it must close the modal first, destroy the
+            | modal instance, then reload the list. This prevents the modal from being
+            | re-opened by preserved Inertia state or refreshed props.
+            */
+            isClosingAfterSave.value = true;
+            showPublicPreview.value = false;
+            originalSnapshot.value = "";
             clearNewImages();
-            emit("close");
-            router.reload({ only: ["watches"] });
+
+            submitFeedback.value = "";
+            emit("close", { saved: true });
+        },
+        onError: (errors) => {
+            activeTab.value = firstErrorTab(errors);
+            submitFeedback.value =
+                "Please review the highlighted fields before saving.";
+            console.error("Watch update validation failed:", errors);
+        },
+        onFinish: () => {
+            if (submitFeedback.value === "Saving changes...") {
+                submitFeedback.value = "";
+            }
         },
     });
 };
 
+onMounted(() => {
+    if (props.show && props.watch?.id) {
+        loadWatchIntoForm();
+    }
+
+    if (typeof window !== "undefined") {
+        window.addEventListener("beforeunload", handleBeforeUnload);
+    }
+});
+
 onBeforeUnmount(() => {
     clearNewImages();
+
+    if (typeof window !== "undefined") {
+        window.removeEventListener("beforeunload", handleBeforeUnload);
+    }
 });
 </script>
 
@@ -807,8 +1251,8 @@ onBeforeUnmount(() => {
             leave-to-class="opacity-0"
         >
             <div
-                v-if="show && watch"
-                class="fixed inset-0 z-[999] flex items-end justify-center bg-black/80 px-2 py-2 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
+                v-if="show && watch && !isClosingAfterSave"
+                class="fixed inset-0 z-[999] flex items-stretch justify-center bg-black/90 p-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
             >
                 <div class="absolute inset-0" @click="closeModal"></div>
 
@@ -821,14 +1265,12 @@ onBeforeUnmount(() => {
                     leave-to-class="translate-y-8 opacity-0 sm:translate-y-4 sm:scale-95"
                 >
                     <form
-                        v-if="show && watch"
+                        v-if="show && watch && !isClosingAfterSave"
                         @submit.prevent="submit"
-                        class="relative flex h-[94svh] w-full max-w-6xl flex-col overflow-hidden rounded-t-[2rem] border border-white/10 bg-[#080808] shadow-2xl shadow-black sm:h-auto sm:max-h-[92vh] sm:rounded-[2rem]"
+                        class="relative flex h-[100dvh] max-h-[100dvh] w-full max-w-6xl flex-col overflow-hidden rounded-none border border-white/10 bg-[#080808] shadow-2xl shadow-black sm:h-auto sm:max-h-[92vh] sm:rounded-[2rem]"
                     >
                         <!-- MOBILE HANDLE -->
-                        <div
-                            class="flex justify-center border-b border-white/10 bg-[#0B0B0D] py-2 sm:hidden"
-                        >
+                        <div class="hidden">
                             <div
                                 class="h-1.5 w-12 rounded-full bg-white/20"
                             ></div>
@@ -836,7 +1278,7 @@ onBeforeUnmount(() => {
 
                         <!-- HEADER -->
                         <div
-                            class="border-b border-white/10 bg-[#0B0B0D] px-4 py-4 sm:px-6 sm:py-5"
+                            class="border-b border-white/10 bg-[#0B0B0D] px-4 py-3 sm:px-6 sm:py-5"
                         >
                             <div class="flex items-start justify-between gap-4">
                                 <div class="min-w-0">
@@ -905,7 +1347,7 @@ onBeforeUnmount(() => {
                                         </p>
 
                                         <p
-                                            class="mt-1 text-xs leading-5 text-zinc-500"
+                                            class="mt-1 hidden text-xs leading-5 text-zinc-500 sm:block"
                                         >
                                             {{ currentTab.helper }}
                                         </p>
@@ -933,7 +1375,7 @@ onBeforeUnmount(() => {
 
                             <!-- STEP PILLS -->
                             <div
-                                class="thin-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1"
+                                class="thin-scrollbar mt-4 hidden gap-2 overflow-x-auto pb-1 sm:flex"
                             >
                                 <button
                                     v-for="(tab, index) in tabs"
@@ -970,18 +1412,42 @@ onBeforeUnmount(() => {
                                     <span>{{ tab.label }}</span>
                                 </button>
                             </div>
+                            <!-- MOBILE STEP DOTS -->
+                            <div class="mt-4 grid grid-cols-5 gap-2 sm:hidden">
+                                <button
+                                    v-for="(tab, index) in tabs"
+                                    :key="`mobile-${tab.key}`"
+                                    type="button"
+                                    class="flex h-10 items-center justify-center rounded-2xl border text-xs font-black transition"
+                                    :class="
+                                        activeTab === tab.key
+                                            ? 'border-white bg-white text-black'
+                                            : stepCompletion[tab.key]
+                                              ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300'
+                                              : 'border-white/10 bg-white/[0.03] text-zinc-500'
+                                    "
+                                    @click="goToTab(tab.key)"
+                                    :aria-label="tab.label"
+                                >
+                                    {{
+                                        stepCompletion[tab.key]
+                                            ? "✓"
+                                            : index + 1
+                                    }}
+                                </button>
+                            </div>
                         </div>
 
                         <!-- BODY -->
                         <div
-                            class="thin-scrollbar flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6"
+                            class="thin-scrollbar flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6"
                         >
                             <!-- BASIC -->
                             <div
                                 v-if="activeTab === 'basic'"
                                 class="grid gap-4 md:grid-cols-2 sm:gap-5"
                             >
-                                <div class="md:col-span-2">
+                                <div class="hidden md:col-span-2 sm:block">
                                     <div
                                         class="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-4"
                                     >
@@ -1107,7 +1573,7 @@ onBeforeUnmount(() => {
                                     </h3>
 
                                     <p
-                                        class="mt-2 text-sm leading-6 text-zinc-500"
+                                        class="mt-2 hidden text-sm leading-6 text-zinc-500 sm:block"
                                     >
                                         Capital price can be zero, but selling
                                         price must be greater than zero.
@@ -1408,534 +1874,362 @@ onBeforeUnmount(() => {
                             <!-- PHOTOS -->
                             <div
                                 v-if="activeTab === 'photos'"
-                                class="space-y-5"
+                                class="space-y-4"
                             >
                                 <div
-                                    class="overflow-hidden rounded-[1.4rem] border border-white/10 bg-white/[0.03]"
+                                    class="rounded-[1.35rem] border border-white/10 bg-white/[0.03] p-4 sm:rounded-[1.6rem] sm:p-5"
                                 >
                                     <div
-                                        class="grid gap-0 lg:grid-cols-[0.85fr_1.15fr]"
+                                        class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
                                     >
-                                        <label
-                                            class="flex min-h-[220px] flex-col items-center justify-center border-b border-white/10 px-5 py-8 text-center transition lg:border-b-0 lg:border-r"
-                                            :class="
-                                                canAddMoreImages
-                                                    ? 'cursor-pointer border-white/10 bg-[#050505]/60 hover:bg-white/[0.04]'
-                                                    : 'cursor-not-allowed border-red-400/20 bg-red-400/10'
-                                            "
-                                        >
-                                            <div
-                                                class="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]"
+                                        <div class="min-w-0">
+                                            <p
+                                                class="text-xs font-bold uppercase tracking-[0.22em] text-zinc-600"
+                                            >
+                                                Photo Manager
+                                            </p>
+
+                                            <h3
+                                                class="mt-2 text-lg font-semibold text-white"
+                                            >
+                                                Manage photos in one grid
+                                            </h3>
+
+                                            <p
+                                                class="mt-1 text-xs leading-5 text-zinc-500 sm:text-sm sm:leading-6"
+                                            >
+                                                Saved photos update immediately.
+                                                New photos and new primary
+                                                selection apply after Save
+                                                Changes.
+                                            </p>
+                                        </div>
+
+                                        <div class="flex shrink-0 gap-2">
+                                            <button
+                                                v-if="imagePreviews.length"
+                                                type="button"
+                                                class="rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm font-semibold text-red-300 transition hover:border-red-400/40 hover:bg-red-400/15"
+                                                @click="clearNewImages"
+                                            >
+                                                Clear New
+                                            </button>
+
+                                            <label
+                                                class="inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition"
+                                                :class="
+                                                    canAddMoreImages
+                                                        ? 'cursor-pointer border-white bg-white text-black hover:bg-zinc-200'
+                                                        : 'cursor-not-allowed border-red-400/20 bg-red-400/10 text-red-300'
+                                                "
                                             >
                                                 <svg
-                                                    class="h-7 w-7 text-zinc-400"
+                                                    class="h-4 w-4"
                                                     fill="none"
                                                     viewBox="0 0 24 24"
-                                                    stroke-width="1.7"
+                                                    stroke-width="1.8"
                                                     stroke="currentColor"
                                                 >
                                                     <path
                                                         stroke-linecap="round"
                                                         stroke-linejoin="round"
-                                                        d="M12 16.5V9.75m0 0l-3 3m3-3l3 3M3.75 18.75h16.5A2.25 2.25 0 0022.5 16.5v-9A2.25 2.25 0 0020.25 5.25H3.75A2.25 2.25 0 001.5 7.5v9a2.25 2.25 0 002.25 2.25z"
+                                                        d="M12 4.5v15m7.5-7.5h-15"
                                                     />
                                                 </svg>
-                                            </div>
+                                                <span>
+                                                    {{
+                                                        canAddMoreImages
+                                                            ? "Add Photos"
+                                                            : "Limit Reached"
+                                                    }}
+                                                </span>
 
-                                            <span
-                                                class="mt-5 text-sm font-semibold text-white"
-                                            >
-                                                Add Photos
-                                            </span>
-
-                                            <span
-                                                class="mt-2 max-w-sm text-xs leading-6 text-zinc-500"
-                                            >
-                                                Upload compressed HD photos, set
-                                                the primary photo, and arrange
-                                                new upload order before saving.
-                                            </span>
-
-                                            <span
-                                                class="mt-4 rounded-xl border border-white/10 px-4 py-2 text-xs font-medium text-zinc-400"
-                                            >
-                                                {{ totalImageCount }} /
-                                                {{ MAX_IMAGES }} total photos
-                                            </span>
-
-                                            <span
-                                                v-if="isCompressingImages"
-                                                class="mt-3 text-xs font-semibold text-emerald-300"
-                                            >
-                                                Compressing images...
-                                            </span>
-
-                                            <span
-                                                v-else-if="canAddMoreImages"
-                                                class="mt-3 text-xs text-zinc-500"
-                                            >
-                                                {{ remainingSlots }} slot(s)
-                                                remaining
-                                            </span>
-
-                                            <span
-                                                v-else
-                                                class="mt-3 text-xs font-semibold text-red-300"
-                                            >
-                                                Maximum image limit reached.
-                                            </span>
-
-                                            <input
-                                                ref="fileInput"
-                                                type="file"
-                                                multiple
-                                                accept="image/*"
-                                                class="hidden"
-                                                :disabled="
-                                                    !canAddMoreImages ||
-                                                    isCompressingImages
-                                                "
-                                                @change="handleImages"
-                                            />
-                                        </label>
-
-                                        <div class="p-5">
-                                            <div
-                                                class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
-                                            >
-                                                <div>
-                                                    <p
-                                                        class="text-xs font-bold uppercase tracking-[0.22em] text-zinc-600"
-                                                    >
-                                                        Photo Workflow
-                                                    </p>
-
-                                                    <h3
-                                                        class="mt-2 text-lg font-semibold text-white"
-                                                    >
-                                                        Manage everything before
-                                                        closing the modal.
-                                                    </h3>
-
-                                                    <p
-                                                        class="mt-2 text-sm leading-6 text-zinc-500"
-                                                    >
-                                                        Existing photo actions
-                                                        save immediately. New
-                                                        photos, new order, and
-                                                        new primary selection
-                                                        are applied when you
-                                                        click Save Changes.
-                                                    </p>
-                                                </div>
-
-                                                <button
-                                                    v-if="imagePreviews.length"
-                                                    type="button"
-                                                    class="shrink-0 rounded-xl border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs font-semibold text-red-300 transition hover:border-red-400/40 hover:bg-red-400/15"
-                                                    @click="clearNewImages"
-                                                >
-                                                    Remove New
-                                                </button>
-                                            </div>
-
-                                            <div
-                                                class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4"
-                                            >
-                                                <div class="mn-photo-stat">
-                                                    <p>Existing</p>
-                                                    <strong>
-                                                        {{
-                                                            existingImages.length
-                                                        }}
-                                                    </strong>
-                                                </div>
-
-                                                <div class="mn-photo-stat">
-                                                    <p>New</p>
-                                                    <strong>
-                                                        {{
-                                                            imagePreviews.length
-                                                        }}
-                                                    </strong>
-                                                </div>
-
-                                                <div class="mn-photo-stat">
-                                                    <p>Total</p>
-                                                    <strong>
-                                                        {{ totalImageCount }}
-                                                    </strong>
-                                                </div>
-
-                                                <div class="mn-photo-stat">
-                                                    <p>Slots</p>
-                                                    <strong>
-                                                        {{ remainingSlots }}
-                                                    </strong>
-                                                </div>
-                                            </div>
-
-                                            <div
-                                                class="mt-5 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4"
-                                            >
-                                                <p
-                                                    class="text-xs font-bold uppercase tracking-[0.2em] text-emerald-300"
-                                                >
-                                                    Primary Photo
-                                                </p>
-
-                                                <p
-                                                    class="mt-2 text-sm leading-6 text-emerald-100/80"
-                                                >
-                                                    {{ pendingPrimarySummary }}
-                                                </p>
-                                            </div>
-
-                                            <InputError
-                                                class="mt-3"
-                                                :message="
-                                                    imageLimitMessage ||
-                                                    form.errors.images
-                                                "
-                                            />
+                                                <input
+                                                    ref="fileInput"
+                                                    type="file"
+                                                    multiple
+                                                    accept="image/*"
+                                                    class="hidden"
+                                                    :disabled="
+                                                        !canAddMoreImages ||
+                                                        isCompressingImages
+                                                    "
+                                                    @change="handleImages"
+                                                />
+                                            </label>
                                         </div>
-                                    </div>
-                                </div>
-
-                                <!-- NEW PHOTOS -->
-                                <div
-                                    v-if="imagePreviews.length"
-                                    class="rounded-[1.5rem] border border-emerald-400/20 bg-emerald-400/[0.06] p-4 sm:p-5"
-                                >
-                                    <div
-                                        class="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-end"
-                                    >
-                                        <div>
-                                            <p
-                                                class="text-xs font-bold uppercase tracking-[0.22em] text-emerald-300"
-                                            >
-                                                New Upload Queue
-                                            </p>
-
-                                            <h3
-                                                class="mt-2 text-lg font-semibold text-white"
-                                            >
-                                                Arrange new photos before saving
-                                            </h3>
-
-                                            <p
-                                                class="mt-1 text-xs leading-5 text-zinc-400"
-                                            >
-                                                Use arrows to move photos. Use
-                                                Make Primary so a newly added
-                                                photo can become the main photo
-                                                immediately after Save Changes.
-                                            </p>
-                                        </div>
-
-                                        <button
-                                            type="button"
-                                            class="rounded-xl border border-red-400/20 bg-red-400/10 px-3 py-2 text-xs font-semibold text-red-300 transition hover:border-red-400/40 hover:bg-red-400/15"
-                                            @click="clearNewImages"
-                                        >
-                                            Clear Queue
-                                        </button>
                                     </div>
 
                                     <div
-                                        class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+                                        class="mt-4 grid grid-cols-4 gap-2 rounded-2xl border border-white/10 bg-[#050505] p-2 text-center"
                                     >
                                         <div
-                                            v-for="(
-                                                preview, index
-                                            ) in imagePreviews"
-                                            :key="preview.clientKey"
-                                            class="overflow-hidden rounded-2xl border bg-[#050505]"
-                                            :class="
-                                                isNewPrimary(preview)
-                                                    ? 'border-emerald-400/60 ring-2 ring-emerald-400/20'
-                                                    : 'border-white/10'
-                                            "
+                                            class="rounded-xl bg-white/[0.03] px-2 py-2"
                                         >
-                                            <div class="relative">
-                                                <img
-                                                    :src="preview.url"
-                                                    class="aspect-square w-full object-cover"
-                                                    alt="New watch photo"
-                                                />
+                                            <p
+                                                class="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-600"
+                                            >
+                                                Saved
+                                            </p>
+                                            <p
+                                                class="mt-1 text-sm font-bold text-white"
+                                            >
+                                                {{ existingImages.length }}
+                                            </p>
+                                        </div>
 
-                                                <div
-                                                    class="absolute left-2 top-2 rounded-xl bg-black/70 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur"
-                                                >
-                                                    New {{ index + 1 }}
-                                                </div>
+                                        <div
+                                            class="rounded-xl bg-white/[0.03] px-2 py-2"
+                                        >
+                                            <p
+                                                class="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-600"
+                                            >
+                                                New
+                                            </p>
+                                            <p
+                                                class="mt-1 text-sm font-bold text-white"
+                                            >
+                                                {{ imagePreviews.length }}
+                                            </p>
+                                        </div>
 
-                                                <div
-                                                    v-if="isNewPrimary(preview)"
-                                                    class="absolute right-2 top-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-300 backdrop-blur"
-                                                >
-                                                    Primary After Save
-                                                </div>
+                                        <div
+                                            class="rounded-xl bg-white/[0.03] px-2 py-2"
+                                        >
+                                            <p
+                                                class="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-600"
+                                            >
+                                                Total
+                                            </p>
+                                            <p
+                                                class="mt-1 text-sm font-bold text-white"
+                                            >
+                                                {{ totalImageCount }}/{{
+                                                    MAX_IMAGES
+                                                }}
+                                            </p>
+                                        </div>
 
-                                                <button
-                                                    type="button"
-                                                    class="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white shadow-lg shadow-black/40"
-                                                    @click="
-                                                        removeNewImage(index)
-                                                    "
-                                                >
-                                                    ×
-                                                </button>
-                                            </div>
-
-                                            <div class="space-y-2 p-3">
-                                                <div
-                                                    class="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] leading-4 text-zinc-400"
-                                                >
-                                                    <p class="truncate">
-                                                        {{ preview.name }}
-                                                    </p>
-                                                    <p>
-                                                        {{
-                                                            formatFileSize(
-                                                                preview.size,
-                                                            )
-                                                        }}
-                                                    </p>
-                                                </div>
-
-                                                <div
-                                                    class="grid grid-cols-2 gap-2"
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        :disabled="index === 0"
-                                                        class="mn-photo-btn"
-                                                        @click="
-                                                            moveNewImage(
-                                                                index,
-                                                                'left',
-                                                            )
-                                                        "
-                                                    >
-                                                        ← Move
-                                                    </button>
-
-                                                    <button
-                                                        type="button"
-                                                        :disabled="
-                                                            index ===
-                                                            imagePreviews.length -
-                                                                1
-                                                        "
-                                                        class="mn-photo-btn"
-                                                        @click="
-                                                            moveNewImage(
-                                                                index,
-                                                                'right',
-                                                            )
-                                                        "
-                                                    >
-                                                        Move →
-                                                    </button>
-                                                </div>
-
-                                                <button
-                                                    type="button"
-                                                    class="mn-photo-btn w-full"
-                                                    :class="
-                                                        isNewPrimary(preview)
-                                                            ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'
-                                                            : ''
-                                                    "
-                                                    @click="
-                                                        setPrimaryNewImage(
-                                                            index,
-                                                        )
-                                                    "
-                                                >
-                                                    {{
-                                                        isNewPrimary(preview)
-                                                            ? "Selected Primary"
-                                                            : "Make Primary"
-                                                    }}
-                                                </button>
-
-                                                <button
-                                                    v-if="index > 0"
-                                                    type="button"
-                                                    class="mn-photo-btn w-full"
-                                                    @click="
-                                                        moveNewImageToFront(
-                                                            index,
-                                                        )
-                                                    "
-                                                >
-                                                    Move First + Primary
-                                                </button>
-                                            </div>
+                                        <div
+                                            class="rounded-xl bg-white/[0.03] px-2 py-2"
+                                        >
+                                            <p
+                                                class="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-600"
+                                            >
+                                                Slots
+                                            </p>
+                                            <p
+                                                class="mt-1 text-sm font-bold text-white"
+                                            >
+                                                {{ remainingSlots }}
+                                            </p>
                                         </div>
                                     </div>
+
+                                    <div
+                                        class="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3"
+                                    >
+                                        <p
+                                            class="text-xs font-bold uppercase tracking-[0.2em] text-emerald-300"
+                                        >
+                                            Primary Photo
+                                        </p>
+
+                                        <p
+                                            class="mt-2 text-sm leading-6 text-emerald-100/80"
+                                        >
+                                            {{ pendingPrimarySummary }}
+                                        </p>
+                                    </div>
+
+                                    <div
+                                        v-if="isCompressingImages"
+                                        class="mt-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-xs font-semibold text-emerald-300"
+                                    >
+                                        Compressing photos. Please wait...
+                                    </div>
+
+                                    <InputError
+                                        class="mt-3"
+                                        :message="
+                                            imageLimitMessage ||
+                                            form.errors.images
+                                        "
+                                    />
                                 </div>
 
-                                <!-- EXISTING PHOTOS -->
                                 <div
-                                    class="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 sm:p-5"
+                                    class="rounded-[1.35rem] border border-white/10 bg-white/[0.03] p-4 sm:rounded-[1.6rem] sm:p-5"
                                 >
                                     <div
                                         class="mb-4 flex items-center justify-between gap-3"
                                     >
-                                        <div>
+                                        <div class="min-w-0">
                                             <p
-                                                class="text-xs font-bold uppercase tracking-[0.22em] text-zinc-600"
+                                                class="text-sm font-semibold text-white"
                                             >
-                                                Saved Photos
+                                                All Photos
                                             </p>
-
-                                            <h3
-                                                class="mt-2 text-lg font-semibold text-white"
-                                            >
-                                                Existing Photos
-                                            </h3>
 
                                             <p
                                                 class="mt-1 text-xs leading-5 text-zinc-500"
                                             >
-                                                Set primary, move order, or
-                                                delete saved photos without
-                                                leaving this modal.
+                                                New photos are marked as New.
+                                                Saved photos are already stored.
                                             </p>
                                         </div>
                                     </div>
 
                                     <div
-                                        v-if="existingImages.length"
-                                        class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+                                        v-if="photoCards.length"
+                                        class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
                                     >
-                                        <div
-                                            v-for="(
-                                                image, index
-                                            ) in existingImages"
-                                            :key="`${image.id}-${index}`"
+                                        <article
+                                            v-for="photo in photoCards"
+                                            :key="photo.key"
                                             class="overflow-hidden rounded-2xl border bg-[#050505]"
                                             :class="
-                                                isExistingPrimary(image)
-                                                    ? 'border-emerald-400/60 ring-2 ring-emerald-400/20'
-                                                    : 'border-white/10'
+                                                photo.isPrimary
+                                                    ? 'border-emerald-400/60 ring-2 ring-emerald-400/15'
+                                                    : photo.type === 'new'
+                                                      ? 'border-emerald-400/20'
+                                                      : 'border-white/10'
                                             "
                                         >
                                             <div class="relative">
                                                 <img
-                                                    :src="image.url"
+                                                    :src="photo.url"
                                                     class="aspect-square w-full object-cover"
                                                     alt="Watch photo"
                                                 />
 
                                                 <div
-                                                    class="absolute left-2 top-2 rounded-xl bg-black/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white backdrop-blur"
+                                                    class="absolute left-2 top-2 rounded-xl bg-black/70 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur"
                                                 >
-                                                    Photo {{ index + 1 }}
+                                                    {{ photo.label }}
                                                 </div>
 
                                                 <div
-                                                    v-if="
-                                                        isExistingPrimary(image)
-                                                    "
+                                                    v-if="photo.isPrimary"
                                                     class="absolute right-2 top-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-300 backdrop-blur"
                                                 >
                                                     Primary
                                                 </div>
+
+                                                <div
+                                                    v-else-if="
+                                                        photo.type === 'new'
+                                                    "
+                                                    class="absolute right-2 top-2 rounded-xl border border-white/10 bg-black/70 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-300 backdrop-blur"
+                                                >
+                                                    New
+                                                </div>
                                             </div>
 
-                                            <div class="space-y-2 p-3">
+                                            <div class="space-y-2 p-2.5">
+                                                <p
+                                                    class="truncate text-[10px] text-zinc-500"
+                                                >
+                                                    {{ photo.sizeLabel }}
+                                                </p>
+
                                                 <div
                                                     class="grid grid-cols-2 gap-2"
                                                 >
                                                     <button
                                                         type="button"
-                                                        :disabled="index === 0"
+                                                        :disabled="
+                                                            !canMovePhotoCard(
+                                                                photo,
+                                                                'left',
+                                                            )
+                                                        "
                                                         class="mn-photo-btn"
                                                         @click="
-                                                            moveImage(
-                                                                image,
+                                                            movePhotoCard(
+                                                                photo,
                                                                 'left',
                                                             )
                                                         "
                                                     >
-                                                        ← Move
+                                                        ←
                                                     </button>
 
                                                     <button
                                                         type="button"
                                                         :disabled="
-                                                            index ===
-                                                            existingImages.length -
-                                                                1
+                                                            !canMovePhotoCard(
+                                                                photo,
+                                                                'right',
+                                                            )
                                                         "
                                                         class="mn-photo-btn"
                                                         @click="
-                                                            moveImage(
-                                                                image,
+                                                            movePhotoCard(
+                                                                photo,
                                                                 'right',
                                                             )
                                                         "
                                                     >
-                                                        Move →
+                                                        →
                                                     </button>
                                                 </div>
 
                                                 <button
-                                                    v-if="
-                                                        !isExistingPrimary(
-                                                            image,
-                                                        )
-                                                    "
                                                     type="button"
+                                                    :disabled="photo.isPrimary"
                                                     class="mn-photo-btn w-full"
+                                                    :class="
+                                                        photo.isPrimary
+                                                            ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300 opacity-100'
+                                                            : ''
+                                                    "
                                                     @click="
-                                                        setPrimaryExistingImage(
-                                                            image,
+                                                        setPrimaryPhotoCard(
+                                                            photo,
                                                         )
                                                     "
                                                 >
-                                                    Make Primary Now
-                                                </button>
-
-                                                <button
-                                                    v-else
-                                                    type="button"
-                                                    disabled
-                                                    class="w-full rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-300"
-                                                >
-                                                    Current Primary
+                                                    {{
+                                                        photo.isPrimary
+                                                            ? "Primary"
+                                                            : "Make Primary"
+                                                    }}
                                                 </button>
 
                                                 <button
                                                     type="button"
                                                     class="w-full rounded-xl border border-red-500/20 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-500/10"
-                                                    @click="deleteImage(image)"
+                                                    @click="
+                                                        removePhotoCard(photo)
+                                                    "
                                                 >
-                                                    Delete
+                                                    {{
+                                                        photo.type === "new"
+                                                            ? "Remove"
+                                                            : "Delete"
+                                                    }}
                                                 </button>
                                             </div>
-                                        </div>
+                                        </article>
                                     </div>
 
                                     <div
                                         v-else
-                                        class="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center"
+                                        class="rounded-2xl border border-dashed border-white/10 bg-[#050505] p-8 text-center"
                                     >
                                         <p
                                             class="text-sm font-medium text-white"
                                         >
-                                            No existing photos found.
+                                            No photos found.
                                         </p>
 
                                         <p
                                             class="mt-2 text-sm leading-6 text-zinc-500"
                                         >
                                             Upload at least one photo before
-                                            saving this watch.
+                                            making this watch visible to
+                                            customers.
                                         </p>
                                     </div>
                                 </div>
@@ -1980,17 +2274,134 @@ onBeforeUnmount(() => {
 
                         <!-- FOOTER -->
                         <div
-                            class="safe-bottom border-t border-white/10 bg-[#0B0B0D] px-4 py-4 sm:px-6 sm:py-5"
+                            class="safe-bottom border-t border-white/10 bg-[#0B0B0D] px-3 py-3 sm:px-6 sm:py-5"
                         >
                             <div
-                                class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+                                v-if="submitFeedback"
+                                class="mb-3 rounded-2xl border px-4 py-3 text-xs font-semibold leading-5"
+                                :class="
+                                    submitFeedback === 'Saving changes...'
+                                        ? 'border-white/10 bg-white/[0.04] text-zinc-300'
+                                        : 'border-red-400/20 bg-red-400/10 text-red-300'
+                                "
+                            >
+                                {{ submitFeedback }}
+                            </div>
+
+                            <!-- MOBILE FOOTER -->
+                            <div class="sm:hidden">
+                                <div
+                                    class="flex items-center justify-between gap-3"
+                                >
+                                    <div class="min-w-0 text-xs leading-5">
+                                        <p
+                                            v-if="canSubmit"
+                                            class="font-semibold text-emerald-300"
+                                        >
+                                            Ready to save changes.
+                                        </p>
+
+                                        <p
+                                            v-else
+                                            class="truncate font-semibold text-zinc-400"
+                                        >
+                                            Missing:
+                                            <span class="text-red-300">
+                                                {{
+                                                    missingRequirements.join(
+                                                        ", ",
+                                                    )
+                                                }}
+                                            </span>
+                                        </p>
+
+                                        <p
+                                            class="mt-0.5 text-[11px] text-zinc-600"
+                                        >
+                                            Step {{ currentTabIndex + 1 }} /
+                                            {{ tabs.length }} •
+                                            {{ currentTab.label }}
+                                        </p>
+                                    </div>
+
+                                    <div
+                                        class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] font-bold text-zinc-400"
+                                    >
+                                        {{ completedStepCount }}/{{
+                                            tabs.length
+                                        }}
+                                    </div>
+                                </div>
+
+                                <div class="mt-3 grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        class="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold text-zinc-300"
+                                        @click="
+                                            activeTab === 'basic'
+                                                ? closeModal()
+                                                : goToPreviousTab()
+                                        "
+                                    >
+                                        {{
+                                            activeTab === "basic"
+                                                ? "Close"
+                                                : "Back"
+                                        }}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white"
+                                        @click="openPublicPreview"
+                                    >
+                                        Preview
+                                    </button>
+
+                                    <button
+                                        v-if="activeTab !== 'terms'"
+                                        type="button"
+                                        :disabled="!currentStepComplete"
+                                        class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                                        @click="goToNextTab"
+                                    >
+                                        Next
+                                    </button>
+
+                                    <button
+                                        type="submit"
+                                        :disabled="
+                                            form.processing ||
+                                            isCompressingImages
+                                        "
+                                        class="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+                                        :class="
+                                            activeTab !== 'terms'
+                                                ? 'col-span-2'
+                                                : ''
+                                        "
+                                    >
+                                        {{
+                                            isCompressingImages
+                                                ? "Compressing..."
+                                                : form.processing
+                                                  ? "Saving..."
+                                                  : "Save Changes"
+                                        }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- DESKTOP FOOTER -->
+                            <div
+                                class="hidden flex-col gap-4 sm:flex lg:flex-row lg:items-center lg:justify-between"
                             >
                                 <div class="text-xs leading-5">
                                     <p
                                         v-if="canSubmit"
                                         class="font-semibold text-emerald-300"
                                     >
-                                        All required steps are complete.
+                                        All required details are complete.
                                     </p>
 
                                     <p
@@ -2004,15 +2415,21 @@ onBeforeUnmount(() => {
                                     </p>
                                 </div>
 
-                                <div
-                                    class="grid grid-cols-2 gap-3 sm:flex sm:justify-end"
-                                >
+                                <div class="flex justify-end gap-3">
                                     <button
                                         type="button"
                                         class="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30"
                                         @click="closeModal"
                                     >
                                         Cancel
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-zinc-200 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white"
+                                        @click="openPublicPreview"
+                                    >
+                                        Preview
                                     </button>
 
                                     <button
@@ -2036,8 +2453,11 @@ onBeforeUnmount(() => {
 
                                     <button
                                         type="submit"
-                                        :disabled="!canSubmit"
-                                        class="col-span-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 sm:col-span-1"
+                                        :disabled="
+                                            form.processing ||
+                                            isCompressingImages
+                                        "
+                                        class="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
                                     >
                                         {{
                                             isCompressingImages
@@ -2047,6 +2467,283 @@ onBeforeUnmount(() => {
                                                   : "Save Changes"
                                         }}
                                     </button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- PUBLIC LISTING PREVIEW -->
+                        <div
+                            v-if="showPublicPreview"
+                            class="absolute inset-0 z-50 flex flex-col bg-[#070707]"
+                        >
+                            <div
+                                class="safe-top flex items-start justify-between gap-4 border-b border-white/10 bg-[#0B0B0D] px-4 py-4 sm:px-6 sm:py-5"
+                            >
+                                <div class="min-w-0">
+                                    <p
+                                        class="text-[10px] font-bold uppercase tracking-[0.26em] text-zinc-600 sm:text-xs"
+                                    >
+                                        Customer View
+                                    </p>
+
+                                    <h3
+                                        class="mt-1 truncate text-lg font-semibold tracking-tight text-white sm:text-2xl"
+                                    >
+                                        Public Listing Preview
+                                    </h3>
+
+                                    <p
+                                        class="mt-1 text-xs leading-5 text-zinc-500 sm:text-sm"
+                                    >
+                                        This preview reflects your current
+                                        edits. Saved listing changes apply after
+                                        Save Changes.
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    class="shrink-0 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-zinc-400 transition hover:border-white/30 hover:text-white"
+                                    @click="closePublicPreview"
+                                >
+                                    <svg
+                                        class="h-5 w-5"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke-width="1.7"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            d="M6 18L18 6M6 6l12 12"
+                                        />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div
+                                class="thin-scrollbar flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-7"
+                            >
+                                <div
+                                    class="mx-auto grid max-w-6xl gap-5 lg:grid-cols-[0.9fr_1.1fr]"
+                                >
+                                    <div
+                                        class="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D]"
+                                    >
+                                        <div
+                                            class="relative aspect-[4/5] bg-[#050505]"
+                                        >
+                                            <img
+                                                v-if="previewPrimaryImage"
+                                                :src="previewPrimaryImage"
+                                                class="h-full w-full object-cover"
+                                                alt="Watch preview"
+                                            />
+
+                                            <div
+                                                v-else
+                                                class="flex h-full w-full items-center justify-center px-8 text-center"
+                                            >
+                                                <div>
+                                                    <p
+                                                        class="text-xs font-bold uppercase tracking-[0.32em] text-zinc-700"
+                                                    >
+                                                        Montre Nova
+                                                    </p>
+                                                    <p
+                                                        class="mt-3 text-sm text-zinc-500"
+                                                    >
+                                                        No product photo
+                                                        selected yet.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div
+                                                class="absolute left-4 top-4 flex flex-wrap gap-2"
+                                            >
+                                                <span
+                                                    class="rounded-full border px-3 py-1 text-xs font-bold backdrop-blur"
+                                                    :class="previewStatusClass"
+                                                >
+                                                    {{ previewStatusLabel }}
+                                                </span>
+
+                                                <span
+                                                    v-if="form.condition"
+                                                    class="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-xs font-bold text-white backdrop-blur"
+                                                >
+                                                    {{ form.condition }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="space-y-4">
+                                        <div
+                                            class="rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 sm:p-6"
+                                        >
+                                            <p
+                                                class="text-xs font-bold uppercase tracking-[0.24em] text-zinc-600"
+                                            >
+                                                Montre Nova
+                                            </p>
+
+                                            <h2
+                                                class="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-4xl"
+                                            >
+                                                {{ previewTitle }}
+                                            </h2>
+
+                                            <p
+                                                v-if="form.reference_number"
+                                                class="mt-2 text-sm text-zinc-500"
+                                            >
+                                                Ref. {{ form.reference_number }}
+                                            </p>
+
+                                            <div
+                                                class="mt-5 flex flex-wrap items-center gap-3"
+                                            >
+                                                <p
+                                                    class="text-2xl font-semibold text-white sm:text-3xl"
+                                                >
+                                                    {{ previewPriceLabel }}
+                                                </p>
+
+                                                <span
+                                                    v-if="
+                                                        form.discounted_price &&
+                                                        Number(
+                                                            form.discounted_price,
+                                                        ) > 0 &&
+                                                        form.display_price
+                                                    "
+                                                    class="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-300"
+                                                >
+                                                    Below SRP
+                                                </span>
+                                            </div>
+
+                                            <p
+                                                v-if="form.description"
+                                                class="mt-5 text-sm leading-7 text-zinc-400"
+                                            >
+                                                {{ form.description }}
+                                            </p>
+
+                                            <p
+                                                v-else
+                                                class="mt-5 text-sm leading-7 text-zinc-600"
+                                            >
+                                                No description added yet.
+                                            </p>
+
+                                            <div
+                                                class="mt-5 grid grid-cols-2 gap-3"
+                                            >
+                                                <button
+                                                    type="button"
+                                                    class="rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black"
+                                                >
+                                                    Inquire Now
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    class="rounded-2xl border border-white/10 px-4 py-3 text-sm font-bold text-white"
+                                                >
+                                                    Reserve Watch
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            v-if="previewWarnings.length"
+                                            class="rounded-[1.4rem] border border-amber-400/20 bg-amber-400/10 p-4"
+                                        >
+                                            <p
+                                                class="text-xs font-bold uppercase tracking-[0.2em] text-amber-300"
+                                            >
+                                                Preview Notes
+                                            </p>
+
+                                            <ul
+                                                class="mt-3 space-y-2 text-sm leading-6 text-amber-100/80"
+                                            >
+                                                <li
+                                                    v-for="warning in previewWarnings"
+                                                    :key="warning"
+                                                >
+                                                    • {{ warning }}
+                                                </li>
+                                            </ul>
+                                        </div>
+
+                                        <div
+                                            v-if="previewSpecs.length"
+                                            class="rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 sm:p-6"
+                                        >
+                                            <h3
+                                                class="text-lg font-semibold text-white"
+                                            >
+                                                Specifications
+                                            </h3>
+
+                                            <div
+                                                class="mt-4 grid gap-3 sm:grid-cols-2"
+                                            >
+                                                <div
+                                                    v-for="spec in previewSpecs"
+                                                    :key="spec.label"
+                                                    class="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                                                >
+                                                    <p
+                                                        class="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-600"
+                                                    >
+                                                        {{ spec.label }}
+                                                    </p>
+
+                                                    <p
+                                                        class="mt-2 text-sm font-semibold text-zinc-200"
+                                                    >
+                                                        {{ spec.value }}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            v-if="previewSections.length"
+                                            class="rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 sm:p-6"
+                                        >
+                                            <h3
+                                                class="text-lg font-semibold text-white"
+                                            >
+                                                Listing Terms
+                                            </h3>
+
+                                            <div class="mt-4 space-y-3">
+                                                <div
+                                                    v-for="section in previewSections"
+                                                    :key="section.title"
+                                                    class="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+                                                >
+                                                    <p
+                                                        class="text-sm font-semibold text-white"
+                                                    >
+                                                        {{ section.title }}
+                                                    </p>
+
+                                                    <p
+                                                        class="mt-2 text-sm leading-6 text-zinc-500"
+                                                    >
+                                                        {{ section.content }}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2060,6 +2757,10 @@ onBeforeUnmount(() => {
 <style scoped>
 .safe-bottom {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.safe-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
 }
 
 .mn-label {
@@ -2207,5 +2908,35 @@ onBeforeUnmount(() => {
 
 .thin-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgb(255 255 255 / 0.35);
+}
+
+@media (max-width: 640px) {
+    .mn-label {
+        margin-bottom: 0.35rem;
+        font-size: 0.62rem;
+        letter-spacing: 0.14em;
+    }
+
+    .mn-input {
+        border-radius: 0.9rem;
+        padding: 0.78rem 0.9rem;
+        font-size: 0.85rem;
+    }
+
+    .mn-toggle {
+        border-radius: 0.9rem;
+        padding: 0.78rem 0.9rem;
+        font-size: 0.82rem;
+    }
+
+    .mn-preview-row {
+        padding-bottom: 0.7rem;
+        font-size: 0.8rem;
+    }
+
+    .mn-photo-btn {
+        padding: 0.55rem 0.65rem;
+        font-size: 0.7rem;
+    }
 }
 </style>

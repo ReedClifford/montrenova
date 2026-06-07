@@ -52,6 +52,25 @@ const props = defineProps({
             yearly: {},
         }),
     },
+    salesProfitTrend: {
+        type: Object,
+        default: () => ({
+            labels: [],
+            sales: [],
+            profit: [],
+            sold_counts: [],
+            rows: [],
+            max_value: 0,
+            totals: {
+                months: 12,
+                sold_count: 0,
+                total_sales: 0,
+                total_capital: 0,
+                gross_profit: 0,
+                best_month: null,
+            },
+        }),
+    },
     topSoldUnits: {
         type: Array,
         default: () => [],
@@ -177,6 +196,205 @@ const performanceCards = computed(() => [
         expenses: peso(props.salesPerformance.yearly?.total_expenses || 0),
         netProfit: peso(props.salesPerformance.yearly?.net_profit || 0),
         netProfitValue: Number(props.salesPerformance.yearly?.net_profit || 0),
+    },
+]);
+
+const trendChartWidth = 900;
+const trendChartHeight = 320;
+const trendPadding = {
+    top: 28,
+    right: 28,
+    bottom: 50,
+    left: 78,
+};
+
+const trendPlotWidth = trendChartWidth - trendPadding.left - trendPadding.right;
+const trendPlotHeight =
+    trendChartHeight - trendPadding.top - trendPadding.bottom;
+
+const salesProfitTrendRows = computed(() => {
+    return Array.isArray(props.salesProfitTrend?.rows)
+        ? props.salesProfitTrend.rows
+        : [];
+});
+
+const trendMonthsLabel = computed(() => {
+    return `${props.salesProfitTrend?.totals?.months || salesProfitTrendRows.value.length || 12}M`;
+});
+
+const trendTotalSales = computed(() => {
+    return salesProfitTrendRows.value.reduce((total, row) => {
+        return total + Number(row.total_sales || 0);
+    }, 0);
+});
+
+const trendTotalProfit = computed(() => {
+    return salesProfitTrendRows.value.reduce((total, row) => {
+        return total + Number(row.gross_profit || 0);
+    }, 0);
+});
+
+const trendTotalCapital = computed(() => {
+    return salesProfitTrendRows.value.reduce((total, row) => {
+        return total + Number(row.total_capital || 0);
+    }, 0);
+});
+
+const trendTotalSold = computed(() => {
+    return salesProfitTrendRows.value.reduce((total, row) => {
+        return total + Number(row.sold_count || 0);
+    }, 0);
+});
+
+const trendAverageProfitPerSale = computed(() => {
+    if (trendTotalSold.value <= 0) return 0;
+
+    return trendTotalProfit.value / trendTotalSold.value;
+});
+
+const trendHasSales = computed(() => {
+    return salesProfitTrendRows.value.some((row) => {
+        return (
+            Number(row.sold_count || 0) > 0 ||
+            Number(row.total_sales || 0) > 0 ||
+            Number(row.gross_profit || 0) !== 0
+        );
+    });
+});
+
+const trendHighestProfitMonth = computed(() => {
+    if (!salesProfitTrendRows.value.length) return null;
+
+    return salesProfitTrendRows.value.reduce((best, row) => {
+        if (!best) return row;
+
+        return Number(row.gross_profit || 0) > Number(best.gross_profit || 0)
+            ? row
+            : best;
+    }, null);
+});
+
+const trendMaxValue = computed(() => {
+    const values = salesProfitTrendRows.value.flatMap((row) => [
+        Number(row.total_sales || 0),
+        Number(row.gross_profit || 0),
+    ]);
+
+    const max = Math.max(...values, 0);
+
+    if (max <= 0) return 1;
+
+    return max * 1.12;
+});
+
+const trendMinValue = computed(() => {
+    const values = salesProfitTrendRows.value.flatMap((row) => [
+        Number(row.total_sales || 0),
+        Number(row.gross_profit || 0),
+    ]);
+
+    const min = Math.min(...values, 0);
+
+    return min < 0 ? min * 1.12 : 0;
+});
+
+const trendValueRange = computed(() => {
+    return trendMaxValue.value - trendMinValue.value || 1;
+});
+
+const trendValueToY = (value) => {
+    const numericValue = Number(value || 0);
+
+    return (
+        trendPadding.top +
+        ((trendMaxValue.value - numericValue) / trendValueRange.value) *
+            trendPlotHeight
+    );
+};
+
+const trendZeroY = computed(() => trendValueToY(0));
+
+const trendGridLines = computed(() => {
+    const steps = 4;
+
+    return Array.from({ length: steps + 1 }, (_, index) => {
+        const ratio = index / steps;
+        const value = trendMaxValue.value - trendValueRange.value * ratio;
+
+        return {
+            key: index,
+            value,
+            y: trendValueToY(value),
+        };
+    });
+});
+
+const buildTrendPoints = (key) => {
+    const rows = salesProfitTrendRows.value;
+    const count = rows.length;
+
+    if (!count) return [];
+
+    return rows.map((row, index) => {
+        const x =
+            trendPadding.left +
+            (index / Math.max(count - 1, 1)) * trendPlotWidth;
+        const y = trendValueToY(row[key]);
+
+        return {
+            ...row,
+            x,
+            y,
+            value: Number(row[key] || 0),
+            valueLabel: peso(row[key] || 0),
+            salesLabel: peso(row.total_sales || 0),
+            profitLabel: peso(row.gross_profit || 0),
+            capitalLabel: peso(row.total_capital || 0),
+        };
+    });
+};
+
+const salesTrendPoints = computed(() => buildTrendPoints("total_sales"));
+const profitTrendPoints = computed(() => buildTrendPoints("gross_profit"));
+
+const trendPointsToString = (points) => {
+    return points.map((point) => `${point.x},${point.y}`).join(" ");
+};
+
+const trendSummaryCards = computed(() => [
+    {
+        label: `${trendMonthsLabel.value} Sales`,
+        value: compactPeso(trendTotalSales.value),
+        fullValue: peso(trendTotalSales.value),
+        helper: `${trendTotalSold.value} sold watches`,
+        valueClass: "text-white",
+    },
+    {
+        label: `${trendMonthsLabel.value} Gross Profit`,
+        value: compactPeso(trendTotalProfit.value),
+        fullValue: peso(trendTotalProfit.value),
+        helper: `Before business expenses`,
+        valueClass:
+            trendTotalProfit.value >= 0 ? "text-emerald-300" : "text-red-300",
+    },
+    {
+        label: "Capital Recovered",
+        value: compactPeso(trendTotalCapital.value),
+        fullValue: peso(trendTotalCapital.value),
+        helper: "Capital cost of sold units",
+        valueClass: "text-zinc-200",
+    },
+    {
+        label: "Avg Profit / Sale",
+        value: compactPeso(trendAverageProfitPerSale.value),
+        fullValue: peso(trendAverageProfitPerSale.value),
+        helper: trendHighestProfitMonth.value?.label
+            ? `Best month: ${trendHighestProfitMonth.value.label}`
+            : "No sales yet",
+        valueClass:
+            trendAverageProfitPerSale.value >= 0
+                ? "text-emerald-300"
+                : "text-red-300",
     },
 ]);
 
@@ -760,6 +978,238 @@ const deleteExpense = (expense) => {
                                 </p>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SALES & PROFIT LINE GRAPH -->
+            <section
+                class="rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 shadow-2xl shadow-black/20 sm:p-6"
+            >
+                <div
+                    class="flex flex-col justify-between gap-5 lg:flex-row lg:items-end"
+                >
+                    <div>
+                        <p
+                            class="text-xs font-medium uppercase tracking-[0.28em] text-zinc-600"
+                        >
+                            Sales & Profit Trend
+                        </p>
+
+                        <h3 class="mt-2 text-2xl font-semibold text-white">
+                            Monthly sales vs gross profit
+                        </h3>
+
+                        <p
+                            class="mt-2 max-w-2xl text-sm leading-6 text-zinc-500"
+                        >
+                            Tracks sold watches by date sold. Sales uses your
+                            dashboard formula: discounted price if available,
+                            otherwise selling price.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <span
+                            class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold text-zinc-300"
+                        >
+                            <span class="h-2 w-2 rounded-full bg-white"></span>
+                            Sales
+                        </span>
+
+                        <span
+                            class="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-300"
+                        >
+                            <span
+                                class="h-2 w-2 rounded-full bg-emerald-300"
+                            ></span>
+                            Gross Profit
+                        </span>
+                    </div>
+                </div>
+
+                <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div
+                        v-for="card in trendSummaryCards"
+                        :key="card.label"
+                        class="rounded-[1.25rem] border border-white/10 bg-white/[0.03] p-4"
+                    >
+                        <p class="mn-mini-label">
+                            {{ card.label }}
+                        </p>
+
+                        <p
+                            class="mt-2 text-2xl font-semibold tracking-tight"
+                            :class="card.valueClass"
+                        >
+                            {{ card.value }}
+                        </p>
+
+                        <p class="mt-1 text-xs text-zinc-600">
+                            {{ card.fullValue }}
+                        </p>
+
+                        <p class="mt-3 text-xs leading-5 text-zinc-500">
+                            {{ card.helper }}
+                        </p>
+                    </div>
+                </div>
+
+                <div
+                    class="mt-5 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#050505] p-3 sm:p-5"
+                >
+                    <div
+                        v-if="salesProfitTrendRows.length"
+                        class="relative min-h-[22rem]"
+                    >
+                        <svg
+                            class="h-[22rem] w-full"
+                            :viewBox="`0 0 ${trendChartWidth} ${trendChartHeight}`"
+                            role="img"
+                            aria-label="Monthly sales and profit line graph"
+                        >
+                            <g>
+                                <line
+                                    v-for="line in trendGridLines"
+                                    :key="`grid-${line.key}`"
+                                    :x1="trendPadding.left"
+                                    :x2="trendChartWidth - trendPadding.right"
+                                    :y1="line.y"
+                                    :y2="line.y"
+                                    class="stroke-white/10"
+                                    stroke-width="1"
+                                />
+
+                                <text
+                                    v-for="line in trendGridLines"
+                                    :key="`label-${line.key}`"
+                                    :x="trendPadding.left - 10"
+                                    :y="line.y + 4"
+                                    text-anchor="end"
+                                    class="fill-zinc-500 text-[10px]"
+                                >
+                                    {{ compactPeso(line.value) }}
+                                </text>
+                            </g>
+
+                            <line
+                                :x1="trendPadding.left"
+                                :x2="trendChartWidth - trendPadding.right"
+                                :y1="trendZeroY"
+                                :y2="trendZeroY"
+                                class="stroke-white/20"
+                                stroke-width="1.5"
+                                stroke-dasharray="5 6"
+                            />
+
+                            <polyline
+                                v-if="salesTrendPoints.length"
+                                :points="trendPointsToString(salesTrendPoints)"
+                                class="fill-none stroke-white"
+                                stroke-width="4"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+
+                            <polyline
+                                v-if="profitTrendPoints.length"
+                                :points="trendPointsToString(profitTrendPoints)"
+                                class="fill-none stroke-emerald-300"
+                                stroke-width="4"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+
+                            <g
+                                v-for="point in salesTrendPoints"
+                                :key="`sales-point-${point.month}`"
+                            >
+                                <circle
+                                    :cx="point.x"
+                                    :cy="point.y"
+                                    r="4.5"
+                                    class="fill-white"
+                                >
+                                    <title>
+                                        {{ point.label }} Sales:
+                                        {{ point.salesLabel }} | Profit:
+                                        {{ point.profitLabel }} | Sold:
+                                        {{ point.sold_count }}
+                                    </title>
+                                </circle>
+                            </g>
+
+                            <g
+                                v-for="point in profitTrendPoints"
+                                :key="`profit-point-${point.month}`"
+                            >
+                                <circle
+                                    :cx="point.x"
+                                    :cy="point.y"
+                                    r="4.5"
+                                    class="fill-emerald-300"
+                                >
+                                    <title>
+                                        {{ point.label }} Gross Profit:
+                                        {{ point.profitLabel }} | Sales:
+                                        {{ point.salesLabel }} | Capital:
+                                        {{ point.capitalLabel }}
+                                    </title>
+                                </circle>
+                            </g>
+
+                            <g
+                                v-for="(point, index) in salesTrendPoints"
+                                :key="`month-label-${point.month}`"
+                            >
+                                <text
+                                    v-if="
+                                        index % 2 === 0 ||
+                                        index === salesTrendPoints.length - 1
+                                    "
+                                    :x="point.x"
+                                    :y="trendChartHeight - 18"
+                                    text-anchor="middle"
+                                    class="fill-zinc-500 text-[11px]"
+                                >
+                                    {{ point.short_label }}
+                                </text>
+                            </g>
+                        </svg>
+
+                        <div
+                            v-if="!trendHasSales"
+                            class="absolute inset-0 flex items-center justify-center px-6 text-center"
+                        >
+                            <div
+                                class="rounded-[1.5rem] border border-white/10 bg-black/80 p-5 shadow-2xl shadow-black/50 backdrop-blur"
+                            >
+                                <p class="text-sm font-semibold text-white">
+                                    No sold watch data yet.
+                                </p>
+
+                                <p
+                                    class="mt-2 max-w-sm text-sm leading-6 text-zinc-500"
+                                >
+                                    Mark watches as sold with a valid sold date
+                                    to start generating your sales and profit
+                                    graph.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        v-else
+                        class="rounded-2xl border border-dashed border-white/10 p-10 text-center"
+                    >
+                        <p class="text-sm font-medium text-white">
+                            Trend data is not available yet.
+                        </p>
+
+                        <p class="mt-2 text-sm text-zinc-500">
+                            Refresh after updating the dashboard controller.
+                        </p>
                     </div>
                 </div>
             </section>

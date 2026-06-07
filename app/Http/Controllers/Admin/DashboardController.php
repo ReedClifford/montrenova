@@ -134,7 +134,7 @@ class DashboardController extends Controller
                 'reference_number',
                 DB::raw('COUNT(*) as sold_count'),
                 DB::raw("COALESCE(SUM({$soldPriceSql}), 0) as sales_total"),
-                DB::raw("COALESCE(SUM({$soldPriceSql} - capital_price), 0) as profit_total"),
+                DB::raw("COALESCE(SUM(({$soldPriceSql}) - COALESCE(capital_price, 0)), 0) as profit_total"),
             ])
             ->groupBy('brand', 'model_name', 'reference_number')
             ->orderByDesc('sold_count')
@@ -182,12 +182,14 @@ class DashboardController extends Controller
 
             'salesPerformance' => $salesPerformance,
 
+            'salesProfitTrend' => $this->salesProfitTrend(12),
+
             'selectedMonth' => $selectedMonth,
             'selectedMonthSummary' => $selectedMonthSummary,
 
             'topSoldUnits' => $topSoldUnits,
             'recentExpenses' => $recentExpenses,
-                'topProfitingWatches' => $topProfitingWatches,
+            'topProfitingWatches' => $topProfitingWatches,
 
         ]);
     }
@@ -225,6 +227,107 @@ class DashboardController extends Controller
         return back()->with('success', 'Expense deleted.');
     }
 
+
+    private function salesProfitTrend(int $months = 12): array
+    {
+        $months = max(3, min($months, 24));
+        $soldPriceSql = $this->soldPriceSql();
+
+        $start = now()
+            ->copy()
+            ->startOfMonth()
+            ->subMonths($months - 1);
+
+        $end = now()
+            ->copy()
+            ->endOfMonth();
+
+        $monthlyRows = Watch::query()
+            ->where('status', 'sold')
+            ->whereNotNull('date_sold')
+            ->whereBetween('date_sold', [
+                $start->copy()->startOfDay(),
+                $end->copy()->endOfDay(),
+            ])
+            ->selectRaw("
+                DATE_FORMAT(date_sold, '%Y-%m') as month_key,
+                COUNT(*) as sold_count,
+                COALESCE(SUM({$soldPriceSql}), 0) as total_sales,
+                COALESCE(SUM(COALESCE(capital_price, 0)), 0) as total_capital,
+                COALESCE(SUM(({$soldPriceSql}) - COALESCE(capital_price, 0)), 0) as gross_profit
+            ")
+            ->groupBy('month_key')
+            ->orderBy('month_key')
+            ->get()
+            ->keyBy('month_key');
+
+        $rows = [];
+        $labels = [];
+        $sales = [];
+        $profit = [];
+        $soldCounts = [];
+
+        $totalSales = 0;
+        $totalProfit = 0;
+        $totalCapital = 0;
+        $totalSold = 0;
+        $maxValue = 0;
+
+        for ($index = 0; $index < $months; $index++) {
+            $month = $start->copy()->addMonths($index);
+            $monthKey = $month->format('Y-m');
+            $record = $monthlyRows->get($monthKey);
+
+            $soldCount = (int) ($record->sold_count ?? 0);
+            $monthlySales = (float) ($record->total_sales ?? 0);
+            $monthlyCapital = (float) ($record->total_capital ?? 0);
+            $monthlyProfit = (float) ($record->gross_profit ?? 0);
+
+            $labels[] = $month->format('M Y');
+            $sales[] = $monthlySales;
+            $profit[] = $monthlyProfit;
+            $soldCounts[] = $soldCount;
+
+            $totalSales += $monthlySales;
+            $totalProfit += $monthlyProfit;
+            $totalCapital += $monthlyCapital;
+            $totalSold += $soldCount;
+
+            $maxValue = max($maxValue, $monthlySales, $monthlyProfit);
+
+            $rows[] = [
+                'month' => $monthKey,
+                'label' => $month->format('M Y'),
+                'short_label' => $month->format('M'),
+                'sold_count' => $soldCount,
+                'total_sales' => $monthlySales,
+                'total_capital' => $monthlyCapital,
+                'gross_profit' => $monthlyProfit,
+            ];
+        }
+
+        $bestMonth = collect($rows)
+            ->sortByDesc('gross_profit')
+            ->first();
+
+        return [
+            'labels' => $labels,
+            'sales' => $sales,
+            'profit' => $profit,
+            'sold_counts' => $soldCounts,
+            'rows' => $rows,
+            'max_value' => $maxValue,
+            'totals' => [
+                'months' => $months,
+                'sold_count' => $totalSold,
+                'total_sales' => $totalSales,
+                'total_capital' => $totalCapital,
+                'gross_profit' => $totalProfit,
+                'best_month' => $bestMonth,
+            ],
+        ];
+    }
+
     private function periodSummary(Carbon $start, Carbon $end): array
     {
         $soldPriceSql = $this->soldPriceSql();
@@ -238,8 +341,8 @@ class DashboardController extends Controller
             ->selectRaw("
                 COUNT(*) as sold_count,
                 COALESCE(SUM({$soldPriceSql}), 0) as total_sales,
-                COALESCE(SUM(capital_price), 0) as total_capital,
-                COALESCE(SUM({$soldPriceSql} - capital_price), 0) as gross_profit
+                COALESCE(SUM(COALESCE(capital_price, 0)), 0) as total_capital,
+                COALESCE(SUM(({$soldPriceSql}) - COALESCE(capital_price, 0)), 0) as gross_profit
             ")
             ->first();
 
