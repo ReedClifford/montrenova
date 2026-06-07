@@ -799,6 +799,31 @@ const productBadges = (watch) => {
                                                 Available</template
                                             >
                                         </p>
+
+                                        <div
+                                            class="mt-3 flex flex-wrap gap-1.5 sm:gap-2"
+                                        >
+                                            <span
+                                                class="rounded-lg border border-white/10 bg-black/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300 backdrop-blur sm:text-xs"
+                                            >
+                                                <template v-if="featuredWatch">
+                                                    {{
+                                                        featuredWatch.condition ||
+                                                        "Condition upon request"
+                                                    }}
+                                                </template>
+                                                <template v-else>
+                                                    Brand New
+                                                </template>
+                                            </span>
+
+                                            <span
+                                                v-if="featuredWatch?.category"
+                                                class="rounded-lg border border-white/10 bg-black/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300 backdrop-blur sm:text-xs"
+                                            >
+                                                {{ featuredWatch.category }}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     <div class="shrink-0 text-right">
@@ -1072,6 +1097,26 @@ const productBadges = (watch) => {
                                             "No reference"
                                         }}
                                     </p>
+
+                                    <div
+                                        class="mt-4 flex flex-wrap gap-1.5 sm:gap-2"
+                                    >
+                                        <span
+                                            class="rounded-lg border border-white/10 bg-black/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300 backdrop-blur sm:text-xs"
+                                        >
+                                            {{
+                                                watch.condition ||
+                                                "Condition upon request"
+                                            }}
+                                        </span>
+
+                                        <span
+                                            v-if="watch.category"
+                                            class="rounded-lg border border-white/10 bg-black/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300 backdrop-blur sm:text-xs"
+                                        >
+                                            {{ watch.category }}
+                                        </span>
+                                    </div>
 
                                     <div
                                         class="mt-6 flex items-end justify-between gap-4 border-t border-white/10 pt-4"
