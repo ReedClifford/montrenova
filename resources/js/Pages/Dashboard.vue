@@ -92,6 +92,8 @@ const selectedMonthFilter = ref(
     props.selectedMonth || new Date().toISOString().slice(0, 7),
 );
 
+const selectedTrendMonth = ref(null);
+
 const cashForm = useForm({
     starting_cash: props.money.starting_cash || 0,
 });
@@ -274,6 +276,27 @@ const trendHighestProfitMonth = computed(() => {
     }, null);
 });
 
+const selectedTrendMonthRow = computed(() => {
+    if (!salesProfitTrendRows.value.length) return null;
+
+    if (selectedTrendMonth.value) {
+        const selected = salesProfitTrendRows.value.find((row) => {
+            return row.month === selectedTrendMonth.value;
+        });
+
+        if (selected) return selected;
+    }
+
+    return (
+        trendHighestProfitMonth.value ||
+        salesProfitTrendRows.value.find(
+            (row) => Number(row.sold_count || 0) > 0,
+        ) ||
+        salesProfitTrendRows.value[salesProfitTrendRows.value.length - 1] ||
+        null
+    );
+});
+
 const trendMaxValue = computed(() => {
     const values = salesProfitTrendRows.value.flatMap((row) => [
         Number(row.total_sales || 0),
@@ -359,6 +382,27 @@ const profitTrendPoints = computed(() => buildTrendPoints("gross_profit"));
 
 const trendPointsToString = (points) => {
     return points.map((point) => `${point.x},${point.y}`).join(" ");
+};
+
+const selectTrendMonth = (pointOrRow) => {
+    if (!pointOrRow?.month) return;
+
+    selectedTrendMonth.value = pointOrRow.month;
+};
+
+const isSelectedTrendMonth = (pointOrRow) => {
+    return Boolean(
+        selectedTrendMonth.value &&
+        pointOrRow?.month === selectedTrendMonth.value,
+    );
+};
+
+const trendProfitRate = (row) => {
+    const sales = Number(row?.total_sales || 0);
+
+    if (sales <= 0) return "0.0%";
+
+    return `${((Number(row?.gross_profit || 0) / sales) * 100).toFixed(1)}%`;
 };
 
 const trendSummaryCards = computed(() => [
@@ -1003,9 +1047,9 @@ const deleteExpense = (expense) => {
                         <p
                             class="mt-2 max-w-2xl text-sm leading-6 text-zinc-500"
                         >
-                            Tracks sold watches by date sold. Sales uses your
-                            dashboard formula: discounted price if available,
-                            otherwise selling price.
+                            Tracks sold watches by date sold. Tap a month or a
+                            graph point to view its sales, profit, capital, and
+                            sold count.
                         </p>
                     </div>
 
@@ -1055,15 +1099,167 @@ const deleteExpense = (expense) => {
                     </div>
                 </div>
 
+                <!-- MOBILE CLICKABLE MONTH CARDS -->
+                <div
+                    v-if="salesProfitTrendRows.length"
+                    class="thin-scrollbar mt-5 flex gap-3 overflow-x-auto pb-2 sm:hidden"
+                >
+                    <button
+                        v-for="row in salesProfitTrendRows"
+                        :key="`mobile-trend-${row.month}`"
+                        type="button"
+                        class="min-w-[11rem] rounded-[1.2rem] border p-4 text-left transition active:scale-[0.98]"
+                        :class="
+                            isSelectedTrendMonth(row)
+                                ? 'border-white bg-white text-black'
+                                : 'border-white/10 bg-white/[0.03] text-white'
+                        "
+                        @click="selectTrendMonth(row)"
+                    >
+                        <p
+                            class="text-[10px] font-black uppercase tracking-[0.18em]"
+                            :class="
+                                isSelectedTrendMonth(row)
+                                    ? 'text-zinc-600'
+                                    : 'text-zinc-500'
+                            "
+                        >
+                            {{ row.label }}
+                        </p>
+
+                        <p class="mt-3 text-lg font-semibold">
+                            {{ compactPeso(row.total_sales) }}
+                        </p>
+
+                        <p
+                            class="mt-1 text-xs"
+                            :class="
+                                isSelectedTrendMonth(row)
+                                    ? 'text-zinc-700'
+                                    : 'text-emerald-300'
+                            "
+                        >
+                            Profit {{ compactPeso(row.gross_profit) }}
+                        </p>
+
+                        <p
+                            class="mt-3 text-[11px]"
+                            :class="
+                                isSelectedTrendMonth(row)
+                                    ? 'text-zinc-600'
+                                    : 'text-zinc-500'
+                            "
+                        >
+                            {{ row.sold_count || 0 }} sold
+                        </p>
+                    </button>
+                </div>
+
+                <!-- SELECTED MONTH DETAILS -->
+                <div
+                    v-if="selectedTrendMonthRow"
+                    class="mt-5 rounded-[1.35rem] border border-white/10 bg-white/[0.03] p-4 sm:p-5"
+                >
+                    <div
+                        class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+                    >
+                        <div>
+                            <p
+                                class="text-xs font-bold uppercase tracking-[0.24em] text-zinc-600"
+                            >
+                                Selected Month
+                            </p>
+
+                            <h4 class="mt-2 text-xl font-semibold text-white">
+                                {{ selectedTrendMonthRow.label }}
+                            </h4>
+
+                            <p class="mt-1 text-sm text-zinc-500">
+                                Tap another point or month card to change this
+                                detail view.
+                            </p>
+                        </div>
+
+                        <div
+                            class="rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-xs font-semibold text-zinc-300"
+                        >
+                            {{ selectedTrendMonthRow.sold_count || 0 }} sold
+                        </div>
+                    </div>
+
+                    <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        <div class="mn-mini-card">
+                            <p class="mn-mini-label">Sales</p>
+                            <p class="mn-mini-value">
+                                {{
+                                    compactPeso(
+                                        selectedTrendMonthRow.total_sales,
+                                    )
+                                }}
+                            </p>
+                            <p class="mt-1 text-[11px] text-zinc-600">
+                                {{ peso(selectedTrendMonthRow.total_sales) }}
+                            </p>
+                        </div>
+
+                        <div class="mn-mini-card">
+                            <p class="mn-mini-label">Gross Profit</p>
+                            <p
+                                class="mn-mini-value"
+                                :class="
+                                    Number(
+                                        selectedTrendMonthRow.gross_profit || 0,
+                                    ) >= 0
+                                        ? 'text-emerald-300'
+                                        : 'text-red-300'
+                                "
+                            >
+                                {{
+                                    compactPeso(
+                                        selectedTrendMonthRow.gross_profit,
+                                    )
+                                }}
+                            </p>
+                            <p class="mt-1 text-[11px] text-zinc-600">
+                                {{ peso(selectedTrendMonthRow.gross_profit) }}
+                            </p>
+                        </div>
+
+                        <div class="mn-mini-card">
+                            <p class="mn-mini-label">Capital</p>
+                            <p class="mn-mini-value text-zinc-300">
+                                {{
+                                    compactPeso(
+                                        selectedTrendMonthRow.total_capital,
+                                    )
+                                }}
+                            </p>
+                            <p class="mt-1 text-[11px] text-zinc-600">
+                                {{ peso(selectedTrendMonthRow.total_capital) }}
+                            </p>
+                        </div>
+
+                        <div class="mn-mini-card">
+                            <p class="mn-mini-label">Profit Rate</p>
+                            <p class="mn-mini-value text-white">
+                                {{ trendProfitRate(selectedTrendMonthRow) }}
+                            </p>
+                            <p class="mt-1 text-[11px] text-zinc-600">
+                                Profit ÷ sales
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <div
                     class="mt-5 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#050505] p-3 sm:p-5"
                 >
                     <div
                         v-if="salesProfitTrendRows.length"
-                        class="relative min-h-[22rem]"
+                        class="thin-scrollbar relative min-h-[22rem] overflow-x-auto"
                     >
                         <svg
-                            class="h-[22rem] w-full"
+                            class="h-[22rem] w-[900px] max-w-none sm:w-full"
                             :viewBox="`0 0 ${trendChartWidth} ${trendChartHeight}`"
                             role="img"
                             aria-label="Monthly sales and profit line graph"
@@ -1123,12 +1319,26 @@ const deleteExpense = (expense) => {
                             <g
                                 v-for="point in salesTrendPoints"
                                 :key="`sales-point-${point.month}`"
+                                class="cursor-pointer"
+                                @click="selectTrendMonth(point)"
                             >
                                 <circle
                                     :cx="point.x"
                                     :cy="point.y"
-                                    r="4.5"
-                                    class="fill-white"
+                                    r="16"
+                                    class="fill-transparent"
+                                />
+
+                                <circle
+                                    :cx="point.x"
+                                    :cy="point.y"
+                                    :r="isSelectedTrendMonth(point) ? 7 : 4.5"
+                                    class="fill-white transition-all"
+                                    :class="
+                                        isSelectedTrendMonth(point)
+                                            ? 'stroke-black stroke-[3]'
+                                            : ''
+                                    "
                                 >
                                     <title>
                                         {{ point.label }} Sales:
@@ -1142,12 +1352,26 @@ const deleteExpense = (expense) => {
                             <g
                                 v-for="point in profitTrendPoints"
                                 :key="`profit-point-${point.month}`"
+                                class="cursor-pointer"
+                                @click="selectTrendMonth(point)"
                             >
                                 <circle
                                     :cx="point.x"
                                     :cy="point.y"
-                                    r="4.5"
-                                    class="fill-emerald-300"
+                                    r="16"
+                                    class="fill-transparent"
+                                />
+
+                                <circle
+                                    :cx="point.x"
+                                    :cy="point.y"
+                                    :r="isSelectedTrendMonth(point) ? 7 : 4.5"
+                                    class="fill-emerald-300 transition-all"
+                                    :class="
+                                        isSelectedTrendMonth(point)
+                                            ? 'stroke-black stroke-[3]'
+                                            : ''
+                                    "
                                 >
                                     <title>
                                         {{ point.label }} Gross Profit:
@@ -1161,6 +1385,8 @@ const deleteExpense = (expense) => {
                             <g
                                 v-for="(point, index) in salesTrendPoints"
                                 :key="`month-label-${point.month}`"
+                                class="cursor-pointer"
+                                @click="selectTrendMonth(point)"
                             >
                                 <text
                                     v-if="
@@ -1171,6 +1397,11 @@ const deleteExpense = (expense) => {
                                     :y="trendChartHeight - 18"
                                     text-anchor="middle"
                                     class="fill-zinc-500 text-[11px]"
+                                    :class="
+                                        isSelectedTrendMonth(point)
+                                            ? 'fill-white font-bold'
+                                            : ''
+                                    "
                                 >
                                     {{ point.short_label }}
                                 </text>
@@ -2021,6 +2252,29 @@ const deleteExpense = (expense) => {
     font-size: 0.95rem;
     font-weight: 700;
     color: white;
+}
+
+.thin-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 255 255 / 0.2) transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+    background: rgb(255 255 255 / 0.2);
+    border-radius: 999px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgb(255 255 255 / 0.35);
 }
 
 .mn-th {

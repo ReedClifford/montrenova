@@ -4422,14 +4422,6 @@ const clearReservation = (watch) => {
                         <div class="mt-3 grid grid-cols-2 gap-2">
                             <button
                                 type="button"
-                                class="rounded-2xl bg-white px-3 py-3 text-xs font-black text-black transition active:scale-[0.98]"
-                                @click="openCreateModal"
-                            >
-                                Add Watch
-                            </button>
-
-                            <button
-                                type="button"
                                 class="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-xs font-black text-white transition active:scale-[0.98]"
                                 @click="startBulkMode"
                             >
