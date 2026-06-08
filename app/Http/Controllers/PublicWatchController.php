@@ -173,6 +173,8 @@ class PublicWatchController extends Controller
             'description' => $watch->description,
             'selling_price' => (float) ($watch->selling_price ?? 0),
             'discounted_price' => $watch->discounted_price ? (float) $watch->discounted_price : null,
+            
+            'sold_price' => (float) ($watch->sold_price ?? 0),
             'price' => $price,
             'status' => $watch->status,
             'is_featured' => (bool) $watch->is_featured,

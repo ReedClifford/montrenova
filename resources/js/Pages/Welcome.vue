@@ -46,7 +46,26 @@ const watches = computed(() => {
     return props.watches?.data || [];
 });
 
-const soldWatches = computed(() => props.soldWatches || []);
+const soldTimestamp = (watch) => {
+    const dateValue =
+        watch?.date_sold ||
+        watch?.sold_at ||
+        watch?.updated_at ||
+        watch?.created_at;
+
+    if (!dateValue) return 0;
+
+    const date = new Date(dateValue);
+
+    return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+};
+
+const soldWatches = computed(() => {
+    return [...(props.soldWatches || [])].sort(
+        (a, b) => soldTimestamp(b) - soldTimestamp(a),
+    );
+});
+
 const recentSoldWatches = computed(() => soldWatches.value.slice(0, 8));
 const featuredWatch = computed(() => props.featuredWatch);
 
