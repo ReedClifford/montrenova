@@ -323,26 +323,25 @@ public function update(Request $request, Watch $watch)
             ->with('success', 'Watch stock deleted successfully.');
     }
 
-    public function markSold(Request $request, Watch $watch)
-    {
-        $validated = $request->validate([
-            'buyer_name' => ['required', 'string', 'max:255'],
-            'serial_number' => ['nullable', 'string', 'max:255'],
-            'sold_price' => ['required', 'numeric', 'min:0'],
-            'date_sold' => ['required', 'date'],
-        ]);
+public function markSold(Request $request, Watch $watch)
+{
+    $validated = $request->validate([
+        'buyer_name' => ['required', 'string', 'max:255'],
+        'serial_number' => ['nullable', 'string', 'max:255'],
+        'sold_price' => ['required', 'numeric', 'min:0'],
+        'date_sold' => ['required', 'date'],
+    ]);
 
-        $watch->update([
-            'status' => 'sold',
-            'buyer_name' => $validated['buyer_name'],
-            'serial_number' => $validated['serial_number'] ?? null,
-            'sold_price' => $validated['sold_price'],
-            'date_sold' => $validated['date_sold'],
-            'is_visible' => false,
-        ]);
+    $watch->update([
+        'status' => 'sold',
+        'buyer_name' => $validated['buyer_name'],
+        'serial_number' => $validated['serial_number'] ?? $watch->serial_number,
+        'sold_price' => $validated['sold_price'],
+        'date_sold' => $validated['date_sold'],
+    ]);
 
-        return back()->with('success', 'Watch marked as sold successfully.');
-    }
+    return back()->with('success', 'Watch marked as sold successfully.');
+}
 
     public function reserve(Request $request, Watch $watch)
     {

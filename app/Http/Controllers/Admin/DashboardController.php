@@ -22,19 +22,24 @@ class DashboardController extends Controller
         $reservedWatches = Watch::where('status', 'reserved')->count();
         $soldWatches = Watch::where('status', 'sold')->count();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Sold Price Formula
+        |--------------------------------------------------------------------------
+        |
+        | The final sold amount should come from watches.sold_price only.
+        | Do not use discounted_price, selling_price, or price for sold reports.
+        |
+        */
+
         $soldPriceSql = $this->soldPriceSql();
+
         $topProfitingWatches = Watch::query()
             ->where('status', 'sold')
             ->get()
             ->map(function ($watch) {
-                $soldPrice = (float) (
-                    $watch->discounted_price
-                    ?: $watch->selling_price
-                    ?: $watch->price
-                    ?: 0
-                );
-
-                $capital = (float) ($watch->capital_price ?: 0);
+                $soldPrice = (float) ($watch->sold_price ?? 0);
+                $capital = (float) ($watch->capital_price ?? 0);
                 $profit = $soldPrice - $capital;
 
                 return [
@@ -60,8 +65,14 @@ class DashboardController extends Controller
         | Current On-hand Money:
         | Starting Cash + Total Sales - Total Capital Spent - Total Expenses
         |
+        | Total Sales:
+        | SUM(sold_price) from sold watches only
+        |
+        | Gross Profit:
+        | Total Sales - Sold Capital Cost
+        |
         | Net Profit:
-        | Total Sales - Sold Capital Cost - Total Expenses
+        | Gross Profit - Total Expenses
         |
         | Inventory Value:
         | Capital value of unsold watches
@@ -151,16 +162,6 @@ class DashboardController extends Controller
             'money' => [
                 'starting_cash' => $startingCash,
 
-                /*
-                |--------------------------------------------------------------------------
-                | Current On-hand Money
-                |--------------------------------------------------------------------------
-                |
-                | current_money is kept for your existing Vue dashboard.
-                | current_onhand_money is added as a clearer alias.
-                |
-                */
-
                 'current_money' => $currentOnhandMoney,
                 'current_onhand_money' => $currentOnhandMoney,
 
@@ -190,7 +191,6 @@ class DashboardController extends Controller
             'topSoldUnits' => $topSoldUnits,
             'recentExpenses' => $recentExpenses,
             'topProfitingWatches' => $topProfitingWatches,
-
         ]);
     }
 
@@ -226,7 +226,6 @@ class DashboardController extends Controller
 
         return back()->with('success', 'Expense deleted.');
     }
-
 
     private function salesProfitTrend(int $months = 12): array
     {
@@ -382,12 +381,6 @@ class DashboardController extends Controller
 
     private function soldPriceSql(): string
     {
-        return "
-            CASE
-                WHEN discounted_price IS NOT NULL AND discounted_price > 0
-                THEN discounted_price
-                ELSE selling_price
-            END
-        ";
+        return 'COALESCE(sold_price, 0)';
     }
 }
