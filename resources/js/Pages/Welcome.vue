@@ -21,7 +21,11 @@ const props = defineProps({
         default: () => [],
     },
     soldWatches: {
-        type: Array,
+        type: [Array, Object],
+        default: () => [],
+    },
+    recentSoldWatches: {
+        type: [Array, Object],
         default: () => [],
     },
     soldCount: {
@@ -46,6 +50,18 @@ const watches = computed(() => {
     return props.watches?.data || [];
 });
 
+const toCollectionArray = (collection) => {
+    if (Array.isArray(collection)) {
+        return collection;
+    }
+
+    if (Array.isArray(collection?.data)) {
+        return collection.data;
+    }
+
+    return [];
+};
+
 const soldTimestamp = (watch) => {
     const dateValue =
         watch?.date_sold ||
@@ -61,9 +77,14 @@ const soldTimestamp = (watch) => {
 };
 
 const soldWatches = computed(() => {
-    return [...(props.soldWatches || [])].sort(
-        (a, b) => soldTimestamp(b) - soldTimestamp(a),
-    );
+    const directSoldWatches = toCollectionArray(props.soldWatches);
+    const recentSoldWatchesProp = toCollectionArray(props.recentSoldWatches);
+
+    const source = directSoldWatches.length
+        ? directSoldWatches
+        : recentSoldWatchesProp;
+
+    return [...source].sort((a, b) => soldTimestamp(b) - soldTimestamp(a));
 });
 
 const recentSoldWatches = computed(() => soldWatches.value.slice(0, 8));
