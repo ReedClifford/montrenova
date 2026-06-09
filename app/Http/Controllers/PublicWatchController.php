@@ -11,100 +11,75 @@ use Inertia\Inertia;
 class PublicWatchController extends Controller
 {
     public function welcome()
-    {
+{
+    $featuredWatch = Watch::query()
+        ->with(['primaryImage', 'images'])
+        ->where('status', 'available')
+        ->where('is_visible', true)
+        ->where('is_featured', true)
+        ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
+        ->orderBy('display_order')
+        ->latest()
+        ->first();
+
+    if (! $featuredWatch) {
         $featuredWatch = Watch::query()
             ->with(['primaryImage', 'images'])
             ->where('status', 'available')
             ->where('is_visible', true)
-            ->where('is_featured', true)
             ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
             ->orderBy('display_order')
             ->latest()
             ->first();
+    }
 
-        if (! $featuredWatch) {
-            $featuredWatch = Watch::query()
-                ->with(['primaryImage', 'images'])
-                ->where('status', 'available')
-                ->where('is_visible', true)
-                ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
-                ->orderBy('display_order')
-                ->latest()
-                ->first();
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Current On-hand / Available Watches
-        |--------------------------------------------------------------------------
-        */
-
-        $watches = Watch::query()
-            ->with(['primaryImage'])
-            ->withCount('images')
-            ->where('status', 'available')
-            ->where('is_visible', true)
-            ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
-            ->orderBy('display_order')
-            ->latest()
-            ->paginate(20)
-            ->withQueryString()
-            ->through(fn ($watch) => $this->publicWatchCard($watch));
-
-        /*
-        |--------------------------------------------------------------------------
-        | Actual Total Sold Count
-        |--------------------------------------------------------------------------
-        */
-
-        $soldCount = Watch::query()
-            ->where('status', 'sold')
-            ->count();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Actual Sold This Month Count
-        |--------------------------------------------------------------------------
-        */
-
-        $soldThisMonthCount = Watch::query()
-            ->where('status', 'sold')
-            ->whereNotNull('date_sold')
-            ->whereBetween('date_sold', [
-                now()->startOfMonth(),
-                now()->endOfMonth(),
-            ])
-            ->count();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Recently Sold Watches
-        |--------------------------------------------------------------------------
-        |
-        | This is only for display on the homepage.
-        | Do not use this for the sold count because this is limited.
-        |
-        */
-
-        $soldWatches = Watch::query()
+    $watches = Watch::query()
         ->with(['primaryImage'])
-        ->where('status', 'sold')
+        ->withCount('images')
+        ->where('status', 'available')
         ->where('is_visible', true)
+        ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
+        ->orderBy('display_order')
+        ->latest()
+        ->paginate(20)
+        ->withQueryString()
+        ->through(fn ($watch) => $this->publicWatchCard($watch));
+
+    $soldCount = Watch::query()
+        ->whereRaw('LOWER(TRIM(status)) = ?', ['sold'])
+        ->count();
+
+    $soldThisMonthCount = Watch::query()
+        ->whereRaw('LOWER(TRIM(status)) = ?', ['sold'])
+        ->whereNotNull('date_sold')
+        ->whereBetween('date_sold', [
+            now()->startOfMonth(),
+            now()->endOfMonth(),
+        ])
+        ->count();
+
+    $soldWatches = Watch::query()
+        ->with(['primaryImage'])
+        ->withCount('images')
+        ->whereRaw('LOWER(TRIM(status)) = ?', ['sold'])
         ->orderByRaw('COALESCE(date_sold, updated_at, created_at) DESC')
         ->limit(8)
         ->get()
-        ->map(fn ($watch) => $this->publicWatchCard($watch));
-            return Inertia::render('Welcome', [
-                'canLogin' => Route::has('login'),
-                'canRegister' => false,
-                'featuredWatch' => $featuredWatch ? $this->publicWatchCard($featuredWatch) : null,
-                'watches' => $watches,
-                'soldWatches' => $soldWatches,
-                'soldCount' => $soldCount,
-                'soldThisMonthCount' => $soldThisMonthCount,
-            ]);
-        }
+        ->map(fn ($watch) => $this->publicWatchCard($watch))
+        ->values();
 
+    return Inertia::render('Welcome', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => false,
+        'featuredWatch' => $featuredWatch
+            ? $this->publicWatchCard($featuredWatch)
+            : null,
+        'watches' => $watches,
+        'soldWatches' => $soldWatches,
+        'soldCount' => $soldCount,
+        'soldThisMonthCount' => $soldThisMonthCount,
+    ]);
+}
     public function show(Watch $watch)
     {
         abort_unless($watch->status === 'available' && (bool) $watch->is_visible, 404);
@@ -132,7 +107,7 @@ class PublicWatchController extends Controller
             ->with(['primaryImage'])
             ->withCount('images')
             ->where('status', 'sold')
-            ->where('is_visible', true)
+         
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('brand', 'like', "%{$search}%")
