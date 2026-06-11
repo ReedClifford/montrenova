@@ -81,23 +81,49 @@ class PublicWatchController extends Controller
     ]);
 }
     public function show(Watch $watch)
-    {
-        abort_unless($watch->status === 'available' && (bool) $watch->is_visible, 404);
+{
+    abort_unless(
+        strtolower(trim($watch->status)) === 'available' && (bool) $watch->is_visible,
+        404
+    );
 
-        $watch->load([
-            'primaryImage',
-            'images' => fn ($query) => $query
-                ->orderByDesc('is_primary')
-                ->orderBy('sort_order')
-                ->orderBy('id'),
-            'sections',
-        ]);
+    $watch->load([
+        'primaryImage',
+        'images' => fn ($query) => $query
+            ->orderByDesc('is_primary')
+            ->orderBy('sort_order')
+            ->orderBy('id'),
+        'sections',
+    ]);
 
-        return Inertia::render('Public/WatchShow', [
-            'watch' => $this->publicWatchDetails($watch),
-            'canLogin' => Route::has('login'),
-        ]);
-    }
+    $availableWatches = Watch::query()
+        ->with(['primaryImage'])
+        ->withCount('images')
+        ->where('id', '!=', $watch->id)
+        ->whereRaw('LOWER(TRIM(status)) = ?', ['available'])
+        ->where('is_visible', true)
+        ->orderByRaw('
+            CASE
+                WHEN category = ? THEN 0
+                ELSE 1
+            END
+        ', [$watch->category])
+        ->orderByDesc('is_featured')
+        ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
+        ->orderBy('display_order')
+        ->latest()
+        ->limit(10)
+        ->get()
+        ->map(fn ($item) => $this->publicWatchCard($item))
+        ->values();
+
+    return Inertia::render('Public/WatchShow', [
+        'watch' => $this->publicWatchDetails($watch),
+        'availableWatches' => $availableWatches,
+        'relatedWatches' => $availableWatches,
+        'canLogin' => Route::has('login'),
+    ]);
+}
 
     public function soldGallery(Request $request)
     {

@@ -1,7 +1,10 @@
 <script setup>
 import InputError from "@/Components/InputError.vue";
+
 import { compressImageFile, formatFileSize } from "@/Utils/imageCompression";
+
 import { router, useForm } from "@inertiajs/vue3";
+
 import {
     computed,
     nextTick,
@@ -14,10 +17,13 @@ import {
 const props = defineProps({
     show: {
         type: Boolean,
+
         default: false,
     },
+
     watch: {
         type: Object,
+
         default: null,
     },
 });
@@ -27,99 +33,145 @@ const emit = defineEmits(["close"]);
 const MAX_IMAGES = 5;
 
 const activeTab = ref("basic");
+
 const imagePreviews = ref([]);
+
 const existingImages = ref([]);
+
 const pendingPrimaryImage = ref(null);
+
 const fileInput = ref(null);
+
 const imageLimitMessage = ref("");
+
 const isCompressingImages = ref(false);
+
 const showPublicPreview = ref(false);
+
 const originalSnapshot = ref("");
+
 const isClosingAfterSave = ref(false);
+
 const submitFeedback = ref("");
 
 const form = useForm({
     _method: "patch",
 
     brand: "",
+
     model_name: "",
+
     reference_number: "",
+
     condition: "Brand New",
+
     category: "",
+
     description: "",
 
     movement: "",
+
     case_size: "",
+
     case_material: "",
+
     dial_color: "",
+
     crystal: "",
+
     bracelet_or_strap: "",
+
     water_resistance: "",
+
     box_papers: "",
+
     warranty_type: "Montre Card 1 Year Service Warranty",
 
     capital_price: 0,
+
     selling_price: 0,
+
     discounted_price: "",
 
     status: "draft",
+
     is_featured: false,
+
     is_visible: true,
+
     display_price: true,
+
     allow_inquiry: true,
 
     images: [],
+
     primary_existing_image_id: "",
+
     primary_new_image_index: "",
+
     sections: [],
 });
 
 const tabs = [
     {
         key: "basic",
+
         label: "Basic",
+
         title: "Basic Information",
-        helper: "Update brand, model, reference, condition, and description.",
+
+        helper: "Update brand, model, reference, condition, and category.",
     },
+
     {
         key: "pricing",
+
         label: "Pricing",
+
         title: "Pricing & Visibility",
+
         helper: "Update price, profit, status, and website visibility.",
     },
+
     {
         key: "specs",
+
         label: "Specs",
+
         title: "Watch Specifications",
+
         helper: "Update movement, case, strap, resistance, and warranty details.",
     },
+
     {
         key: "photos",
+
         label: "Photos",
+
         title: "Photo Manager",
+
         helper: "Manage existing photos and upload new compressed HD photos.",
-    },
-    {
-        key: "terms",
-        label: "Terms",
-        title: "Public Listing Terms",
-        helper: "Update purchase process, service warranty, and payment details.",
     },
 ];
 
 const defaultSections = () => [
     {
         title: "Order & Purchase Process",
+
         content:
             "Thank you for showing interest in this timepiece. To reserve or purchase this watch, you may contact us through our official channels.",
     },
+
     {
         title: "Service Warranty",
+
         content:
             "The Montre Card warranty coverage is valid for one (1) year from the date of purchase.",
     },
+
     {
         title: "Payment Methods",
+
         content:
             "Accepted payment methods include cash, Maribank, GoTyme, QR code payments, and selected trade-ins subject to evaluation.",
     },
@@ -136,7 +188,9 @@ const normalizeExistingImage = (image) => {
 
     return {
         ...image,
+
         url,
+
         is_primary: Boolean(image?.is_primary),
     };
 };
@@ -158,7 +212,9 @@ const isPositive = (value) => {
 const peso = (value) => {
     return new Intl.NumberFormat("en-PH", {
         style: "currency",
+
         currency: "PHP",
+
         minimumFractionDigits: 2,
     }).format(Number(value || 0));
 };
@@ -180,34 +236,54 @@ const normalizeMoneyValue = (value) => {
 const snapshotFormState = () => {
     return JSON.stringify({
         brand: String(form.brand ?? ""),
+
         model_name: String(form.model_name ?? ""),
+
         reference_number: String(form.reference_number ?? ""),
+
         condition: String(form.condition ?? ""),
+
         category: String(form.category ?? ""),
+
         description: String(form.description ?? ""),
 
         movement: String(form.movement ?? ""),
+
         case_size: String(form.case_size ?? ""),
+
         case_material: String(form.case_material ?? ""),
+
         dial_color: String(form.dial_color ?? ""),
+
         crystal: String(form.crystal ?? ""),
+
         bracelet_or_strap: String(form.bracelet_or_strap ?? ""),
+
         water_resistance: String(form.water_resistance ?? ""),
+
         box_papers: String(form.box_papers ?? ""),
+
         warranty_type: String(form.warranty_type ?? ""),
 
         capital_price: normalizeMoneyValue(form.capital_price),
+
         selling_price: normalizeMoneyValue(form.selling_price),
+
         discounted_price: normalizeMoneyValue(form.discounted_price),
 
         status: String(form.status ?? ""),
+
         is_featured: Boolean(form.is_featured),
+
         is_visible: Boolean(form.is_visible),
+
         display_price: Boolean(form.display_price),
+
         allow_inquiry: Boolean(form.allow_inquiry),
 
         sections: form.sections.map((section) => ({
             title: String(section.title ?? ""),
+
             content: String(section.content ?? ""),
         })),
     });
@@ -248,6 +324,7 @@ const handleBeforeUnload = (event) => {
     }
 
     event.preventDefault();
+
     event.returnValue = "";
 };
 
@@ -317,18 +394,14 @@ const photosComplete = computed(() => {
     return hasAnyPhoto.value;
 });
 
-const termsComplete = computed(() => {
-    return form.sections.every((section) => {
-        return clean(section.title) !== "" && clean(section.content) !== "";
-    });
-});
-
 const stepCompletion = computed(() => ({
     basic: basicComplete.value,
+
     pricing: pricingComplete.value,
+
     specs: specsComplete.value,
+
     photos: photosComplete.value,
-    terms: termsComplete.value,
 }));
 
 const currentStepComplete = computed(() => {
@@ -351,13 +424,16 @@ const currentTab = computed(() => {
     return tabs[currentTabIndex.value] || tabs[0];
 });
 
+const isLastTab = computed(() => {
+    return currentTabIndex.value === tabs.length - 1;
+});
+
 const canSubmit = computed(() => {
     return (
         basicComplete.value &&
         pricingComplete.value &&
         specsComplete.value &&
         photosComplete.value &&
-        termsComplete.value &&
         !form.processing &&
         !isCompressingImages.value
     );
@@ -367,8 +443,11 @@ const missingRequirements = computed(() => {
     const missing = [];
 
     if (!basicComplete.value) missing.push("Basic Info");
+
     if (!pricingComplete.value) missing.push("Pricing");
+
     if (!specsComplete.value) missing.push("Specs");
+
     if (!photosComplete.value) {
         missing.push(
             publicListingNeedsPhoto.value
@@ -376,7 +455,6 @@ const missingRequirements = computed(() => {
                 : "Photos",
         );
     }
-    if (!termsComplete.value) missing.push("Terms");
 
     return missing;
 });
@@ -388,23 +466,31 @@ const getTabIndex = (key) => {
 const firstIncompleteTab = () => {
     const incomplete = tabs.find((tab) => !stepCompletion.value[tab.key]);
 
-    return incomplete?.key || "terms";
+    return incomplete?.key || "photos";
 };
 
 const canAccessTab = () => {
     /*
+
     |--------------------------------------------------------------------------
+
     | Edit mode tab access
+
     |--------------------------------------------------------------------------
+
     | Editing should not feel like a locked wizard. Users may jump directly to
-    | Pricing, Photos, or Terms, then save once the required data is valid.
+
+    | Pricing, Specs, or Photos, then save once the required data is valid.
+
     */
+
     return true;
 };
 
 const goToTab = (key) => {
     if (!canAccessTab(key)) {
         activeTab.value = firstIncompleteTab();
+
         return;
     }
 
@@ -508,6 +594,7 @@ const previewTitle = computed(() => {
 
 const previewPriceLabel = computed(() => {
     if (!form.display_price) return "Price on inquiry";
+
     if (finalSellingPrice.value <= 0) return "Price not set";
 
     return peso(finalSellingPrice.value);
@@ -516,9 +603,13 @@ const previewPriceLabel = computed(() => {
 const previewStatusLabel = computed(() => {
     if (form.status === "available" && form.is_visible)
         return "Available Online";
+
     if (form.status === "draft") return "Draft Preview";
+
     if (form.status === "hidden" || !form.is_visible) return "Hidden Preview";
+
     if (form.status === "reserved") return "Reserved Preview";
+
     if (form.status === "sold") return "Sold Preview";
 
     return "Listing Preview";
@@ -543,21 +634,23 @@ const previewStatusClass = computed(() => {
 const previewSpecs = computed(() => {
     return [
         { label: "Movement", value: form.movement },
+
         { label: "Case Size", value: form.case_size },
+
         { label: "Case Material", value: form.case_material },
+
         { label: "Dial Color", value: form.dial_color },
+
         { label: "Crystal", value: form.crystal },
+
         { label: "Bracelet / Strap", value: form.bracelet_or_strap },
+
         { label: "Water Resistance", value: form.water_resistance },
+
         { label: "Box & Papers", value: form.box_papers },
+
         { label: "Warranty", value: form.warranty_type },
     ].filter((item) => clean(item.value) !== "");
-});
-
-const previewSections = computed(() => {
-    return form.sections.filter((section) => {
-        return clean(section.title) !== "" && clean(section.content) !== "";
-    });
 });
 
 const previewWarnings = computed(() => {
@@ -565,14 +658,15 @@ const previewWarnings = computed(() => {
 
     if (!form.is_visible)
         warnings.push("Hidden from website until visibility is turned on.");
+
     if (form.status !== "available")
         warnings.push(`Status is ${form.status || "not set"}.`);
+
     if (!previewPrimaryImage.value)
         warnings.push("No product photo selected yet.");
-    if (form.display_price && finalSellingPrice.value <= 0)
-        warnings.push("Display price is on but final price is not set.");
-    if (!form.allow_inquiry)
-        warnings.push("Customer inquiry button is disabled.");
+    if (finalSellingPrice.value <= 0)
+        warnings.push("Final price is not set yet.");
+
     if (imagePreviews.value.length)
         warnings.push("New photo changes will appear after saving.");
 
@@ -594,17 +688,22 @@ const syncPhotoIntent = () => {
         );
 
         form.primary_existing_image_id = "";
+
         form.primary_new_image_index = newIndex >= 0 ? newIndex : "";
+
         return;
     }
 
     if (pendingPrimaryImage.value?.type === "existing") {
         form.primary_existing_image_id = pendingPrimaryImage.value.id || "";
+
         form.primary_new_image_index = "";
+
         return;
     }
 
     form.primary_existing_image_id = "";
+
     form.primary_new_image_index = "";
 };
 
@@ -615,11 +714,13 @@ const setFallbackPrimaryIntent = () => {
     if (primaryExisting?.id) {
         pendingPrimaryImage.value = {
             type: "existing",
+
             id: primaryExisting.id,
         };
     } else if (imagePreviews.value.length) {
         pendingPrimaryImage.value = {
             type: "new",
+
             clientKey: imagePreviews.value[0].clientKey,
         };
     } else {
@@ -651,8 +752,11 @@ const clearNewImages = () => {
     });
 
     imagePreviews.value = [];
+
     form.images = [];
+
     imageLimitMessage.value = "";
+
     setFallbackPrimaryIntent();
 
     if (fileInput.value) {
@@ -662,6 +766,7 @@ const clearNewImages = () => {
 
 const syncNewImages = () => {
     form.images = imagePreviews.value.map((image) => image.file);
+
     syncPhotoIntent();
 };
 
@@ -695,7 +800,9 @@ const handleImages = async (event) => {
             acceptedFiles.map((file) =>
                 compressImageFile(file, {
                     maxWidth: 1600,
+
                     maxHeight: 1600,
+
                     quality: 0.78,
                 }),
             ),
@@ -703,10 +810,15 @@ const handleImages = async (event) => {
 
         const newImages = compressedFiles.map((file, index) => ({
             clientKey: makeNewImageKey(),
+
             file,
+
             url: URL.createObjectURL(file),
+
             name: file.name,
+
             size: file.size,
+
             originalSize: acceptedFiles[index].size,
         }));
 
@@ -715,6 +827,7 @@ const handleImages = async (event) => {
         if (!pendingPrimaryImage.value && newImages.length) {
             pendingPrimaryImage.value = {
                 type: "new",
+
                 clientKey: newImages[0].clientKey,
             };
         }
@@ -765,6 +878,7 @@ const setPrimaryNewImage = (index) => {
 
     pendingPrimaryImage.value = {
         type: "new",
+
         clientKey: image.clientKey,
     };
 
@@ -777,9 +891,11 @@ const moveNewImage = (index, direction) => {
     if (targetIndex < 0 || targetIndex >= imagePreviews.value.length) return;
 
     const images = [...imagePreviews.value];
+
     const currentImage = images[index];
 
     images[index] = images[targetIndex];
+
     images[targetIndex] = currentImage;
 
     imagePreviews.value = images;
@@ -791,12 +907,15 @@ const moveNewImageToFront = (index) => {
     if (index <= 0) return;
 
     const images = [...imagePreviews.value];
+
     const selected = images.splice(index, 1)[0];
 
     images.unshift(selected);
+
     imagePreviews.value = images;
 
     setPrimaryNewImage(0);
+
     syncNewImages();
 };
 
@@ -817,7 +936,9 @@ const moveExistingImageLocally = (image, direction) => {
     const images = [...existingImages.value];
 
     const currentImage = images[currentIndex];
+
     images[currentIndex] = images[targetIndex];
+
     images[targetIndex] = currentImage;
 
     existingImages.value = images;
@@ -828,10 +949,14 @@ const moveImage = (image, direction) => {
 
     router.patch(
         route("admin.watch-images.move", image.id),
+
         { direction },
+
         {
             preserveScroll: true,
+
             preserveState: true,
+
             onSuccess: () => {
                 moveExistingImageLocally(image, direction);
             },
@@ -841,11 +966,14 @@ const moveImage = (image, direction) => {
 
 const deleteImage = (image) => {
     if (!image?.id) return;
+
     if (!confirm("Delete this photo?")) return;
 
     router.delete(route("admin.watch-images.destroy", image.id), {
         preserveScroll: true,
+
         preserveState: true,
+
         onSuccess: () => {
             const deletedWasPrimary = image.is_primary;
 
@@ -857,6 +985,7 @@ const deleteImage = (image) => {
                 existingImages.value = existingImages.value.map(
                     (item, index) => ({
                         ...item,
+
                         is_primary: index === 0,
                     }),
                 );
@@ -872,10 +1001,14 @@ const setPrimaryExistingImage = (image) => {
 
     router.patch(
         route("admin.watch-images.primary", image.id),
+
         {},
+
         {
             preserveScroll: true,
+
             preserveState: true,
+
             onSuccess: () => {
                 const selected = existingImages.value.find(
                     (item) => item.id === image.id,
@@ -889,16 +1022,20 @@ const setPrimaryExistingImage = (image) => {
 
                 pendingPrimaryImage.value = {
                     type: "existing",
+
                     id: image.id,
                 };
 
                 existingImages.value = [
                     {
                         ...selected,
+
                         is_primary: true,
                     },
+
                     ...others.map((item) => ({
                         ...item,
+
                         is_primary: false,
                     })),
                 ];
@@ -912,22 +1049,37 @@ const setPrimaryExistingImage = (image) => {
 const photoCards = computed(() => [
     ...existingImages.value.map((image, index) => ({
         key: `existing-${image.id}-${index}`,
+
         type: "existing",
+
         index,
+
         image,
+
         url: image.url,
+
         label: `Saved ${index + 1}`,
+
         sizeLabel: "Saved photo",
+
         isPrimary: isExistingPrimary(image),
     })),
+
     ...imagePreviews.value.map((image, index) => ({
         key: image.clientKey,
+
         type: "new",
+
         index,
+
         image,
+
         url: image.url,
+
         label: `New ${index + 1}`,
+
         sizeLabel: formatFileSize(image.size),
+
         isPrimary: isNewPrimary(image),
     })),
 ]);
@@ -935,16 +1087,19 @@ const photoCards = computed(() => [
 const canMovePhotoCard = (photo, direction) => {
     if (photo.type === "existing") {
         if (direction === "left") return photo.index > 0;
+
         return photo.index < existingImages.value.length - 1;
     }
 
     if (direction === "left") return photo.index > 0;
+
     return photo.index < imagePreviews.value.length - 1;
 };
 
 const setPrimaryPhotoCard = (photo) => {
     if (photo.type === "existing") {
         setPrimaryExistingImage(photo.image);
+
         return;
     }
 
@@ -954,6 +1109,7 @@ const setPrimaryPhotoCard = (photo) => {
 const movePhotoCard = (photo, direction) => {
     if (photo.type === "existing") {
         moveImage(photo.image, direction);
+
         return;
     }
 
@@ -963,6 +1119,7 @@ const movePhotoCard = (photo, direction) => {
 const removePhotoCard = (photo) => {
     if (photo.type === "existing") {
         deleteImage(photo.image);
+
         return;
     }
 
@@ -973,52 +1130,70 @@ const loadWatchIntoForm = () => {
     if (!props.watch) return;
 
     activeTab.value = "basic";
+
     clearNewImages();
+
     form.clearErrors();
+
     submitFeedback.value = "";
 
     form.brand = props.watch.brand || "";
+
     form.model_name = props.watch.model_name || "";
+
     form.reference_number = props.watch.reference_number || "";
+
     form.condition = props.watch.condition || "Brand New";
+
     form.category = props.watch.category || "";
+
     form.description = props.watch.description || "";
 
     form.movement = props.watch.movement || "";
+
     form.case_size = props.watch.case_size || "";
+
     form.case_material = props.watch.case_material || "";
+
     form.dial_color = props.watch.dial_color || "";
+
     form.crystal = props.watch.crystal || "";
+
     form.bracelet_or_strap = props.watch.bracelet_or_strap || "";
+
     form.water_resistance = props.watch.water_resistance || "";
+
     form.box_papers = props.watch.box_papers || "";
+
     form.warranty_type =
         props.watch.warranty_type || "Montre Card 1 Year Service Warranty";
 
     form.capital_price = props.watch.capital_price ?? 0;
+
     form.selling_price = props.watch.selling_price ?? 0;
+
     form.discounted_price = props.watch.discounted_price || "";
 
     form.status = props.watch.status || "available";
+
     form.is_featured = Boolean(props.watch.is_featured);
+
     form.is_visible =
         props.watch.is_visible === null || props.watch.is_visible === undefined
             ? true
             : Boolean(props.watch.is_visible);
-    form.display_price =
-        props.watch.display_price === null ||
-        props.watch.display_price === undefined
-            ? true
-            : Boolean(props.watch.display_price);
-    form.allow_inquiry =
-        props.watch.allow_inquiry === null ||
-        props.watch.allow_inquiry === undefined
-            ? true
-            : Boolean(props.watch.allow_inquiry);
+
+    // These are no longer editable in the modal. Keep them enabled so
+    // listings remain straightforward: price shown and inquiry available.
+    form.display_price = true;
+    form.allow_inquiry = true;
 
     form.images = [];
+
     form.primary_existing_image_id = "";
+
     form.primary_new_image_index = "";
+
     pendingPrimaryImage.value = null;
 
     const imageSource =
@@ -1028,13 +1203,16 @@ const loadWatchIntoForm = () => {
               ? [
                     {
                         ...props.watch.primary_image,
+
                         is_primary: true,
                     },
                 ]
               : [];
 
     existingImages.value = imageSource
+
         .map((image) => normalizeExistingImage(image))
+
         .filter((image) => image.url);
 
     setFallbackPrimaryIntent();
@@ -1042,42 +1220,59 @@ const loadWatchIntoForm = () => {
     form.sections = props.watch.sections?.length
         ? props.watch.sections.map((section) => ({
               title: section.title || "",
+
               content: section.content || "",
           }))
         : defaultSections();
 
     originalSnapshot.value = snapshotFormState();
+
     isClosingAfterSave.value = false;
 };
 
 watch(
     () => [props.show, props.watch?.id, props.watch?.updated_at],
+
     async ([show]) => {
         if (!show || !props.watch?.id) return;
 
         /*
+
         |--------------------------------------------------------------------------
+
         | Hard fix for blank edit form
+
         |--------------------------------------------------------------------------
+
         | The parent renders this modal with v-if and passes the selected watch at
+
         | the same time. Using immediate + flush post + nextTick guarantees the form
+
         | is filled after Vue has mounted the modal and resolved the latest prop.
+
         */
+
         await nextTick();
+
         loadWatchIntoForm();
     },
+
     {
         immediate: true,
+
         flush: "post",
     },
 );
 
 watch(
     () => form.status,
+
     (value, oldValue) => {
         if (value === "available" && oldValue && oldValue !== "available") {
             form.is_visible = true;
+
             form.display_price = true;
+
             form.allow_inquiry = true;
         }
     },
@@ -1085,8 +1280,11 @@ watch(
 
 const closeWithoutPrompt = () => {
     clearNewImages();
+
     originalSnapshot.value = "";
+
     isClosingAfterSave.value = false;
+
     emit("close");
 };
 
@@ -1095,6 +1293,7 @@ const closeModal = () => {
 
     if (showPublicPreview.value) {
         closePublicPreview();
+
         return;
     }
 
@@ -1110,11 +1309,14 @@ const firstErrorTab = (errors = {}) => {
         keys.some((key) =>
             [
                 "brand",
+
                 "model_name",
+
                 "reference_number",
+
                 "condition",
+
                 "category",
-                "description",
             ].some((field) => key.startsWith(field)),
         )
     ) {
@@ -1125,13 +1327,16 @@ const firstErrorTab = (errors = {}) => {
         keys.some((key) =>
             [
                 "capital_price",
+
                 "selling_price",
+
                 "discounted_price",
+
                 "status",
+
                 "is_featured",
+
                 "is_visible",
-                "display_price",
-                "allow_inquiry",
             ].some((field) => key.startsWith(field)),
         )
     ) {
@@ -1142,13 +1347,21 @@ const firstErrorTab = (errors = {}) => {
         keys.some((key) =>
             [
                 "movement",
+
                 "case_size",
+
                 "case_material",
+
                 "dial_color",
+
                 "crystal",
+
                 "bracelet_or_strap",
+
                 "water_resistance",
+
                 "box_papers",
+
                 "warranty_type",
             ].some((field) => key.startsWith(field)),
         )
@@ -1161,7 +1374,7 @@ const firstErrorTab = (errors = {}) => {
     }
 
     if (keys.some((key) => key.startsWith("sections"))) {
-        return "terms";
+        return "photos";
     }
 
     return firstIncompleteTab();
@@ -1171,48 +1384,72 @@ const submit = () => {
     if (!props.watch?.id) {
         submitFeedback.value =
             "Unable to save because the selected watch was not loaded properly.";
+
         return;
     }
 
     submitFeedback.value = "";
+
     form.clearErrors();
 
     if (!canSubmit.value) {
         activeTab.value = firstIncompleteTab();
+
         submitFeedback.value = `Please complete: ${missingRequirements.value.join(", ")}.`;
+
         return;
     }
 
     form.post(route("admin.watches.update", props.watch.id), {
         forceFormData: true,
+
         preserveScroll: true,
+
         onStart: () => {
             submitFeedback.value = "Saving changes...";
         },
+
         onSuccess: () => {
             /*
+
             |--------------------------------------------------------------------------
+
             | Let the parent close and reload
+
             |--------------------------------------------------------------------------
+
             | Do not call router.reload() inside the modal after saving. The parent owns
+
             | showEditModal/selectedWatch, so it must close the modal first, destroy the
+
             | modal instance, then reload the list. This prevents the modal from being
+
             | re-opened by preserved Inertia state or refreshed props.
+
             */
+
             isClosingAfterSave.value = true;
+
             showPublicPreview.value = false;
+
             originalSnapshot.value = "";
+
             clearNewImages();
 
             submitFeedback.value = "";
+
             emit("close", { saved: true });
         },
+
         onError: (errors) => {
             activeTab.value = firstErrorTab(errors);
+
             submitFeedback.value =
                 "Please review the highlighted fields before saving.";
+
             console.error("Watch update validation failed:", errors);
         },
+
         onFinish: () => {
             if (submitFeedback.value === "Saving changes...") {
                 submitFeedback.value = "";
@@ -1270,6 +1507,7 @@ onBeforeUnmount(() => {
                         class="relative flex h-[100dvh] max-h-[100dvh] w-full max-w-6xl flex-col overflow-hidden rounded-none border border-white/10 bg-[#080808] shadow-2xl shadow-black sm:h-auto sm:max-h-[92vh] sm:rounded-[2rem]"
                     >
                         <!-- MOBILE HANDLE -->
+
                         <div class="hidden">
                             <div
                                 class="h-1.5 w-12 rounded-full bg-white/20"
@@ -1277,6 +1515,7 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- HEADER -->
+
                         <div
                             class="border-b border-white/10 bg-[#0B0B0D] px-4 py-3 sm:px-6 sm:py-5"
                         >
@@ -1298,6 +1537,7 @@ onBeforeUnmount(() => {
                                         class="mt-1 truncate text-xs text-zinc-500 sm:text-sm"
                                     >
                                         {{ form.brand }} {{ form.model_name }}
+
                                         <span v-if="form.reference_number">
                                             • Ref. {{ form.reference_number }}
                                         </span>
@@ -1306,8 +1546,8 @@ onBeforeUnmount(() => {
                                     <p
                                         class="mt-2 hidden max-w-2xl text-sm leading-6 text-zinc-400 sm:block"
                                     >
-                                        Update watch details, pricing, photos,
-                                        status, and public terms.
+                                        Update watch details, pricing, specs,
+                                        photos, and website visibility.
                                     </p>
                                 </div>
 
@@ -1333,6 +1573,7 @@ onBeforeUnmount(() => {
                             </div>
 
                             <!-- PROGRESS -->
+
                             <div class="mt-4">
                                 <div
                                     class="flex items-start justify-between gap-4"
@@ -1342,7 +1583,9 @@ onBeforeUnmount(() => {
                                             class="text-xs font-semibold text-white"
                                         >
                                             Step {{ currentTabIndex + 1 }} of
+
                                             {{ tabs.length }}:
+
                                             {{ currentTab.title }}
                                         </p>
 
@@ -1357,6 +1600,7 @@ onBeforeUnmount(() => {
                                         class="hidden rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-semibold text-zinc-400 sm:block"
                                     >
                                         {{ completedStepCount }} /
+
                                         {{ tabs.length }} done
                                     </div>
                                 </div>
@@ -1374,6 +1618,7 @@ onBeforeUnmount(() => {
                             </div>
 
                             <!-- STEP PILLS -->
+
                             <div
                                 class="thin-scrollbar mt-4 hidden gap-2 overflow-x-auto pb-1 sm:flex"
                             >
@@ -1412,8 +1657,10 @@ onBeforeUnmount(() => {
                                     <span>{{ tab.label }}</span>
                                 </button>
                             </div>
+
                             <!-- MOBILE STEP DOTS -->
-                            <div class="mt-4 grid grid-cols-5 gap-2 sm:hidden">
+
+                            <div class="mt-4 grid grid-cols-4 gap-2 sm:hidden">
                                 <button
                                     v-for="(tab, index) in tabs"
                                     :key="`mobile-${tab.key}`"
@@ -1439,10 +1686,12 @@ onBeforeUnmount(() => {
                         </div>
 
                         <!-- BODY -->
+
                         <div
                             class="thin-scrollbar flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6"
                         >
                             <!-- BASIC -->
+
                             <div
                                 v-if="activeTab === 'basic'"
                                 class="grid gap-4 md:grid-cols-2 sm:gap-5"
@@ -1469,6 +1718,7 @@ onBeforeUnmount(() => {
                                 <div>
                                     <label class="mn-label">
                                         Brand
+
                                         <span class="text-red-400">*</span>
                                     </label>
 
@@ -1487,6 +1737,7 @@ onBeforeUnmount(() => {
                                 <div>
                                     <label class="mn-label">
                                         Model Name
+
                                         <span class="text-red-400">*</span>
                                     </label>
 
@@ -1522,6 +1773,7 @@ onBeforeUnmount(() => {
                                 <div>
                                     <label class="mn-label">
                                         Condition
+
                                         <span class="text-red-400">*</span>
                                     </label>
 
@@ -1530,8 +1782,11 @@ onBeforeUnmount(() => {
                                         class="mn-input"
                                     >
                                         <option>Brand New</option>
+
                                         <option>Pre-owned</option>
+
                                         <option>Like New</option>
+
                                         <option>Used</option>
                                     </select>
                                 </div>
@@ -1545,20 +1800,10 @@ onBeforeUnmount(() => {
                                         placeholder="Diver, GMT, Dress..."
                                     />
                                 </div>
-
-                                <div class="md:col-span-2">
-                                    <label class="mn-label">Description</label>
-
-                                    <textarea
-                                        v-model="form.description"
-                                        rows="5"
-                                        class="mn-input"
-                                        placeholder="Short product description..."
-                                    ></textarea>
-                                </div>
                             </div>
 
                             <!-- PRICING -->
+
                             <div
                                 v-if="activeTab === 'pricing'"
                                 class="grid gap-5 lg:grid-cols-[1fr_0.75fr]"
@@ -1583,6 +1828,7 @@ onBeforeUnmount(() => {
                                         <div>
                                             <label class="mn-label">
                                                 Capital Price
+
                                                 <span class="text-red-400"
                                                     >*</span
                                                 >
@@ -1601,6 +1847,7 @@ onBeforeUnmount(() => {
                                         <div>
                                             <label class="mn-label">
                                                 Selling Price
+
                                                 <span class="text-red-400"
                                                     >*</span
                                                 >
@@ -1646,6 +1893,7 @@ onBeforeUnmount(() => {
                                         <div class="mt-5 grid gap-3">
                                             <div class="mn-preview-row">
                                                 <span>Final Price</span>
+
                                                 <strong>
                                                     {{
                                                         peso(finalSellingPrice)
@@ -1655,6 +1903,7 @@ onBeforeUnmount(() => {
 
                                             <div class="mn-preview-row">
                                                 <span>Estimated Profit</span>
+
                                                 <strong
                                                     :class="
                                                         estimatedProfit >= 0
@@ -1668,6 +1917,7 @@ onBeforeUnmount(() => {
 
                                             <div class="mn-preview-row">
                                                 <span>Margin</span>
+
                                                 <strong>
                                                     {{
                                                         estimatedMargin.toFixed(
@@ -1692,6 +1942,7 @@ onBeforeUnmount(() => {
                                             <div>
                                                 <label class="mn-label">
                                                     Status
+
                                                     <span class="text-red-400"
                                                         >*</span
                                                     >
@@ -1704,15 +1955,19 @@ onBeforeUnmount(() => {
                                                     <option value="draft">
                                                         Draft
                                                     </option>
+
                                                     <option value="available">
                                                         Available
                                                     </option>
+
                                                     <option value="reserved">
                                                         Reserved
                                                     </option>
+
                                                     <option value="sold">
                                                         Sold
                                                     </option>
+
                                                     <option value="hidden">
                                                         Hidden
                                                     </option>
@@ -1725,6 +1980,7 @@ onBeforeUnmount(() => {
                                                         >Visible on
                                                         website</span
                                                     >
+
                                                     <input
                                                         v-model="
                                                             form.is_visible
@@ -1736,31 +1992,10 @@ onBeforeUnmount(() => {
 
                                                 <label class="mn-toggle">
                                                     <span>Featured watch</span>
+
                                                     <input
                                                         v-model="
                                                             form.is_featured
-                                                        "
-                                                        type="checkbox"
-                                                        class="mn-checkbox"
-                                                    />
-                                                </label>
-
-                                                <label class="mn-toggle">
-                                                    <span>Display price</span>
-                                                    <input
-                                                        v-model="
-                                                            form.display_price
-                                                        "
-                                                        type="checkbox"
-                                                        class="mn-checkbox"
-                                                    />
-                                                </label>
-
-                                                <label class="mn-toggle">
-                                                    <span>Allow inquiry</span>
-                                                    <input
-                                                        v-model="
-                                                            form.allow_inquiry
                                                         "
                                                         type="checkbox"
                                                         class="mn-checkbox"
@@ -1773,12 +2008,14 @@ onBeforeUnmount(() => {
                             </div>
 
                             <!-- SPECS -->
+
                             <div
                                 v-if="activeTab === 'specs'"
                                 class="grid gap-4 md:grid-cols-2 sm:gap-5"
                             >
                                 <div>
                                     <label class="mn-label">Movement</label>
+
                                     <input
                                         v-model="form.movement"
                                         class="mn-input"
@@ -1788,6 +2025,7 @@ onBeforeUnmount(() => {
 
                                 <div>
                                     <label class="mn-label">Case Size</label>
+
                                     <input
                                         v-model="form.case_size"
                                         class="mn-input"
@@ -1799,6 +2037,7 @@ onBeforeUnmount(() => {
                                     <label class="mn-label">
                                         Case Material
                                     </label>
+
                                     <input
                                         v-model="form.case_material"
                                         class="mn-input"
@@ -1808,6 +2047,7 @@ onBeforeUnmount(() => {
 
                                 <div>
                                     <label class="mn-label">Dial Color</label>
+
                                     <input
                                         v-model="form.dial_color"
                                         class="mn-input"
@@ -1817,6 +2057,7 @@ onBeforeUnmount(() => {
 
                                 <div>
                                     <label class="mn-label">Crystal</label>
+
                                     <input
                                         v-model="form.crystal"
                                         class="mn-input"
@@ -1828,6 +2069,7 @@ onBeforeUnmount(() => {
                                     <label class="mn-label">
                                         Bracelet / Strap
                                     </label>
+
                                     <input
                                         v-model="form.bracelet_or_strap"
                                         class="mn-input"
@@ -1839,6 +2081,7 @@ onBeforeUnmount(() => {
                                     <label class="mn-label">
                                         Water Resistance
                                     </label>
+
                                     <input
                                         v-model="form.water_resistance"
                                         class="mn-input"
@@ -1850,6 +2093,7 @@ onBeforeUnmount(() => {
                                     <label class="mn-label">
                                         Box and Papers
                                     </label>
+
                                     <input
                                         v-model="form.box_papers"
                                         class="mn-input"
@@ -1860,6 +2104,7 @@ onBeforeUnmount(() => {
                                 <div class="md:col-span-2">
                                     <label class="mn-label">
                                         Warranty Type
+
                                         <span class="text-red-400">*</span>
                                     </label>
 
@@ -1872,6 +2117,7 @@ onBeforeUnmount(() => {
                             </div>
 
                             <!-- PHOTOS -->
+
                             <div
                                 v-if="activeTab === 'photos'"
                                 class="space-y-4"
@@ -1936,6 +2182,7 @@ onBeforeUnmount(() => {
                                                         d="M12 4.5v15m7.5-7.5h-15"
                                                     />
                                                 </svg>
+
                                                 <span>
                                                     {{
                                                         canAddMoreImages
@@ -1971,6 +2218,7 @@ onBeforeUnmount(() => {
                                             >
                                                 Saved
                                             </p>
+
                                             <p
                                                 class="mt-1 text-sm font-bold text-white"
                                             >
@@ -1986,6 +2234,7 @@ onBeforeUnmount(() => {
                                             >
                                                 New
                                             </p>
+
                                             <p
                                                 class="mt-1 text-sm font-bold text-white"
                                             >
@@ -2001,6 +2250,7 @@ onBeforeUnmount(() => {
                                             >
                                                 Total
                                             </p>
+
                                             <p
                                                 class="mt-1 text-sm font-bold text-white"
                                             >
@@ -2018,6 +2268,7 @@ onBeforeUnmount(() => {
                                             >
                                                 Slots
                                             </p>
+
                                             <p
                                                 class="mt-1 text-sm font-bold text-white"
                                             >
@@ -2141,6 +2392,7 @@ onBeforeUnmount(() => {
                                                         :disabled="
                                                             !canMovePhotoCard(
                                                                 photo,
+
                                                                 'left',
                                                             )
                                                         "
@@ -2148,6 +2400,7 @@ onBeforeUnmount(() => {
                                                         @click="
                                                             movePhotoCard(
                                                                 photo,
+
                                                                 'left',
                                                             )
                                                         "
@@ -2160,6 +2413,7 @@ onBeforeUnmount(() => {
                                                         :disabled="
                                                             !canMovePhotoCard(
                                                                 photo,
+
                                                                 'right',
                                                             )
                                                         "
@@ -2167,6 +2421,7 @@ onBeforeUnmount(() => {
                                                         @click="
                                                             movePhotoCard(
                                                                 photo,
+
                                                                 'right',
                                                             )
                                                         "
@@ -2234,45 +2489,10 @@ onBeforeUnmount(() => {
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- TERMS -->
-                            <div v-if="activeTab === 'terms'" class="space-y-4">
-                                <div
-                                    v-for="(section, index) in form.sections"
-                                    :key="index"
-                                    class="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 sm:p-5"
-                                >
-                                    <p
-                                        class="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-zinc-600"
-                                    >
-                                        Section {{ index + 1 }}
-                                    </p>
-
-                                    <label class="mn-label">
-                                        Section Title
-                                        <span class="text-red-400">*</span>
-                                    </label>
-
-                                    <input
-                                        v-model="section.title"
-                                        class="mn-input"
-                                    />
-
-                                    <label class="mn-label mt-4">
-                                        Content
-                                        <span class="text-red-400">*</span>
-                                    </label>
-
-                                    <textarea
-                                        v-model="section.content"
-                                        rows="5"
-                                        class="mn-input"
-                                    ></textarea>
-                                </div>
-                            </div>
                         </div>
 
                         <!-- FOOTER -->
+
                         <div
                             class="safe-bottom border-t border-white/10 bg-[#0B0B0D] px-3 py-3 sm:px-6 sm:py-5"
                         >
@@ -2333,10 +2553,10 @@ onBeforeUnmount(() => {
                                     </div>
                                 </div>
 
-                                <div class="mt-3 grid grid-cols-2 gap-2">
+                                <div class="mt-3 flex items-center gap-2">
                                     <button
                                         type="button"
-                                        class="rounded-2xl border border-white/10 px-4 py-3 text-sm font-semibold text-zinc-300"
+                                        class="h-12 min-w-[5.5rem] rounded-2xl border border-white/10 px-4 text-sm font-semibold text-zinc-300 transition active:scale-[0.98]"
                                         @click="
                                             activeTab === 'basic'
                                                 ? closeModal()
@@ -2352,44 +2572,57 @@ onBeforeUnmount(() => {
 
                                     <button
                                         type="button"
-                                        class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white"
+                                        class="h-12 flex-1 rounded-2xl border border-white/10 bg-white/[0.03] px-4 text-sm font-semibold text-zinc-200 transition active:scale-[0.98]"
                                         @click="openPublicPreview"
                                     >
                                         Preview
                                     </button>
 
                                     <button
-                                        v-if="activeTab !== 'terms'"
+                                        v-if="!isLastTab"
                                         type="button"
                                         :disabled="!currentStepComplete"
-                                        class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                                        class="ml-auto h-12 min-w-[6rem] rounded-2xl bg-white px-4 text-sm font-bold text-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
                                         @click="goToNextTab"
                                     >
                                         Next
                                     </button>
 
                                     <button
+                                        v-else
                                         type="submit"
                                         :disabled="
                                             form.processing ||
                                             isCompressingImages
                                         "
-                                        class="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
-                                        :class="
-                                            activeTab !== 'terms'
-                                                ? 'col-span-2'
-                                                : ''
-                                        "
+                                        class="ml-auto h-12 min-w-[7.5rem] rounded-2xl bg-white px-4 text-sm font-bold text-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
                                     >
                                         {{
                                             isCompressingImages
                                                 ? "Compressing..."
                                                 : form.processing
                                                   ? "Saving..."
-                                                  : "Save Changes"
+                                                  : "Save"
                                         }}
                                     </button>
                                 </div>
+
+                                <button
+                                    v-if="!isLastTab"
+                                    type="submit"
+                                    :disabled="
+                                        form.processing || isCompressingImages
+                                    "
+                                    class="mt-2 h-12 w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 text-sm font-semibold text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {{
+                                        isCompressingImages
+                                            ? "Compressing..."
+                                            : form.processing
+                                              ? "Saving..."
+                                              : "Save Changes"
+                                    }}
+                                </button>
                             </div>
 
                             <!-- DESKTOP FOOTER -->
@@ -2415,7 +2648,9 @@ onBeforeUnmount(() => {
                                     </p>
                                 </div>
 
-                                <div class="flex justify-end gap-3">
+                                <div
+                                    class="flex items-center justify-end gap-3"
+                                >
                                     <button
                                         type="button"
                                         class="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30"
@@ -2442,22 +2677,41 @@ onBeforeUnmount(() => {
                                     </button>
 
                                     <button
-                                        v-if="activeTab !== 'terms'"
+                                        v-if="!isLastTab"
+                                        type="submit"
+                                        :disabled="
+                                            form.processing ||
+                                            isCompressingImages
+                                        "
+                                        class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {{
+                                            isCompressingImages
+                                                ? "Compressing..."
+                                                : form.processing
+                                                  ? "Saving..."
+                                                  : "Save Changes"
+                                        }}
+                                    </button>
+
+                                    <button
+                                        v-if="!isLastTab"
                                         type="button"
                                         :disabled="!currentStepComplete"
-                                        class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-zinc-300 transition hover:border-white/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                        class="rounded-2xl bg-white px-6 py-3 text-sm font-bold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
                                         @click="goToNextTab"
                                     >
                                         Next
                                     </button>
 
                                     <button
+                                        v-else
                                         type="submit"
                                         :disabled="
                                             form.processing ||
                                             isCompressingImages
                                         "
-                                        class="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+                                        class="rounded-2xl bg-white px-6 py-3 text-sm font-bold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
                                     >
                                         {{
                                             isCompressingImages
@@ -2471,6 +2725,7 @@ onBeforeUnmount(() => {
                             </div>
                         </div>
                         <!-- PUBLIC LISTING PREVIEW -->
+
                         <div
                             v-if="showPublicPreview"
                             class="absolute inset-0 z-50 flex flex-col bg-[#070707]"
@@ -2550,6 +2805,7 @@ onBeforeUnmount(() => {
                                                     >
                                                         Montre Nova
                                                     </p>
+
                                                     <p
                                                         class="mt-3 text-sm text-zinc-500"
                                                     >
@@ -2625,20 +2881,6 @@ onBeforeUnmount(() => {
                                                 </span>
                                             </div>
 
-                                            <p
-                                                v-if="form.description"
-                                                class="mt-5 text-sm leading-7 text-zinc-400"
-                                            >
-                                                {{ form.description }}
-                                            </p>
-
-                                            <p
-                                                v-else
-                                                class="mt-5 text-sm leading-7 text-zinc-600"
-                                            >
-                                                No description added yet.
-                                            </p>
-
                                             <div
                                                 class="mt-5 grid grid-cols-2 gap-3"
                                             >
@@ -2712,37 +2954,6 @@ onBeforeUnmount(() => {
                                                 </div>
                                             </div>
                                         </div>
-
-                                        <div
-                                            v-if="previewSections.length"
-                                            class="rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 sm:p-6"
-                                        >
-                                            <h3
-                                                class="text-lg font-semibold text-white"
-                                            >
-                                                Listing Terms
-                                            </h3>
-
-                                            <div class="mt-4 space-y-3">
-                                                <div
-                                                    v-for="section in previewSections"
-                                                    :key="section.title"
-                                                    class="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
-                                                >
-                                                    <p
-                                                        class="text-sm font-semibold text-white"
-                                                    >
-                                                        {{ section.title }}
-                                                    </p>
-
-                                                    <p
-                                                        class="mt-2 text-sm leading-6 text-zinc-500"
-                                                    >
-                                                        {{ section.content }}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2765,22 +2976,35 @@ onBeforeUnmount(() => {
 
 .mn-label {
     margin-bottom: 0.5rem;
+
     display: block;
+
     font-size: 0.7rem;
+
     text-transform: uppercase;
+
     letter-spacing: 0.16em;
+
     color: rgb(113 113 122);
 }
 
 .mn-input {
     width: 100%;
+
     border-radius: 1rem;
+
     border: 1px solid rgb(255 255 255 / 0.1);
+
     background: #050505;
+
     padding: 0.85rem 1rem;
+
     font-size: 0.875rem;
+
     color: white;
+
     outline: none;
+
     transition:
         border-color 150ms ease,
         box-shadow 150ms ease,
@@ -2793,84 +3017,127 @@ onBeforeUnmount(() => {
 
 .mn-input:focus {
     border-color: rgb(255 255 255 / 0.4);
+
     background: #070707;
+
     box-shadow: 0 0 0 2px rgb(255 255 255 / 0.08);
 }
 
 .mn-toggle {
     display: flex;
+
     align-items: center;
+
     justify-content: space-between;
+
     gap: 1rem;
+
     border-radius: 1rem;
+
     border: 1px solid rgb(255 255 255 / 0.08);
+
     background: rgb(255 255 255 / 0.03);
+
     padding: 0.9rem 1rem;
+
     font-size: 0.875rem;
+
     color: rgb(161 161 170);
 }
 
 .mn-checkbox {
     height: 1.1rem;
+
     width: 1.1rem;
+
     border-radius: 0.375rem;
+
     border-color: rgb(255 255 255 / 0.2);
+
     background: black;
+
     color: white;
 }
 
 .mn-preview-row {
     display: flex;
+
     align-items: center;
+
     justify-content: space-between;
+
     gap: 1rem;
+
     border-bottom: 1px solid rgb(255 255 255 / 0.08);
+
     padding-bottom: 0.85rem;
+
     font-size: 0.875rem;
+
     color: rgb(113 113 122);
 }
 
 .mn-preview-row:last-child {
     border-bottom: 0;
+
     padding-bottom: 0;
 }
 
 .mn-preview-row strong {
     color: white;
+
     font-weight: 700;
+
     text-align: right;
 }
 
 .mn-photo-stat {
     border-radius: 1rem;
+
     border: 1px solid rgb(255 255 255 / 0.1);
+
     background: rgb(255 255 255 / 0.03);
+
     padding: 1rem;
 }
 
 .mn-photo-stat p {
     font-size: 0.7rem;
+
     font-weight: 700;
+
     text-transform: uppercase;
+
     letter-spacing: 0.16em;
+
     color: rgb(113 113 122);
 }
 
 .mn-photo-stat strong {
     margin-top: 0.5rem;
+
     display: block;
+
     font-size: 1.5rem;
+
     line-height: 1;
+
     color: white;
 }
 
 .mn-photo-btn {
     border-radius: 0.75rem;
+
     border: 1px solid rgb(255 255 255 / 0.1);
+
     padding: 0.6rem 0.75rem;
+
     font-size: 0.75rem;
+
     font-weight: 700;
+
     color: rgb(212 212 216);
+
     transition:
         border-color 150ms ease,
         background-color 150ms ease,
@@ -2879,21 +3146,25 @@ onBeforeUnmount(() => {
 
 .mn-photo-btn:hover {
     border-color: rgb(255 255 255 / 0.3);
+
     color: white;
 }
 
 .mn-photo-btn:disabled {
     cursor: not-allowed;
+
     opacity: 0.4;
 }
 
 .thin-scrollbar {
     scrollbar-width: thin;
+
     scrollbar-color: rgb(255 255 255 / 0.2) transparent;
 }
 
 .thin-scrollbar::-webkit-scrollbar {
     height: 5px;
+
     width: 5px;
 }
 
@@ -2903,6 +3174,7 @@ onBeforeUnmount(() => {
 
 .thin-scrollbar::-webkit-scrollbar-thumb {
     background: rgb(255 255 255 / 0.18);
+
     border-radius: 999px;
 }
 
@@ -2913,29 +3185,37 @@ onBeforeUnmount(() => {
 @media (max-width: 640px) {
     .mn-label {
         margin-bottom: 0.35rem;
+
         font-size: 0.62rem;
+
         letter-spacing: 0.14em;
     }
 
     .mn-input {
         border-radius: 0.9rem;
+
         padding: 0.78rem 0.9rem;
+
         font-size: 0.85rem;
     }
 
     .mn-toggle {
         border-radius: 0.9rem;
+
         padding: 0.78rem 0.9rem;
+
         font-size: 0.82rem;
     }
 
     .mn-preview-row {
         padding-bottom: 0.7rem;
+
         font-size: 0.8rem;
     }
 
     .mn-photo-btn {
         padding: 0.55rem 0.65rem;
+
         font-size: 0.7rem;
     }
 }

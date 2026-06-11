@@ -1,7 +1,7 @@
 <script setup>
 import MontreLogo from "@/Components/MontreLogo.vue";
 import { Head, Link } from "@inertiajs/vue3";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 const props = defineProps({
     canLogin: {
@@ -37,6 +37,26 @@ const props = defineProps({
         default: 0,
     },
 });
+
+const isPageOpening = ref(false);
+
+const preparePageOpen = (event = null) => {
+    if (
+        event?.metaKey ||
+        event?.ctrlKey ||
+        event?.shiftKey ||
+        event?.altKey ||
+        event?.button === 1
+    ) {
+        return;
+    }
+
+    isPageOpening.value = true;
+
+    window.setTimeout(() => {
+        isPageOpening.value = false;
+    }, 1600);
+};
 
 const watchPagination = computed(() => {
     return Array.isArray(props.watches) ? null : props.watches;
@@ -112,10 +132,6 @@ const soldTotal = computed(() => {
 
 const soldThisMonthCount = computed(() => {
     return Number(props.soldThisMonthCount || 0);
-});
-
-const soldProofCount = computed(() => {
-    return soldThisMonthCount.value;
 });
 
 const soldMonthLabel = computed(() => {
@@ -197,37 +213,21 @@ const similarInquiryMessage = (watch = null) => {
     return `Hi Montre Nova, I’m interested in sourcing a similar piece to ${watchFullName(watch)}${watchReference(watch)}. Do you have available options?`;
 };
 
-const openMessengerInquiry = async (watch = null) => {
-    const message = inquiryMessage(watch);
+const messengerUrl = (message) => {
+    return `https://m.me/${messengerUsername}?text=${encodeURIComponent(message)}`;
+};
 
-    try {
-        if (navigator?.clipboard?.writeText) {
-            await navigator.clipboard.writeText(message);
-        }
-    } catch (error) {
-        console.warn("Unable to copy inquiry message:", error);
-    }
-
+const openMessengerInquiry = (watch = null) => {
     window.open(
-        `https://m.me/${messengerUsername}`,
+        messengerUrl(inquiryMessage(watch)),
         "_blank",
         "noopener,noreferrer",
     );
 };
 
-const openSimilarInquiry = async (watch = null) => {
-    const message = similarInquiryMessage(watch);
-
-    try {
-        if (navigator?.clipboard?.writeText) {
-            await navigator.clipboard.writeText(message);
-        }
-    } catch (error) {
-        console.warn("Unable to copy inquiry message:", error);
-    }
-
+const openSimilarInquiry = (watch = null) => {
     window.open(
-        `https://m.me/${messengerUsername}`,
+        messengerUrl(similarInquiryMessage(watch)),
         "_blank",
         "noopener,noreferrer",
     );
@@ -236,48 +236,42 @@ const openSimilarInquiry = async (watch = null) => {
 const contactLinks = [
     {
         label: "Messenger",
-        description: "Chat with us directly on Facebook Messenger",
+        description: "Fastest way to ask for availability and reservations.",
         href: "https://m.me/montrenova",
         icon: "FB",
     },
     {
         label: "TikTok",
-        description: "Message us on TikTok for inquiries and watch updates",
+        description: "Watch updates, short clips, and direct inquiries.",
         href: "https://www.tiktok.com/@montre_nova",
         icon: "TT",
     },
     {
         label: "Instagram",
-        description: "View our latest posts and send us a DM",
+        description: "Latest posts, stories, and curated watch drops.",
         href: "https://www.instagram.com/montrenova",
         icon: "IG",
     },
 ];
 
-const trustItems = [
+const orderSteps = [
     {
-        title: "Actual HD Photos",
+        number: "01",
+        title: "Place Order",
         description:
-            "Every listed watch is presented with real product photos so buyers can inspect the exact timepiece before inquiry.",
-        label: "Real photos",
+            "Choose your preferred watch and message us to confirm availability, final photos, and complete details.",
     },
     {
-        title: "Clear Pricing",
+        number: "02",
+        title: "Flexible Payment",
         description:
-            "Prices are displayed clearly to make browsing simple, direct, and transparent for every buyer.",
-        label: "No guessing",
+            "Pay through your preferred option. We accept cash, Maribank, GoTyme, QR payments, and selected trade-ins subject to evaluation.",
     },
     {
-        title: "Montre Card Warranty",
+        number: "03",
+        title: "Shipping",
         description:
-            "Selected watches include Montre Card service warranty coverage for movement and internal mechanism concerns.",
-        label: "Warranty support",
-    },
-    {
-        title: "Curated Timepieces",
-        description:
-            "Stocks are carefully selected from brand-new and pre-owned watches suited for collectors and daily wearers.",
-        label: "Curated picks",
+            "Metro Manila orders can be shipped through Lalamove. Nationwide orders can be shipped through LBC after payment confirmation.",
     },
 ];
 
@@ -397,7 +391,7 @@ const statusBadge = (watch) => {
         available: {
             label: "Available",
             className:
-                "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+                "border-emerald-400/20 bg-emerald-400/10 text-emerald-200",
         },
         reserved: {
             label: "Reserved",
@@ -405,7 +399,7 @@ const statusBadge = (watch) => {
         },
         sold: {
             label: "Sold",
-            className: "border-red-400/20 bg-red-400/10 text-red-300",
+            className: "border-red-400/25 bg-red-500/10 text-red-200",
         },
         draft: {
             label: "Draft",
@@ -455,14 +449,14 @@ const productBadges = (watch) => {
     if (isNewDrop(watch)) {
         badges.push({
             label: "New Drop",
-            className: "border-sky-400/20 bg-sky-400/10 text-sky-300",
+            className: "border-sky-400/20 bg-sky-400/10 text-sky-200",
         });
     }
 
     if (isBelowSrp(watch)) {
         badges.push({
             label: "Below SRP",
-            className: "border-violet-400/20 bg-violet-400/10 text-violet-300",
+            className: "border-violet-400/20 bg-violet-400/10 text-violet-200",
         });
     }
 
@@ -483,40 +477,36 @@ const productBadges = (watch) => {
     <div
         class="min-h-screen overflow-hidden bg-[#030303] pb-24 text-white selection:bg-white selection:text-black md:pb-0"
     >
-        <!-- PREMIUM SOFT GLOW BACKGROUND -->
+        <!-- BACKGROUND -->
         <div class="pointer-events-none fixed inset-0 z-0 overflow-hidden">
             <div
-                class="absolute inset-0 bg-[linear-gradient(180deg,#020202_0%,#070707_46%,#030303_100%)]"
+                class="absolute inset-0 bg-[linear-gradient(180deg,#020202_0%,#070707_42%,#030303_100%)]"
             ></div>
+
             <div
                 class="absolute -left-40 -top-44 h-[34rem] w-[34rem] rounded-full bg-white/[0.055] blur-[115px]"
             ></div>
+
             <div
-                class="absolute -right-48 top-[16rem] h-[36rem] w-[36rem] rounded-full bg-zinc-400/[0.06] blur-[125px]"
+                class="absolute -right-48 top-[15rem] h-[36rem] w-[36rem] rounded-full bg-zinc-300/[0.055] blur-[125px]"
             ></div>
+
             <div
-                class="absolute left-1/2 top-[50rem] h-[30rem] w-[42rem] -translate-x-1/2 rounded-full bg-white/[0.035] blur-[135px]"
+                class="absolute left-1/2 top-[48rem] h-[28rem] w-[42rem] -translate-x-1/2 rounded-full bg-white/[0.028] blur-[135px]"
             ></div>
+
             <div
-                class="absolute bottom-[-18rem] right-[8%] h-[32rem] w-[32rem] rounded-full bg-zinc-300/[0.035] blur-[120px]"
+                class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent sm:inset-x-16 lg:inset-x-28"
             ></div>
-            <div
-                class="absolute inset-x-0 top-0 h-96 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.07),transparent_42%)]"
-            ></div>
-            <div
-                class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent sm:inset-x-16 lg:inset-x-28"
-            ></div>
+
             <div
                 class="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.025),transparent_18%,transparent_82%,rgba(255,255,255,0.018))]"
-            ></div>
-            <div
-                class="absolute inset-x-0 bottom-0 h-96 bg-gradient-to-t from-black/85 via-black/35 to-transparent"
             ></div>
         </div>
 
         <!-- NAVBAR -->
         <header
-            class="sticky top-0 z-50 border-b border-white/10 bg-black/70 backdrop-blur-xl"
+            class="sticky top-0 z-50 border-b border-white/10 bg-black/70 backdrop-blur-2xl"
         >
             <div class="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
                 <div class="flex items-center justify-between gap-4">
@@ -530,122 +520,80 @@ const productBadges = (watch) => {
                     <nav
                         class="hidden items-center gap-7 text-[13px] font-semibold text-zinc-400 lg:flex"
                     >
-                        <a
-                            href="#collection"
-                            class="transition hover:text-white"
-                        >
-                            Collection
-                        </a>
+                        <a href="#collection" class="nav-link">Collection</a>
 
                         <a
                             v-if="recentSoldWatches.length"
                             href="#recently-sold"
-                            class="transition hover:text-white"
+                            class="nav-link"
                         >
                             Sold Gallery
                         </a>
 
-                        <a href="#process" class="transition hover:text-white">
-                            How to Order
-                        </a>
+                        <a href="#process" class="nav-link">How to Order</a>
 
-                        <a href="#contact" class="transition hover:text-white">
-                            Contact
-                        </a>
+                        <a href="#contact" class="nav-link">Contact</a>
                     </nav>
 
                     <div class="hidden items-center gap-3 md:flex">
                         <Link
                             href="/warranty-check"
-                            class="rounded-lg border border-white/10 bg-white/[0.035] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.16em] text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.07] hover:text-white"
+                            class="secondary-button px-5 py-2.5 text-xs"
                         >
-                            Warranty Check
+                            Warranty
                         </Link>
 
                         <button
                             type="button"
-                            class="rounded-lg bg-white px-5 py-2.5 text-xs font-black uppercase tracking-[0.16em] text-black transition hover:bg-zinc-200"
+                            class="primary-button px-5 py-2.5 text-xs"
                             @click="openMessengerInquiry()"
                         >
                             Message Us
                         </button>
                     </div>
-
-                    <button
-                        type="button"
-                        class="inline-flex shrink-0 items-center justify-center rounded-lg bg-white px-4 py-2.5 text-xs font-black uppercase tracking-[0.14em] text-black transition hover:bg-zinc-200 md:hidden"
-                        @click="openMessengerInquiry()"
-                    >
-                        Message
-                    </button>
                 </div>
 
                 <nav
                     class="mt-3 flex gap-2 overflow-x-auto pb-1 text-xs font-bold text-zinc-400 md:hidden [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
-                    <a
-                        href="#collection"
-                        class="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 transition hover:border-white/25 hover:text-white"
-                    >
-                        Collection
-                    </a>
+                    <a href="#collection" class="mobile-nav-pill">Collection</a>
 
                     <a
                         v-if="recentSoldWatches.length"
                         href="#recently-sold"
-                        class="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 transition hover:border-white/25 hover:text-white"
+                        class="mobile-nav-pill"
                     >
                         Sold
                     </a>
 
-                    <a
-                        href="#process"
-                        class="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 transition hover:border-white/25 hover:text-white"
-                    >
-                        How To Order
-                    </a>
+                    <a href="#process" class="mobile-nav-pill">Order</a>
 
-                    <Link
-                        href="/warranty-check"
-                        class="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 transition hover:border-white/25 hover:text-white"
-                    >
-                        Warranty Check
+                    <Link href="/warranty-check" class="mobile-nav-pill">
+                        Warranty
                     </Link>
 
-                    <a
-                        href="#contact"
-                        class="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 transition hover:border-white/25 hover:text-white"
-                    >
-                        Contact
-                    </a>
+                    <a href="#contact" class="mobile-nav-pill">Contact</a>
                 </nav>
             </div>
         </header>
 
         <main
-            class="relative z-10 space-y-12 pb-16 sm:space-y-16 sm:pb-20 lg:space-y-20 lg:pb-24"
+            class="relative z-10 space-y-20 pb-20 sm:space-y-24 sm:pb-24 lg:space-y-32 lg:pb-28 xl:space-y-36"
         >
             <!-- HERO -->
             <section
-                class="mx-auto grid max-w-7xl items-center gap-10 px-4 pt-10 sm:gap-12 sm:px-6 sm:pt-12 lg:grid-cols-[1.03fr_0.97fr] lg:gap-14 lg:px-8 lg:pt-16"
+                class="mx-auto grid max-w-7xl items-stretch gap-9 px-4 pt-8 sm:gap-11 sm:px-6 sm:pt-12 lg:grid-cols-[0.94fr_0.86fr] lg:gap-14 lg:px-8 lg:pt-16"
             >
-                <div class="relative">
-                    <div
-                        class="mb-6 inline-flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 shadow-xl shadow-black/25"
-                    >
-                        <span
-                            class="h-1.5 w-1.5 rounded-full bg-white/80"
-                        ></span>
-
-                        <span
-                            class="text-[10px] font-black uppercase tracking-[0.28em] text-zinc-400 sm:text-xs"
-                        >
-                            Curated Brand-New & Pre-Owned Timepieces
-                        </span>
+                <div
+                    class="hero-copy animated-in relative flex h-full flex-col justify-center"
+                >
+                    <div class="premium-eyebrow mb-6">
+                        <span class="pulse-dot"></span>
+                        Curated brand-new & pre-owned timepieces
                     </div>
 
                     <h1
-                        class="max-w-4xl text-5xl font-black leading-[0.92] tracking-[-0.075em] text-white sm:text-7xl lg:text-[5.8rem]"
+                        class="max-w-4xl text-[3.35rem] font-black leading-[0.9] tracking-[-0.075em] text-white sm:text-7xl lg:text-[5.2rem]"
                     >
                         Your next signature watch, curated with confidence.
                     </h1>
@@ -653,16 +601,15 @@ const productBadges = (watch) => {
                     <p
                         class="mt-7 max-w-2xl text-[15px] leading-8 text-zinc-400 sm:text-lg"
                     >
-                        Discover Montre Nova’s available watches with actual HD
-                        photos, transparent pricing, warranty support, and a
-                        direct inquiry experience built for smooth, trusted
-                        deals.
+                        Browse available watches with actual HD photos, clear
+                        pricing, warranty support, and a cleaner mobile-first
+                        shopping experience.
                     </p>
 
                     <div class="mt-9 flex flex-col gap-3 sm:flex-row">
                         <a
                             href="#collection"
-                            class="group inline-flex items-center justify-center gap-3 rounded-lg bg-white px-7 py-4 text-sm font-black uppercase tracking-[0.14em] text-black transition hover:bg-zinc-200"
+                            class="primary-button group px-7 py-4 text-sm"
                         >
                             View Collection
 
@@ -673,91 +620,38 @@ const productBadges = (watch) => {
                     </div>
 
                     <div class="mt-9 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        <div
-                            class="rounded-xl border border-white/10 bg-white/[0.035] p-4 transition hover:border-white/25 hover:bg-white/[0.06]"
-                        >
-                            <p
-                                class="text-2xl font-black tracking-tight text-white"
-                            >
-                                HD
-                            </p>
-
-                            <p
-                                class="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500"
-                            >
-                                Actual Photos
-                            </p>
+                        <div class="stat-card">
+                            <p class="stat-value">1Y</p>
+                            <p class="stat-label">Warranty</p>
                         </div>
 
-                        <div
-                            class="rounded-xl border border-white/10 bg-white/[0.035] p-4 transition hover:border-white/25 hover:bg-white/[0.06]"
-                        >
-                            <p
-                                class="text-2xl font-black tracking-tight text-white"
-                            >
-                                1Y
-                            </p>
-
-                            <p
-                                class="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500"
-                            >
-                                Warranty
-                            </p>
+                        <div class="stat-card">
+                            <p class="stat-value">{{ availableCount }}</p>
+                            <p class="stat-label">Available</p>
                         </div>
 
-                        <div
-                            class="rounded-xl border border-white/10 bg-white/[0.035] p-4 transition hover:border-white/25 hover:bg-white/[0.06]"
-                        >
-                            <p
-                                class="text-2xl font-black tracking-tight text-white"
-                            >
-                                {{ availableCount }}
-                            </p>
-
-                            <p
-                                class="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500"
-                            >
-                                Available
-                            </p>
-                        </div>
-
-                        <div
-                            class="rounded-xl border border-white/10 bg-white/[0.035] p-4 transition hover:border-white/25 hover:bg-white/[0.06]"
-                        >
-                            <p
-                                class="text-2xl font-black tracking-tight text-white"
-                            >
-                                {{ soldTotal }}+
-                            </p>
-
-                            <p
-                                class="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500"
-                            >
-                                Sold Deals
-                            </p>
+                        <div class="stat-card">
+                            <p class="stat-value">{{ soldTotal }}+</p>
+                            <p class="stat-label">Sold Deals</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- FEATURED WATCH -->
-                <div class="relative lg:pl-4">
+                <div
+                    class="hero-feature-wrap animated-in relative flex h-full items-stretch lg:pl-4 lg:[animation-delay:120ms]"
+                >
                     <div
-                        class="absolute -inset-4 rounded-2xl bg-white/[0.035] blur-2xl sm:-inset-6"
+                        class="absolute -inset-4 rounded-[2rem] bg-white/[0.035] blur-2xl sm:-inset-6"
                     ></div>
 
                     <div
-                        class="absolute -right-6 top-10 h-40 w-40 rounded-full bg-white/[0.04] blur-3xl"
-                    ></div>
-
-                    <div
-                        class="relative overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0B]/95 p-3 shadow-xl shadow-black/45 ring-1 ring-white/[0.03] sm:p-4"
+                        class="featured-lux-card lux-card relative flex w-full flex-col overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0A0A0B]/95 p-3 shadow-2xl shadow-black/45 ring-1 ring-white/[0.04] sm:p-4"
                     >
-                        <div
-                            class="absolute inset-x-8 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/50 to-transparent"
-                        ></div>
+                        <div class="shine-line"></div>
 
                         <div
-                            class="relative aspect-[4/4.7] overflow-hidden rounded-xl border border-white/10 bg-black sm:aspect-[4/5]"
+                            class="featured-media group relative flex min-h-[430px] flex-1 overflow-hidden rounded-[1.25rem] border border-white/10 bg-black sm:min-h-[500px] lg:min-h-0"
                         >
                             <div
                                 v-if="featuredWatch"
@@ -768,7 +662,7 @@ const productBadges = (watch) => {
                                         featuredWatch,
                                     ).slice(0, 3)"
                                     :key="badge.label"
-                                    class="rounded-md border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] shadow-lg shadow-black/30"
+                                    class="rounded-md border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] shadow-lg shadow-black/30 backdrop-blur"
                                     :class="badge.className"
                                 >
                                     {{ badge.label }}
@@ -779,41 +673,35 @@ const productBadges = (watch) => {
                                 v-if="watchImage(featuredWatch)"
                                 :src="watchImage(featuredWatch)"
                                 :alt="`${featuredWatch.brand} ${featuredWatch.model_name}`"
-                                class="h-full w-full object-cover transition duration-700 hover:scale-105"
+                                class="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.045]"
                                 @error="handleImageError"
                             />
 
                             <div
                                 v-else
-                                class="flex h-full items-center justify-center bg-[#050505]"
+                                class="absolute inset-0 flex h-full items-center justify-center bg-[#050505]"
                             >
                                 <div class="text-center">
-                                    <div
-                                        class="mx-auto flex h-32 w-32 items-center justify-center rounded-full border border-white/10 bg-white/[0.045] shadow-2xl shadow-black/50"
-                                    >
-                                        <span
-                                            class="text-4xl font-black tracking-[-0.12em] text-white"
-                                        >
-                                            MN
-                                        </span>
+                                    <div class="placeholder-logo">
+                                        <span>MN</span>
                                     </div>
 
-                                    <p
-                                        class="mt-5 text-xs font-black uppercase tracking-[0.32em] text-zinc-500"
-                                    >
-                                        Montre Nova
-                                    </p>
+                                    <p class="mt-5 brand-kicker">Montre Nova</p>
                                 </div>
                             </div>
 
                             <div
-                                class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent p-5 sm:p-6"
+                                class="absolute inset-0 bg-gradient-to-t from-black/86 via-black/28 to-transparent"
+                            ></div>
+
+                            <div
+                                class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.03)_52%,rgba(0,0,0,0.36)_100%)]"
+                            ></div>
+
+                            <div
+                                class="absolute inset-x-0 bottom-0 z-20 p-5 sm:p-6"
                             >
-                                <p
-                                    class="text-[10px] font-black uppercase tracking-[0.28em] text-zinc-400"
-                                >
-                                    Featured Drop
-                                </p>
+                                <p class="brand-kicker">Featured Drop</p>
 
                                 <div
                                     class="mt-2 flex items-end justify-between gap-4"
@@ -853,43 +741,17 @@ const productBadges = (watch) => {
                                                 Available
                                             </template>
                                         </p>
-
-                                        <div
-                                            class="mt-3 flex flex-wrap gap-1.5 sm:gap-2"
-                                        >
-                                            <span
-                                                class="rounded-lg border border-white/10 bg-black/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300 backdrop-blur sm:text-xs"
-                                            >
-                                                <template v-if="featuredWatch">
-                                                    {{
-                                                        featuredWatch.condition ||
-                                                        "Condition upon request"
-                                                    }}
-                                                </template>
-
-                                                <template v-else>
-                                                    Brand New
-                                                </template>
-                                            </span>
-
-                                            <span
-                                                v-if="featuredWatch?.category"
-                                                class="rounded-lg border border-white/10 bg-black/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300 backdrop-blur sm:text-xs"
-                                            >
-                                                {{ featuredWatch.category }}
-                                            </span>
-                                        </div>
                                     </div>
 
                                     <div class="shrink-0 text-right">
                                         <p
-                                            class="text-xs uppercase tracking-[0.2em] text-zinc-500"
+                                            class="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500"
                                         >
                                             Price
                                         </p>
 
                                         <p
-                                            class="text-xl font-black text-white sm:text-2xl"
+                                            class="mt-1 text-xl font-black text-white sm:text-2xl"
                                         >
                                             {{
                                                 featuredWatch
@@ -919,25 +781,7 @@ const productBadges = (watch) => {
                             </div>
                         </div>
 
-                        <div class="grid gap-3 p-2 pt-4 sm:grid-cols-2">
-                            <button
-                                v-if="featuredWatch"
-                                type="button"
-                                class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.045] px-5 py-3.5 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.08]"
-                                @click="openMessengerInquiry(featuredWatch)"
-                            >
-                                Ask Availability
-                            </button>
-
-                            <button
-                                v-else
-                                type="button"
-                                class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.045] px-5 py-3.5 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.08]"
-                                @click="openMessengerInquiry()"
-                            >
-                                Ask Availability
-                            </button>
-
+                        <div class="featured-card-footer p-2 pt-3">
                             <Link
                                 v-if="featuredWatch"
                                 :href="
@@ -946,67 +790,29 @@ const productBadges = (watch) => {
                                         featuredWatch.id,
                                     )
                                 "
-                                class="inline-flex items-center justify-center rounded-lg bg-white px-5 py-3.5 text-sm font-black text-black transition hover:bg-zinc-200"
+                                class="feature-cta group"
+                                @click="preparePageOpen"
                             >
-                                View Details
+                                <span>View Featured Piece</span>
+                                <span
+                                    class="transition group-hover:translate-x-1"
+                                >
+                                    →
+                                </span>
                             </Link>
 
                             <a
                                 v-else
                                 href="#collection"
-                                class="inline-flex items-center justify-center rounded-lg bg-white px-5 py-3.5 text-sm font-black text-black transition hover:bg-zinc-200"
+                                class="feature-cta group"
                             >
-                                Browse Stocks
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- PREMIUM TRUST STRIP -->
-            <section class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div
-                    class="relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.035] p-4 shadow-xl shadow-black/25 sm:p-5"
-                >
-                    <div
-                        class="pointer-events-none absolute -right-20 -top-24 h-56 w-56 rounded-full bg-white/[0.035] blur-3xl"
-                    ></div>
-
-                    <div
-                        class="pointer-events-none absolute -left-20 bottom-0 h-44 w-44 rounded-full bg-zinc-400/[0.025] blur-3xl"
-                    ></div>
-
-                    <div class="relative grid gap-3 md:grid-cols-4">
-                        <div
-                            v-for="item in trustItems"
-                            :key="item.title"
-                            class="group rounded-xl border border-white/10 bg-black/35 p-5 transition hover:border-white/25 hover:bg-white/[0.055]"
-                        >
-                            <div class="flex items-start justify-between gap-4">
-                                <div>
-                                    <p
-                                        class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500"
-                                    >
-                                        {{ item.label }}
-                                    </p>
-
-                                    <h3
-                                        class="mt-2 text-base font-black tracking-[-0.03em] text-white"
-                                    >
-                                        {{ item.title }}
-                                    </h3>
-                                </div>
-
+                                <span>Browse Available Stocks</span>
                                 <span
-                                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-xs font-black text-zinc-300 transition group-hover:bg-white group-hover:text-black"
+                                    class="transition group-hover:translate-x-1"
                                 >
-                                    ✓
+                                    →
                                 </span>
-                            </div>
-
-                            <p class="mt-3 text-sm leading-6 text-zinc-500">
-                                {{ item.description }}
-                            </p>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -1018,26 +824,18 @@ const productBadges = (watch) => {
                 class="scroll-mt-28 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
             >
                 <div
-                    class="mb-8 flex flex-col justify-between gap-5 sm:mb-10 md:flex-row md:items-end"
+                    class="animated-in mb-8 flex flex-col justify-between gap-5 sm:mb-10 md:flex-row md:items-end"
                 >
                     <div>
-                        <p
-                            class="text-[11px] font-black uppercase tracking-[0.34em] text-zinc-500"
-                        >
-                            Current Collection
-                        </p>
+                        <p class="section-kicker">Current Collection</p>
 
-                        <h2
-                            class="mt-3 text-4xl font-black tracking-[-0.06em] text-white sm:text-5xl"
-                        >
-                            Available Watches
-                        </h2>
+                        <h2 class="section-title">Available Watches</h2>
 
                         <p
                             class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400"
                         >
-                            Clean, direct browsing for currently available
-                            Montre Nova pieces.
+                            Tap any card to open the full watch details,
+                            gallery, specifications, and inquiry option.
                         </p>
 
                         <p
@@ -1048,44 +846,38 @@ const productBadges = (watch) => {
                         </p>
                     </div>
 
-                    <div
-                        class="flex flex-col gap-2 sm:flex-row sm:items-center md:items-end"
+                    <p
+                        v-if="watches.length"
+                        class="text-xs font-black uppercase tracking-[0.2em] text-zinc-600 md:hidden"
                     >
-                        <p
-                            v-if="watches.length"
-                            class="text-xs font-black uppercase tracking-[0.2em] text-zinc-600 md:hidden"
-                        >
-                            Swipe collection →
-                        </p>
-
-                        <button
-                            type="button"
-                            class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.08]"
-                            @click="openMessengerInquiry()"
-                        >
-                            Ask for Latest Stocks
-                        </button>
-                    </div>
+                        Swipe collection →
+                    </p>
                 </div>
 
                 <template v-if="watches.length">
-                    <div
-                        class="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-4 pr-4 overscroll-x-contain md:grid md:snap-none md:grid-cols-2 md:overflow-visible md:pb-0 md:pr-0 lg:grid-cols-3 xl:gap-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    <TransitionGroup
+                        name="watch-card"
+                        tag="div"
+                        class="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-4 pr-4 overscroll-x-contain md:grid md:snap-none md:grid-cols-2 md:overflow-visible md:pb-0 md:pr-0 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     >
-                        <article
-                            v-for="watch in watches"
+                        <Link
+                            v-for="(watch, index) in watches"
                             :key="watch.id"
-                            class="group relative min-w-[82vw] max-w-[82vw] snap-start overflow-hidden rounded-[1.35rem] border border-white/10 bg-black shadow-2xl shadow-black/35 ring-1 ring-white/[0.03] transition duration-500 hover:border-white/25 hover:shadow-black/60 sm:min-w-[360px] sm:max-w-[360px] md:min-w-0 md:max-w-none md:hover:-translate-y-1"
+                            :href="route('public.watches.show', watch.id)"
+                            class="watch-card group"
                             :class="isSold(watch) ? 'opacity-70' : ''"
+                            :style="{ animationDelay: `${index * 65}ms` }"
+                            :aria-label="`View details for ${watchFullName(watch)}${watchReference(watch)}`"
+                            @click="preparePageOpen"
                         >
                             <div
-                                class="relative min-h-[450px] overflow-hidden bg-[#050505] sm:min-h-[500px] lg:min-h-[540px]"
+                                class="relative min-h-[430px] overflow-hidden bg-[#050505] sm:min-h-[470px] lg:min-h-[500px]"
                             >
                                 <img
                                     v-if="watchImage(watch)"
                                     :src="watchImage(watch)"
                                     :alt="`${watch.brand} ${watch.model_name}`"
-                                    class="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                                    class="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.045]"
                                     loading="lazy"
                                     @error="handleImageError"
                                 />
@@ -1095,30 +887,22 @@ const productBadges = (watch) => {
                                     class="absolute inset-0 flex items-center justify-center bg-[#050505]"
                                 >
                                     <div class="text-center">
-                                        <div
-                                            class="mx-auto flex h-24 w-24 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] sm:h-28 sm:w-28"
-                                        >
-                                            <span
-                                                class="text-3xl font-black tracking-[-0.1em] text-white sm:text-4xl"
-                                            >
-                                                MN
-                                            </span>
+                                        <div class="placeholder-logo">
+                                            <span>MN</span>
                                         </div>
 
-                                        <p
-                                            class="mt-4 text-[10px] font-black uppercase tracking-[0.28em] text-zinc-500"
-                                        >
+                                        <p class="mt-4 brand-kicker">
                                             Montre Nova
                                         </p>
                                     </div>
                                 </div>
 
                                 <div
-                                    class="absolute inset-0 bg-gradient-to-t from-black/82 via-black/30 to-transparent"
+                                    class="absolute inset-0 bg-gradient-to-t from-black/84 via-black/24 to-transparent"
                                 ></div>
 
                                 <div
-                                    class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.08)_50%,rgba(0,0,0,0.42)_100%)]"
+                                    class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.04)_52%,rgba(0,0,0,0.38)_100%)]"
                                 ></div>
 
                                 <div
@@ -1143,16 +927,14 @@ const productBadges = (watch) => {
                                 <div
                                     class="absolute inset-x-0 bottom-0 z-20 p-5 sm:p-6"
                                 >
-                                    <div class="mb-4 flex items-center gap-3">
-                                        <p
-                                            class="truncate text-[10px] font-black uppercase tracking-[0.32em] text-zinc-300/90 sm:text-xs"
-                                        >
-                                            {{ watch.brand || "Montre Nova" }}
-                                        </p>
-                                    </div>
+                                    <p
+                                        class="truncate text-[10px] font-black uppercase tracking-[0.32em] text-zinc-300/90 sm:text-xs"
+                                    >
+                                        {{ watch.brand || "Montre Nova" }}
+                                    </p>
 
                                     <h3
-                                        class="line-clamp-2 text-2xl font-medium leading-tight tracking-[0.02em] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.75)] sm:text-3xl"
+                                        class="mt-3 line-clamp-2 text-2xl font-medium leading-tight tracking-[0.02em] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.75)] sm:text-3xl"
                                     >
                                         {{ watch.model_name }}
                                     </h3>
@@ -1170,9 +952,7 @@ const productBadges = (watch) => {
                                     <div
                                         class="mt-4 flex flex-wrap gap-1.5 sm:gap-2"
                                     >
-                                        <span
-                                            class="rounded-lg border border-white/10 bg-black/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300 backdrop-blur sm:text-xs"
-                                        >
+                                        <span class="detail-chip">
                                             {{
                                                 watch.condition ||
                                                 "Condition upon request"
@@ -1181,7 +961,7 @@ const productBadges = (watch) => {
 
                                         <span
                                             v-if="watch.category"
-                                            class="rounded-lg border border-white/10 bg-black/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300 backdrop-blur sm:text-xs"
+                                            class="detail-chip"
                                         >
                                             {{ watch.category }}
                                         </span>
@@ -1210,38 +990,21 @@ const productBadges = (watch) => {
                                                 {{ peso(originalPrice(watch)) }}
                                             </p>
                                         </div>
-                                    </div>
 
-                                    <div class="mt-4 grid grid-cols-2 gap-2">
-                                        <button
-                                            type="button"
-                                            class="inline-flex items-center justify-center rounded-lg border border-white/15 bg-black/40 px-3 py-2.5 text-xs font-black text-white backdrop-blur transition hover:border-white/35 hover:bg-white/[0.08] sm:px-4 sm:py-3 sm:text-sm"
-                                            @click="openMessengerInquiry(watch)"
-                                        >
-                                            Ask
-                                        </button>
-
-                                        <Link
-                                            :href="
-                                                route(
-                                                    'public.watches.show',
-                                                    watch.id,
-                                                )
-                                            "
-                                            class="inline-flex items-center justify-center rounded-lg bg-white px-3 py-2.5 text-xs font-black text-black transition hover:bg-zinc-200 sm:px-4 sm:py-3 sm:text-sm"
-                                        >
+                                        <span class="view-detail-pill">
                                             Details
-                                        </Link>
+                                            <span aria-hidden="true">→</span>
+                                        </span>
                                     </div>
                                 </div>
                             </div>
-                        </article>
-                    </div>
+                        </Link>
+                    </TransitionGroup>
 
                     <!-- PAGINATION -->
                     <div
                         v-if="hasWatchPagination"
-                        class="mt-8 flex flex-col items-center justify-between gap-5 rounded-xl border border-white/10 bg-white/[0.035] p-4 backdrop-blur sm:flex-row md:mt-10"
+                        class="animated-in mt-8 flex flex-col items-center justify-between gap-5 rounded-[1.25rem] border border-white/10 bg-white/[0.035] p-4 backdrop-blur sm:flex-row md:mt-10"
                     >
                         <p class="text-sm text-zinc-500">
                             {{ paginationSummary }}
@@ -1266,7 +1029,7 @@ const productBadges = (watch) => {
                                     :href="paginationUrl(link.url)"
                                     preserve-scroll
                                     preserve-state
-                                    class="rounded-lg border px-4 py-2 text-sm font-bold transition"
+                                    class="rounded-lg border px-4 py-2 text-sm font-bold transition duration-300"
                                     :class="
                                         link.active
                                             ? 'border-white bg-white text-black'
@@ -1280,18 +1043,9 @@ const productBadges = (watch) => {
                     </div>
                 </template>
 
-                <div
-                    v-else
-                    class="rounded-xl border border-white/10 bg-[#0B0B0D] p-10 text-center shadow-xl shadow-black/25"
-                >
-                    <div
-                        class="mx-auto flex h-24 w-24 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]"
-                    >
-                        <span
-                            class="text-3xl font-black tracking-[-0.1em] text-white"
-                        >
-                            MN
-                        </span>
+                <div v-else class="empty-state">
+                    <div class="placeholder-logo mx-auto">
+                        <span>MN</span>
                     </div>
 
                     <h3 class="mt-6 text-xl font-black text-white">
@@ -1307,7 +1061,7 @@ const productBadges = (watch) => {
 
                     <button
                         type="button"
-                        class="mt-6 inline-flex rounded-lg bg-white px-6 py-3 text-sm font-black text-black transition hover:bg-zinc-200"
+                        class="primary-button mt-6 px-6 py-3 text-sm"
                         @click="openMessengerInquiry()"
                     >
                         Message Us for Availability
@@ -1322,140 +1076,51 @@ const productBadges = (watch) => {
                 class="scroll-mt-28 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
             >
                 <div
-                    class="mb-8 overflow-hidden rounded-xl border border-white/10 bg-[#0B0B0D] p-5 shadow-xl shadow-black/25 sm:mb-10 sm:p-7"
+                    class="animated-in mb-7 flex flex-col justify-between gap-5 md:flex-row md:items-end"
                 >
-                    <div
-                        class="grid gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-center"
-                    >
-                        <div>
-                            <p
-                                class="text-[11px] font-black uppercase tracking-[0.34em] text-zinc-500"
-                            >
-                                Recently Sold
-                            </p>
+                    <div>
+                        <p class="section-kicker">Recently Sold</p>
 
-                            <h2
-                                class="mt-3 text-4xl font-black tracking-[-0.06em] text-white sm:text-5xl"
-                            >
-                                Claimed Timepieces
-                            </h2>
+                        <h2 class="section-title">Claimed Timepieces</h2>
 
-                            <p
-                                class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400"
-                            >
-                                Showcasing recently claimed watches builds buyer
-                                trust and makes it easier for customers to
-                                request similar pieces.
-                            </p>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                            <div
-                                class="rounded-xl border border-white/10 bg-white/[0.04] p-4"
-                            >
-                                <p
-                                    class="text-3xl font-black tracking-tight text-white"
-                                >
-                                    {{ soldProofCount }}
-                                </p>
-
-                                <p
-                                    class="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600"
-                                >
-                                    Sold this month
-                                </p>
-
-                                <p class="mt-2 text-xs text-zinc-500">
-                                    {{ soldMonthLabel }}
-                                </p>
-                            </div>
-
-                            <div
-                                class="rounded-xl border border-white/10 bg-white/[0.04] p-4"
-                            >
-                                <p
-                                    class="text-3xl font-black tracking-tight text-white"
-                                >
-                                    {{ soldTotal }}+
-                                </p>
-
-                                <p
-                                    class="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600"
-                                >
-                                    Total sold
-                                </p>
-
-                                <p class="mt-2 text-xs text-zinc-500">
-                                    Trusted deals
-                                </p>
-                            </div>
-
-                            <button
-                                type="button"
-                                class="group col-span-2 flex items-center justify-between rounded-xl border border-white bg-white p-4 text-left text-black shadow-[0_12px_35px_rgba(255,255,255,0.12)] transition duration-300 hover:-translate-y-0.5 hover:bg-zinc-100 hover:shadow-[0_18px_45px_rgba(255,255,255,0.18)] active:scale-[0.98] sm:col-span-1"
-                                @click="openSimilarInquiry()"
-                            >
-                                <div>
-                                    <p
-                                        class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500"
-                                    >
-                                        Looking for a model?
-                                    </p>
-
-                                    <p class="mt-2 text-sm font-black">
-                                        Inquire Now!
-                                    </p>
-
-                                    <p
-                                        class="mt-2 text-xs leading-5 text-zinc-600"
-                                    >
-                                        Send your target model, budget, and
-                                        condition.
-                                    </p>
-                                </div>
-
-                                <div
-                                    class="ml-4 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black text-white transition duration-300 group-hover:translate-x-1"
-                                >
-                                    →
-                                </div>
-                            </button>
-                        </div>
+                        <p
+                            class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400"
+                        >
+                            Recently claimed pieces from Montre Nova clients.
+                        </p>
                     </div>
-                </div>
 
-                <div
-                    class="mb-6 flex flex-col justify-between gap-3 sm:mb-7 md:flex-row md:items-center"
-                >
-                    <p
-                        class="text-xs font-bold uppercase tracking-[0.2em] text-zinc-600 md:hidden"
-                    >
-                        Swipe sold watches →
-                    </p>
+                    <div class="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                        <div class="sold-mini-stat">
+                            <span>{{ soldThisMonthCount }}</span>
+                            <p>{{ soldMonthLabel }}</p>
+                        </div>
 
-                    <p class="hidden text-sm text-zinc-500 md:block">
-                        Recently claimed watches from Montre Nova.
-                    </p>
-
-                    <div
-                        class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center"
-                    >
                         <Link
                             href="/sold-watches"
-                            class="inline-flex items-center justify-center rounded-lg bg-white px-5 py-3 text-sm font-black text-black transition hover:bg-zinc-200"
+                            class="secondary-button px-5 py-3 text-sm"
                         >
                             View Sold Gallery
                         </Link>
                     </div>
                 </div>
 
-                <div
+                <p
+                    class="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-zinc-600 md:hidden"
+                >
+                    Swipe sold watches →
+                </p>
+
+                <TransitionGroup
+                    name="watch-card"
+                    tag="div"
                     class="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
                     <article
-                        v-for="watch in recentSoldWatches"
+                        v-for="(watch, index) in recentSoldWatches"
                         :key="watch.id"
-                        class="group relative min-w-[82vw] max-w-[82vw] snap-start overflow-hidden rounded-[1.35rem] border border-white/10 bg-black shadow-2xl shadow-black/35 ring-1 ring-white/[0.03] transition duration-500 hover:border-white/25 hover:shadow-black/60 sm:min-w-[340px] sm:max-w-[340px] md:min-w-[360px] md:max-w-[360px] md:hover:-translate-y-1"
+                        class="sold-card group"
+                        :style="{ animationDelay: `${index * 65}ms` }"
                     >
                         <div
                             class="relative min-h-[430px] overflow-hidden bg-[#050505] sm:min-h-[500px]"
@@ -1464,7 +1129,7 @@ const productBadges = (watch) => {
                                 v-if="watchImage(watch)"
                                 :src="watchImage(watch)"
                                 :alt="`${watch.brand} ${watch.model_name}`"
-                                class="absolute inset-0 h-full w-full object-cover grayscale-[18%] transition duration-700 group-hover:scale-105 group-hover:grayscale-0"
+                                class="absolute inset-0 h-full w-full object-cover grayscale-[12%] transition duration-700 group-hover:scale-[1.045] group-hover:grayscale-0"
                                 loading="lazy"
                                 @error="handleImageError"
                             />
@@ -1474,41 +1139,27 @@ const productBadges = (watch) => {
                                 class="absolute inset-0 flex items-center justify-center bg-[#050505]"
                             >
                                 <div class="text-center">
-                                    <div
-                                        class="mx-auto flex h-24 w-24 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] sm:h-28 sm:w-28"
-                                    >
-                                        <span
-                                            class="text-3xl font-black tracking-[-0.1em] text-white sm:text-4xl"
-                                        >
-                                            MN
-                                        </span>
+                                    <div class="placeholder-logo">
+                                        <span>MN</span>
                                     </div>
 
-                                    <p
-                                        class="mt-4 text-[10px] font-black uppercase tracking-[0.28em] text-zinc-500"
-                                    >
-                                        Montre Nova
-                                    </p>
+                                    <p class="mt-4 brand-kicker">Montre Nova</p>
                                 </div>
                             </div>
 
                             <div
-                                class="absolute inset-0 bg-gradient-to-t from-black/82 via-black/32 to-transparent"
+                                class="absolute inset-0 bg-gradient-to-t from-black/84 via-black/24 to-transparent"
                             ></div>
 
                             <div
-                                class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.07)_50%,rgba(0,0,0,0.42)_100%)]"
-                            ></div>
-
-                            <div
-                                class="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/35 to-transparent"
+                                class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.04)_52%,rgba(0,0,0,0.38)_100%)]"
                             ></div>
 
                             <div
                                 class="absolute left-4 top-4 z-20 flex max-w-[92%] flex-wrap gap-1.5 sm:left-5 sm:top-5"
                             >
                                 <span
-                                    class="rounded-md border border-red-400/30 bg-red-500/15 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-red-200 shadow-lg shadow-red-950/30 backdrop-blur"
+                                    class="rounded-md border border-red-400/30 bg-red-500/15 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-red-100 shadow-lg shadow-red-950/30 backdrop-blur"
                                 >
                                     Sold
                                 </span>
@@ -1516,27 +1167,21 @@ const productBadges = (watch) => {
                                 <span
                                     class="rounded-md border border-white/10 bg-black/45 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-zinc-300 shadow-lg shadow-black/40 backdrop-blur"
                                 >
-                                    Claimed
+                                    {{ soldDateLabel(watch) }}
                                 </span>
                             </div>
 
                             <div
                                 class="absolute inset-x-0 bottom-0 z-20 p-5 sm:p-6"
                             >
-                                <div class="mb-4 flex items-center gap-3">
-                                    <span
-                                        class="h-px w-10 bg-gradient-to-r from-white/80 to-transparent"
-                                    ></span>
-
-                                    <p
-                                        class="truncate text-[10px] font-black uppercase tracking-[0.32em] text-zinc-300/90 sm:text-xs"
-                                    >
-                                        {{ watch.brand || "Montre Nova" }}
-                                    </p>
-                                </div>
+                                <p
+                                    class="truncate text-[10px] font-black uppercase tracking-[0.32em] text-zinc-300/90 sm:text-xs"
+                                >
+                                    {{ watch.brand || "Montre Nova" }}
+                                </p>
 
                                 <h3
-                                    class="line-clamp-2 text-2xl font-medium leading-tight tracking-[0.02em] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.75)] sm:text-3xl"
+                                    class="mt-3 line-clamp-2 text-2xl font-medium leading-tight tracking-[0.02em] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.75)] sm:text-3xl"
                                 >
                                     {{ watch.model_name }}
                                 </h3>
@@ -1553,67 +1198,47 @@ const productBadges = (watch) => {
                                 <div
                                     class="mt-4 flex flex-wrap gap-1.5 sm:gap-2"
                                 >
-                                    <span
-                                        class="rounded-lg border border-white/10 bg-black/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300 backdrop-blur sm:text-xs"
-                                    >
+                                    <span class="detail-chip">
                                         {{ soldConditionLabel(watch) }}
                                     </span>
 
                                     <span
                                         v-if="watch.category"
-                                        class="rounded-lg border border-white/10 bg-black/35 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300 backdrop-blur sm:text-xs"
+                                        class="detail-chip"
                                     >
                                         {{ watch.category }}
                                     </span>
                                 </div>
 
                                 <div
-                                    class="mt-6 flex items-end justify-between gap-4 border-t border-white/10 pt-4"
+                                    class="mt-6 flex items-center justify-between gap-4 border-t border-white/10 pt-4"
                                 >
                                     <div class="min-w-0">
                                         <p
                                             class="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500"
                                         >
-                                            Recently Claimed
+                                            Looking for similar?
                                         </p>
 
                                         <p
-                                            class="mt-1 truncate text-base font-black text-white sm:text-lg"
+                                            class="mt-1 truncate text-sm text-zinc-300"
                                         >
-                                            {{ soldDateLabel(watch) }}
+                                            Send us your preferred model.
                                         </p>
                                     </div>
 
                                     <button
                                         type="button"
-                                        class="group/link inline-flex items-center gap-2 whitespace-nowrap text-[10px] font-black uppercase tracking-[0.28em] text-zinc-200 transition hover:text-white sm:text-xs"
+                                        class="secondary-button shrink-0 px-4 py-2.5 text-xs"
                                         @click="openSimilarInquiry(watch)"
                                     >
-                                        Find Similar
-
-                                        <span
-                                            class="text-white transition group-hover/link:translate-x-1"
-                                        >
-                                            →
-                                        </span>
-                                    </button>
-                                </div>
-
-                                <div class="mt-4 flex justify-end">
-                                    <button
-                                        type="button"
-                                        class="inline-flex items-center justify-center gap-2 rounded-lg border border-white/15 bg-black/40 px-4 py-2.5 text-xs font-black text-white backdrop-blur transition hover:border-white/35 hover:bg-white/[0.08] active:scale-[0.98] sm:px-5 sm:py-3 sm:text-sm"
-                                        @click="openSimilarInquiry(watch)"
-                                    >
-                                        Source Similar
-
-                                        <span aria-hidden="true">→</span>
+                                        Source
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </article>
-                </div>
+                </TransitionGroup>
             </section>
 
             <!-- HOW TO ORDER -->
@@ -1621,115 +1246,37 @@ const productBadges = (watch) => {
                 id="process"
                 class="scroll-mt-28 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
             >
-                <div class="mb-8 sm:mb-10">
-                    <p
-                        class="text-[11px] font-black uppercase tracking-[0.34em] text-zinc-500"
-                    >
-                        How to Order
-                    </p>
+                <div class="animated-in mb-8 sm:mb-10">
+                    <p class="section-kicker">How to Order</p>
 
                     <h2
                         class="mt-4 max-w-2xl text-3xl font-black tracking-[-0.04em] text-white sm:text-4xl"
                     >
-                        Order your next timepiece in three simple steps.
+                        A simple, secure flow from inquiry to delivery.
                     </h2>
-
-                    <p class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400">
-                        Browse our available watches, confirm your preferred
-                        payment option, and have your order shipped safely.
-                    </p>
                 </div>
 
                 <div class="grid gap-4 lg:grid-cols-3">
                     <div
-                        class="flex flex-col rounded-xl border border-white/10 bg-[#0B0B0D]/90 p-7 shadow-xl shadow-black/25 transition hover:border-white/25 hover:bg-[#111113]"
+                        v-for="(step, index) in orderSteps"
+                        :key="step.title"
+                        class="process-card animated-in"
+                        :style="{ animationDelay: `${index * 75}ms` }"
                     >
                         <p
                             class="text-xs font-black uppercase tracking-[0.28em] text-zinc-600"
                         >
-                            01
+                            {{ step.number }}
                         </p>
 
                         <h3
                             class="mt-4 text-xl font-black tracking-[-0.03em] text-white"
                         >
-                            Place Order
+                            {{ step.title }}
                         </h3>
 
                         <p class="mt-4 text-sm leading-7 text-zinc-400">
-                            Choose your preferred watch and message us through
-                            our official channels to confirm availability,
-                            complete details, and updated photos.
-                        </p>
-
-                        <div class="mt-auto flex justify-end pt-6">
-                            <button
-                                type="button"
-                                class="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-black text-black transition hover:bg-zinc-200 active:scale-[0.98]"
-                                @click="openMessengerInquiry()"
-                            >
-                                Start Inquiry
-
-                                <span aria-hidden="true">→</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div
-                        class="rounded-xl border border-white/10 bg-[#0B0B0D]/90 p-7 shadow-xl shadow-black/25 transition hover:border-white/25 hover:bg-[#111113]"
-                    >
-                        <p
-                            class="text-xs font-black uppercase tracking-[0.28em] text-zinc-600"
-                        >
-                            02
-                        </p>
-
-                        <h3
-                            class="mt-4 text-xl font-black tracking-[-0.03em] text-white"
-                        >
-                            Flexible Payment
-                        </h3>
-
-                        <p class="mt-4 text-sm leading-7 text-zinc-400">
-                            Pay through your preferred option. We accept cash,
-                            Maribank, GoTyme, QR code payments, and selected
-                            trade-ins subject to evaluation.
-                        </p>
-
-                        <p
-                            class="mt-6 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-xs leading-6 text-zinc-400"
-                        >
-                            Reservation or payment instructions will be sent
-                            only through our official channels.
-                        </p>
-                    </div>
-
-                    <div
-                        class="rounded-xl border border-white/10 bg-[#0B0B0D]/90 p-7 shadow-xl shadow-black/25 transition hover:border-white/25 hover:bg-[#111113]"
-                    >
-                        <p
-                            class="text-xs font-black uppercase tracking-[0.28em] text-zinc-600"
-                        >
-                            03
-                        </p>
-
-                        <h3
-                            class="mt-4 text-xl font-black tracking-[-0.03em] text-white"
-                        >
-                            Shipping
-                        </h3>
-
-                        <p class="mt-4 text-sm leading-7 text-zinc-400">
-                            Once payment is confirmed, your watch will be
-                            securely packed and prepared for delivery. Shipping
-                            details and tracking updates will be provided.
-                        </p>
-
-                        <p
-                            class="mt-6 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-xs leading-6 text-zinc-400"
-                        >
-                            Every purchase includes Montre Card warranty
-                            coverage for added peace of mind.
+                            {{ step.description }}
                         </p>
                     </div>
                 </div>
@@ -1741,7 +1288,7 @@ const productBadges = (watch) => {
                 class="scroll-mt-28 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
             >
                 <div
-                    class="relative overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#080809] p-6 shadow-2xl shadow-black/40 sm:p-10 lg:p-12"
+                    class="animated-in relative overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#080809] p-6 shadow-2xl shadow-black/40 sm:p-10 lg:p-12"
                 >
                     <div
                         class="absolute -right-32 -top-32 h-80 w-80 rounded-full bg-white/[0.06] blur-3xl"
@@ -1751,19 +1298,13 @@ const productBadges = (watch) => {
                         class="absolute -left-24 bottom-0 h-64 w-64 rounded-full bg-zinc-400/[0.035] blur-3xl"
                     ></div>
 
-                    <div
-                        class="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent"
-                    ></div>
+                    <div class="shine-line"></div>
 
                     <div
                         class="relative grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center"
                     >
                         <div>
-                            <p
-                                class="text-[11px] font-black uppercase tracking-[0.34em] text-zinc-500"
-                            >
-                                Get in Touch
-                            </p>
+                            <p class="section-kicker">Get in Touch</p>
 
                             <h2
                                 class="mt-4 max-w-2xl text-4xl font-black tracking-[-0.06em] text-white sm:text-6xl"
@@ -1783,33 +1324,25 @@ const productBadges = (watch) => {
                             <div
                                 class="mt-8 rounded-2xl border border-white/10 bg-white/[0.035] p-5"
                             >
-                                <p
-                                    class="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500"
-                                >
-                                    Quick Response
-                                </p>
+                                <p class="brand-kicker">Faster Assistance</p>
 
                                 <p class="mt-2 text-sm leading-7 text-zinc-400">
-                                    For faster assistance, send the watch model,
-                                    reference number, budget, and preferred
-                                    condition.
+                                    Send the model, reference number, budget,
+                                    and preferred condition so we can assist
+                                    faster.
                                 </p>
                             </div>
                         </div>
 
                         <div class="space-y-3">
                             <a
-                                v-for="link in contactLinks"
+                                v-for="(link, index) in contactLinks"
                                 :key="link.label"
                                 :href="link.href"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                class="group flex items-center justify-between gap-5 rounded-2xl border border-white/10 bg-black/45 px-5 py-5 text-sm text-white shadow-lg shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.06] hover:shadow-black/40"
-                                :class="
-                                    link.href === '#'
-                                        ? 'pointer-events-none opacity-50'
-                                        : ''
-                                "
+                                class="contact-card group"
+                                :style="{ animationDelay: `${index * 65}ms` }"
                             >
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-3">
@@ -1836,7 +1369,7 @@ const productBadges = (watch) => {
                                 </div>
 
                                 <div
-                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-zinc-400 transition group-hover:translate-x-1 group-hover:border-white/25 group-hover:bg-white group-hover:text-black"
+                                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-zinc-400 transition duration-300 group-hover:translate-x-1 group-hover:border-white/25 group-hover:bg-white group-hover:text-black"
                                 >
                                     →
                                 </div>
@@ -1862,26 +1395,752 @@ const productBadges = (watch) => {
             </div>
         </footer>
 
+        <!-- PAGE OPENING TRANSITION -->
+        <Transition name="page-open">
+            <div v-if="isPageOpening" class="page-open-overlay">
+                <div class="page-open-card">
+                    <div class="page-open-mark">MN</div>
+
+                    <div>
+                        <p class="page-open-title">Opening details</p>
+                        <p class="page-open-subtitle">
+                            Preparing the watch page
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+
         <!-- MOBILE STICKY CTA -->
         <div
             class="fixed inset-x-0 bottom-0 z-[60] border-t border-white/10 bg-black/90 px-4 py-3 backdrop-blur-xl md:hidden"
         >
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-[0.78fr_1.22fr] gap-3">
                 <a
                     href="#collection"
-                    class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.055] px-4 py-3 text-sm font-black text-white"
+                    class="secondary-button px-4 py-3 text-sm"
                 >
-                    View Stocks
+                    Stocks
                 </a>
 
                 <button
                     type="button"
-                    class="inline-flex items-center justify-center rounded-lg bg-white px-4 py-3 text-sm font-black text-black"
+                    class="primary-button px-4 py-3 text-sm"
                     @click="openMessengerInquiry()"
                 >
-                    Message Us
+                    Message Montre Nova
                 </button>
             </div>
         </div>
     </div>
 </template>
+
+<style scoped>
+:global(html) {
+    scroll-behavior: smooth;
+}
+
+:global(#collection),
+:global(#recently-sold),
+:global(#process),
+:global(#contact) {
+    scroll-margin-top: 7.5rem;
+}
+
+:global(#collection:target),
+:global(#recently-sold:target),
+:global(#process:target),
+:global(#contact:target) {
+    animation: sectionFocus 950ms ease-out both;
+}
+
+main > section {
+    position: relative;
+}
+
+/* HERO BALANCE */
+.hero-copy,
+.hero-feature-wrap {
+    min-height: 0;
+}
+
+.featured-lux-card {
+    border-color: rgb(255 255 255 / 0.055);
+    background: linear-gradient(
+        180deg,
+        rgb(12 12 13 / 0.96),
+        rgb(5 5 5 / 0.96)
+    );
+    box-shadow:
+        0 28px 90px rgb(0 0 0 / 0.46),
+        inset 0 1px 0 rgb(255 255 255 / 0.065);
+}
+
+.featured-media {
+    border-color: rgb(255 255 255 / 0.055);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+.featured-card-footer {
+    flex: 0 0 auto;
+}
+
+@media (min-width: 1024px) {
+    .hero-copy,
+    .hero-feature-wrap {
+        min-height: clamp(610px, 72vh, 760px);
+    }
+
+    .featured-lux-card {
+        min-height: 100%;
+    }
+
+    .featured-media {
+        min-height: 0;
+    }
+}
+
+@media (min-width: 1280px) {
+    .hero-copy,
+    .hero-feature-wrap {
+        min-height: clamp(650px, 74vh, 800px);
+    }
+}
+
+.nav-link {
+    position: relative;
+    transition:
+        color 260ms ease,
+        opacity 260ms ease;
+}
+
+.nav-link::after {
+    position: absolute;
+    right: 0;
+    bottom: -0.45rem;
+    left: 0;
+    height: 1px;
+    content: "";
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.8),
+        transparent
+    );
+    opacity: 0;
+    transform: scaleX(0.45);
+    transition:
+        opacity 260ms ease,
+        transform 260ms ease;
+}
+
+.nav-link:hover {
+    color: white;
+}
+
+.nav-link:hover::after {
+    opacity: 1;
+    transform: scaleX(1);
+}
+
+.mobile-nav-pill {
+    flex-shrink: 0;
+    border-radius: 0.75rem;
+    border: 1px solid rgb(255 255 255 / 0.055);
+    background: rgb(255 255 255 / 0.035);
+    padding: 0.5rem 1rem;
+    transition:
+        border-color 260ms ease,
+        background-color 260ms ease,
+        color 260ms ease;
+}
+
+.mobile-nav-pill:hover {
+    border-color: rgb(255 255 255 / 0.25);
+    color: white;
+}
+
+.primary-button,
+.secondary-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.8rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    transition:
+        transform 260ms ease,
+        background-color 260ms ease,
+        border-color 260ms ease,
+        color 260ms ease,
+        box-shadow 260ms ease;
+}
+
+.primary-button {
+    background: white;
+    color: black;
+    box-shadow: 0 12px 35px rgb(255 255 255 / 0.08);
+}
+
+.primary-button:hover {
+    transform: translateY(-1px);
+    background: rgb(228 228 231);
+    box-shadow: 0 18px 48px rgb(255 255 255 / 0.14);
+}
+
+.secondary-button {
+    border: 1px solid rgb(255 255 255 / 0.06);
+    background: rgb(255 255 255 / 0.035);
+    color: white;
+    backdrop-filter: blur(18px);
+}
+
+.secondary-button:hover {
+    transform: translateY(-1px);
+    border-color: rgb(255 255 255 / 0.16);
+    background: rgb(255 255 255 / 0.065);
+}
+
+.primary-button:active,
+.secondary-button:active {
+    transform: scale(0.985);
+}
+
+.feature-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-radius: 1rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background: linear-gradient(
+        135deg,
+        rgb(255 255 255 / 0.98),
+        rgb(228 228 231 / 0.96)
+    );
+    padding: 1rem 1.1rem;
+    color: black;
+    font-size: 0.78rem;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    box-shadow: 0 18px 46px rgb(255 255 255 / 0.11);
+    transition:
+        transform 280ms ease,
+        box-shadow 280ms ease,
+        filter 280ms ease;
+}
+
+.feature-cta:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.02);
+    box-shadow: 0 24px 62px rgb(255 255 255 / 0.16);
+}
+
+.view-detail-pill {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.12);
+    background: rgb(255 255 255 / 0.92);
+    padding: 0.65rem 0.85rem;
+    color: black;
+    font-size: 0.66rem;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    box-shadow: 0 12px 30px rgb(255 255 255 / 0.1);
+    transition:
+        transform 260ms ease,
+        background-color 260ms ease;
+}
+
+.watch-card:hover .view-detail-pill {
+    transform: translateX(3px);
+    background: white;
+}
+
+.premium-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: 0.8rem;
+    border: 1px solid rgb(255 255 255 / 0.055);
+    background: rgb(255 255 255 / 0.035);
+    padding: 0.5rem 1rem;
+    font-size: 0.625rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.28em;
+    color: rgb(161 161 170);
+    box-shadow: 0 16px 45px rgb(0 0 0 / 0.28);
+}
+
+.pulse-dot {
+    height: 0.375rem;
+    width: 0.375rem;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.88);
+    box-shadow: 0 0 0 0 rgb(255 255 255 / 0.28);
+    animation: pulseDot 2.4s ease-out infinite;
+}
+
+.stat-card {
+    border-radius: 1rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(255 255 255 / 0.035);
+    padding: 1rem;
+    transition:
+        transform 260ms ease,
+        border-color 260ms ease,
+        background-color 260ms ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    border-color: rgb(255 255 255 / 0.24);
+    background: rgb(255 255 255 / 0.06);
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: white;
+}
+
+.stat-label {
+    margin-top: 0.35rem;
+    font-size: 0.625rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: rgb(113 113 122);
+}
+
+.lux-card {
+    animation: fadeLift 720ms both;
+    isolation: isolate;
+}
+
+.shine-line {
+    position: absolute;
+    top: 0;
+    right: 2rem;
+    left: 2rem;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgb(255 255 255 / 0.5),
+        transparent
+    );
+}
+
+.placeholder-logo {
+    display: flex;
+    height: 8rem;
+    width: 8rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(255 255 255 / 0.045);
+    box-shadow: 0 24px 60px rgb(0 0 0 / 0.5);
+}
+
+.placeholder-logo span {
+    font-size: 2.5rem;
+    font-weight: 900;
+    letter-spacing: -0.12em;
+    color: white;
+}
+
+.brand-kicker,
+.section-kicker {
+    font-size: 0.68rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.34em;
+    color: rgb(113 113 122);
+}
+
+.section-title {
+    margin-top: 0.75rem;
+    font-size: 2.25rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.06em;
+    color: white;
+}
+
+@media (min-width: 640px) {
+    .section-title {
+        font-size: 3rem;
+    }
+}
+
+.trust-pill {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.85rem;
+    border-radius: 1rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background: rgb(0 0 0 / 0.32);
+    padding: 1rem;
+    animation: fadeLift 650ms both;
+    transition:
+        transform 260ms ease,
+        border-color 260ms ease,
+        background-color 260ms ease;
+}
+
+.trust-pill:hover {
+    transform: translateY(-2px);
+    border-color: rgb(255 255 255 / 0.22);
+    background: rgb(255 255 255 / 0.055);
+}
+
+.watch-card,
+.sold-card {
+    position: relative;
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    min-width: 82vw;
+    max-width: 82vw;
+    scroll-snap-align: start;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    border: 1px solid rgb(255 255 255 / 0.045);
+    background: linear-gradient(
+        180deg,
+        rgb(255 255 255 / 0.025),
+        rgb(0 0 0 / 0.96)
+    );
+    box-shadow:
+        0 26px 82px rgb(0 0 0 / 0.42),
+        inset 0 1px 0 rgb(255 255 255 / 0.055);
+    animation: fadeLift 700ms both;
+    transition:
+        transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
+        border-color 320ms ease,
+        box-shadow 320ms ease;
+}
+
+.watch-card {
+    cursor: pointer;
+}
+
+.watch-card:focus-visible {
+    outline: 2px solid rgb(255 255 255 / 0.72);
+    outline-offset: 4px;
+}
+
+.watch-card:hover,
+.sold-card:hover {
+    border-color: rgb(255 255 255 / 0.13);
+    box-shadow:
+        0 36px 110px rgb(0 0 0 / 0.65),
+        inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+
+@media (min-width: 640px) {
+    .watch-card {
+        min-width: 360px;
+        max-width: 360px;
+    }
+
+    .sold-card {
+        min-width: 340px;
+        max-width: 340px;
+    }
+}
+
+@media (min-width: 768px) {
+    .watch-card {
+        min-width: 0;
+        max-width: none;
+    }
+
+    .watch-card:hover,
+    .sold-card:hover {
+        transform: translateY(-0.25rem);
+    }
+
+    .sold-card {
+        min-width: 360px;
+        max-width: 360px;
+    }
+}
+
+.detail-chip {
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.065);
+    background: rgb(0 0 0 / 0.34);
+    padding: 0.3rem 0.72rem;
+    font-size: 0.625rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: rgb(212 212 216);
+    backdrop-filter: blur(14px);
+}
+
+.sold-mini-stat {
+    display: flex;
+    min-height: 3rem;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: 0.8rem;
+    border: 1px solid rgb(255 255 255 / 0.055);
+    background: rgb(255 255 255 / 0.035);
+    padding: 0.75rem 1rem;
+}
+
+.sold-mini-stat span {
+    font-size: 1.35rem;
+    font-weight: 900;
+    color: white;
+}
+
+.sold-mini-stat p {
+    max-width: 7rem;
+    font-size: 0.63rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: rgb(113 113 122);
+}
+
+.process-card {
+    border-radius: 1.1rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(11 11 13 / 0.9);
+    padding: 1.75rem;
+    box-shadow: 0 20px 60px rgb(0 0 0 / 0.25);
+    transition:
+        transform 300ms ease,
+        border-color 300ms ease,
+        background-color 300ms ease;
+}
+
+.process-card:hover {
+    transform: translateY(-3px);
+    border-color: rgb(255 255 255 / 0.24);
+    background: rgb(17 17 19 / 0.95);
+}
+
+.contact-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.25rem;
+    border-radius: 1rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(0 0 0 / 0.45);
+    padding: 1.25rem;
+    color: white;
+    box-shadow: 0 18px 40px rgb(0 0 0 / 0.22);
+    animation: fadeLift 650ms both;
+    transition:
+        transform 300ms ease,
+        border-color 300ms ease,
+        background-color 300ms ease,
+        box-shadow 300ms ease;
+}
+
+.contact-card:hover {
+    transform: translateY(-2px);
+    border-color: rgb(255 255 255 / 0.25);
+    background: rgb(255 255 255 / 0.06);
+    box-shadow: 0 25px 70px rgb(0 0 0 / 0.42);
+}
+
+.page-open-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+        radial-gradient(
+            circle at center,
+            rgb(255 255 255 / 0.06),
+            transparent 32%
+        ),
+        rgb(0 0 0 / 0.72);
+    backdrop-filter: blur(18px);
+}
+
+.page-open-card {
+    display: flex;
+    align-items: center;
+    gap: 0.95rem;
+    border-radius: 1.15rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background: linear-gradient(
+        135deg,
+        rgb(18 18 19 / 0.92),
+        rgb(5 5 5 / 0.94)
+    );
+    padding: 1rem 1.15rem;
+    box-shadow:
+        0 28px 90px rgb(0 0 0 / 0.58),
+        inset 0 1px 0 rgb(255 255 255 / 0.07);
+}
+
+.page-open-mark {
+    display: flex;
+    height: 2.5rem;
+    width: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background: white;
+    color: black;
+    font-size: 0.78rem;
+    font-weight: 950;
+    letter-spacing: -0.08em;
+}
+
+.page-open-title {
+    font-size: 0.75rem;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: white;
+}
+
+.page-open-subtitle {
+    margin-top: 0.2rem;
+    font-size: 0.76rem;
+    color: rgb(113 113 122);
+}
+
+.page-open-enter-active,
+.page-open-leave-active {
+    transition:
+        opacity 260ms ease,
+        transform 260ms ease;
+}
+
+.page-open-enter-from,
+.page-open-leave-to {
+    opacity: 0;
+}
+
+.page-open-enter-from .page-open-card,
+.page-open-leave-to .page-open-card {
+    transform: translateY(8px) scale(0.98);
+}
+
+.empty-state {
+    border-radius: 1.25rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(11 11 13);
+    padding: 2.5rem;
+    text-align: center;
+    box-shadow: 0 25px 70px rgb(0 0 0 / 0.25);
+}
+
+.animated-in {
+    animation: fadeLift 720ms both;
+}
+
+.watch-card-enter-active,
+.watch-card-leave-active {
+    transition: all 320ms ease;
+}
+
+.watch-card-enter-from,
+.watch-card-leave-to {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+}
+
+.watch-card-move {
+    transition: transform 320ms ease;
+}
+
+.watch-card:active,
+.sold-card:active,
+.feature-cta:active,
+.primary-button:active,
+.secondary-button:active,
+.mobile-nav-pill:active,
+.nav-link:active {
+    transform: scale(0.985);
+}
+
+@keyframes sectionFocus {
+    0% {
+        filter: brightness(1);
+        transform: translateY(0);
+    }
+
+    35% {
+        filter: brightness(1.18);
+        transform: translateY(-4px);
+    }
+
+    100% {
+        filter: brightness(1);
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeLift {
+    from {
+        opacity: 0;
+        transform: translateY(18px) scale(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes floatSoft {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-6px);
+    }
+}
+
+@keyframes pulseDot {
+    0% {
+        box-shadow: 0 0 0 0 rgb(255 255 255 / 0.28);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgb(255 255 255 / 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgb(255 255 255 / 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.001ms !important;
+    }
+}
+</style>

@@ -307,16 +307,6 @@ const closeMobileSidebar = () => {
                             <span>{{ item.label }}</span>
                         </Link>
                     </nav>
-
-                    <div class="safe-bottom border-t border-white/10 p-4">
-                        <Link
-                            href="/"
-                            class="flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-zinc-300 transition hover:border-white/30 hover:text-white"
-                            @click="closeMobileSidebar"
-                        >
-                            View Website
-                        </Link>
-                    </div>
                 </aside>
             </div>
         </Transition>
@@ -367,13 +357,6 @@ const closeMobileSidebar = () => {
                     </div>
 
                     <div class="flex shrink-0 items-center gap-2 sm:gap-3">
-                        <Link
-                            href="/"
-                            class="hidden rounded-2xl border border-white/10 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-white/30 hover:text-white sm:inline-flex"
-                        >
-                            View Website
-                        </Link>
-
                         <Link
                             :href="route('admin.watches.create')"
                             class="hidden rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-zinc-200 sm:inline-flex"

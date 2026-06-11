@@ -8,6 +8,14 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    availableWatches: {
+        type: [Array, Object],
+        default: () => [],
+    },
+    relatedWatches: {
+        type: [Array, Object],
+        default: () => [],
+    },
     canLogin: {
         type: Boolean,
         default: true,
@@ -16,8 +24,6 @@ const props = defineProps({
 
 const selectedImageIndex = ref(0);
 const copied = ref(false);
-const inquiryCopied = ref(false);
-const activeTab = ref("overview");
 const showImagePreview = ref(false);
 
 const touchStartX = ref(0);
@@ -45,17 +51,6 @@ const selectedImage = computed(() => {
         selectedImageObject.value.hd_url ||
         selectedImageObject.value.image_url ||
         selectedImageObject.value.thumbnail_url ||
-        null
-    );
-});
-
-const selectedThumbnail = computed(() => {
-    if (!selectedImageObject.value) return null;
-
-    return (
-        selectedImageObject.value.thumbnail_url ||
-        selectedImageObject.value.image_url ||
-        selectedImageObject.value.hd_url ||
         null
     );
 });
@@ -98,10 +93,10 @@ const statusClass = computed(() => {
     const status = String(props.watch.status || "available").toLowerCase();
 
     const classes = {
-        available: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
-        reserved: "border-amber-400/20 bg-amber-400/10 text-amber-300",
+        available: "border-emerald-400/20 bg-emerald-400/10 text-emerald-200",
+        reserved: "border-amber-400/20 bg-amber-400/10 text-amber-200",
         sold: "border-zinc-400/20 bg-zinc-400/10 text-zinc-300",
-        hidden: "border-red-400/20 bg-red-400/10 text-red-300",
+        hidden: "border-red-400/20 bg-red-400/10 text-red-200",
         draft: "border-white/10 bg-white/[0.05] text-zinc-400",
     };
 
@@ -123,16 +118,15 @@ const peso = (value) => {
 };
 
 const productDescription = computed(() => {
-    return (
-        props.watch.description ||
-        "A curated Montre Nova timepiece. Message us for availability confirmation, actual photos, payment options, and reservation details."
-    );
+    return String(props.watch.description || "").trim();
 });
 
 const metaDescription = computed(() => {
-    return `${displayName.value}${
-        props.watch.reference_number ? ` ${props.watch.reference_number}` : ""
-    } available at Montre Nova. View actual photos, pricing, specs, warranty details, and inquiry options.`;
+    const reference = props.watch.reference_number
+        ? ` ${props.watch.reference_number}`
+        : "";
+
+    return `${displayName.value}${reference} at Montre Nova. View actual photos, price, specifications, warranty details, and inquiry options.`;
 });
 
 const productImageUrls = computed(() => {
@@ -152,7 +146,7 @@ const productJsonLd = computed(() => {
         },
         sku: props.watch.reference_number || String(props.watch.id),
         image: productImageUrls.value,
-        description: productDescription.value,
+        description: productDescription.value || metaDescription.value,
         category: props.watch.category || "Watch",
         offers: {
             "@type": "Offer",
@@ -171,43 +165,26 @@ const productJsonLd = computed(() => {
     };
 });
 
-const quickSpecs = computed(() => [
-    {
-        label: "Condition",
-        value: props.watch.condition || "Upon request",
-    },
-    {
-        label: "Reference",
-        value: props.watch.reference_number || "No reference",
-    },
-    {
-        label: "Movement",
-        value: props.watch.movement || "Upon request",
-    },
-    {
-        label: "Warranty",
-        value: props.watch.warranty_type || "Montre Card",
-    },
-]);
-
-const trustBadges = computed(() => [
-    {
-        title: "Actual HD Photos",
-        description: "View real product photos before inquiring.",
-    },
-    {
-        title: "Montre Card Warranty",
-        description: "Selected watches include service warranty support.",
-    },
-    {
-        title: "Clear Pricing",
-        description: "Price is shown upfront for easy decision-making.",
-    },
-    {
-        title: "Curated Stock",
-        description: "Handpicked pieces from Montre Nova.",
-    },
-]);
+const heroHighlights = computed(() => {
+    return [
+        {
+            label: "Condition",
+            value: props.watch.condition,
+        },
+        {
+            label: "Reference",
+            value: props.watch.reference_number,
+        },
+        {
+            label: "Warranty",
+            value: props.watch.warranty_type,
+        },
+        {
+            label: "Box / Papers",
+            value: props.watch.box_papers,
+        },
+    ].filter((item) => item.value);
+});
 
 const specGroups = computed(() => [
     {
@@ -253,6 +230,58 @@ const availableSpecGroups = computed(() => {
         .filter((group) => group.items.length);
 });
 
+const compactSpecs = computed(() => {
+    return availableSpecGroups.value
+        .flatMap((group) => group.items)
+        .filter((item) => item.value)
+        .slice(0, 12);
+});
+
+const shortSpecLabel = (label) => {
+    const labels = {
+        Reference: "Reference",
+        Condition: "Condition",
+        Category: "Category",
+        Movement: "Movement",
+        "Case Size": "Case Size",
+        "Case Material": "Case",
+        "Dial Color": "Dial",
+        Crystal: "Crystal",
+        "Bracelet / Strap": "Bracelet",
+        "Water Resistance": "Resistance",
+        "Box / Papers": "Box / Papers",
+        Warranty: "Warranty",
+    };
+
+    return labels[label] || label;
+};
+
+const buyingNotes = computed(() => {
+    return [
+        {
+            title: "Actual Photos",
+            description:
+                "Review the gallery photos before reserving the watch.",
+        },
+        {
+            title: "Payment",
+            description:
+                "Payment details and reservation instructions are sent only through official Montre Nova channels.",
+        },
+        {
+            title: "Shipping",
+            description:
+                "Metro Manila orders may be delivered through Lalamove. Nationwide orders may be shipped through LBC.",
+        },
+        {
+            title: "Warranty",
+            description:
+                props.watch.warranty_type ||
+                "Selected pieces include Montre Card service warranty support.",
+        },
+    ];
+});
+
 const defaultInquiryMessage = computed(() => {
     return `Hi Montre Nova, I'm interested in this watch:
 
@@ -263,39 +292,137 @@ Price: ${peso(finalPrice.value || props.watch.price)}
 Is this still available?`;
 });
 
-const inquiryMessage = ref(defaultInquiryMessage.value);
+const messengerInquiryUrl = computed(() => {
+    const message = encodeURIComponent(defaultInquiryMessage.value);
 
-const resetInquiryMessage = () => {
-    inquiryMessage.value = defaultInquiryMessage.value;
+    return `https://m.me/${messengerUsername}?text=${message}`;
+});
+
+const toCollectionArray = (collection) => {
+    if (Array.isArray(collection)) {
+        return collection;
+    }
+
+    if (Array.isArray(collection?.data)) {
+        return collection.data;
+    }
+
+    return [];
 };
 
-const contactLinks = computed(() => [
-    {
-        label: "Messenger",
-        description: "Fastest way to inquire or reserve this watch",
-        href: `https://m.me/${messengerUsername}`,
-        primary: true,
-    },
-    {
-        label: "Viber",
-        description: "Ask for more photos or payment details",
-        href: "viber://chat?number=%2B6399084161980",
-        primary: false,
-    },
-    {
-        label: "Instagram",
-        description: "View latest drops and curated stocks",
-        href: "https://instagram.com/montrenova",
-        primary: false,
-    },
-]);
+const availableWatchSource = computed(() => {
+    const sources = [
+        props.availableWatches,
+        props.relatedWatches,
+        props.watch?.available_watches,
+        props.watch?.availableWatches,
+        props.watch?.related_watches,
+        props.watch?.relatedWatches,
+    ];
 
-const tabs = [
-    { key: "overview", label: "Overview" },
-    { key: "specs", label: "Specs" },
-    { key: "warranty", label: "Warranty" },
-    { key: "inquiry", label: "Inquiry" },
-];
+    for (const source of sources) {
+        const items = toCollectionArray(source);
+
+        if (items.length) {
+            return items;
+        }
+    }
+
+    return [];
+});
+
+const carouselWatches = computed(() => {
+    return availableWatchSource.value
+        .filter((item) => {
+            if (!item?.id || item.id === props.watch.id) return false;
+
+            const status = String(item.status || "available").toLowerCase();
+
+            return status === "available";
+        })
+        .slice(0, 12);
+});
+
+const normalizeImageUrl = (url) => {
+    if (!url) return null;
+
+    const cleanUrl = String(url).trim();
+
+    if (!cleanUrl) return null;
+
+    if (
+        cleanUrl.startsWith("http://") ||
+        cleanUrl.startsWith("https://") ||
+        cleanUrl.startsWith("data:") ||
+        cleanUrl.startsWith("blob:") ||
+        cleanUrl.startsWith("/")
+    ) {
+        return cleanUrl;
+    }
+
+    if (cleanUrl.startsWith("storage/")) {
+        return `/${cleanUrl}`;
+    }
+
+    if (cleanUrl.startsWith("public/")) {
+        return `/storage/${cleanUrl.replace(/^public\//, "")}`;
+    }
+
+    return `/storage/${cleanUrl}`;
+};
+
+const watchCardImage = (watch) => {
+    return normalizeImageUrl(
+        watch?.primary_hd_url ||
+            watch?.primary_image_url ||
+            watch?.image_url ||
+            watch?.thumbnail_url ||
+            watch?.image_path ||
+            watch?.thumbnail_path ||
+            watch?.path ||
+            watch?.url ||
+            watch?.primary_image?.primary_hd_url ||
+            watch?.primary_image?.primary_image_url ||
+            watch?.primary_image?.image_url ||
+            watch?.primary_image?.thumbnail_url ||
+            watch?.primary_image?.image_path ||
+            watch?.primary_image?.thumbnail_path ||
+            watch?.primary_image?.file_path ||
+            watch?.primary_image?.path ||
+            watch?.primary_image?.url ||
+            watch?.primaryImage?.primary_hd_url ||
+            watch?.primaryImage?.primary_image_url ||
+            watch?.primaryImage?.image_url ||
+            watch?.primaryImage?.thumbnail_url ||
+            watch?.primaryImage?.image_path ||
+            watch?.primaryImage?.thumbnail_path ||
+            watch?.primaryImage?.file_path ||
+            watch?.primaryImage?.path ||
+            watch?.primaryImage?.url ||
+            null,
+    );
+};
+
+const itemHasDiscount = (watch) => {
+    return (
+        Number(watch?.discounted_price || 0) > 0 &&
+        Number(watch?.selling_price || 0) > Number(watch?.discounted_price || 0)
+    );
+};
+
+const itemFinalPrice = (watch) => {
+    if (!watch) return 0;
+
+    if (itemHasDiscount(watch)) {
+        return watch.discounted_price;
+    }
+
+    return watch.price || watch.selling_price || watch.discounted_price || 0;
+};
+
+const itemOriginalPrice = (watch) => {
+    return Number(watch?.selling_price || watch?.price || 0);
+};
 
 const selectImage = (index) => {
     selectedImageIndex.value = index;
@@ -354,56 +481,23 @@ const closeImagePreview = () => {
     showImagePreview.value = false;
 };
 
-const copyInquiryMessage = async () => {
-    if (!navigator.clipboard) return;
-
-    await navigator.clipboard.writeText(inquiryMessage.value);
-
-    inquiryCopied.value = true;
-
-    setTimeout(() => {
-        inquiryCopied.value = false;
-    }, 1800);
-};
-
-const openInquiryChannel = async (href) => {
-    await copyInquiryMessage();
-
-    window.open(href, "_blank", "noopener,noreferrer");
-};
-
-const openMessengerInquiry = async () => {
-    await copyInquiryMessage();
-
-    window.open(
-        `https://m.me/${messengerUsername}`,
-        "_blank",
-        "noopener,noreferrer",
-    );
+const openMessengerInquiry = () => {
+    window.open(messengerInquiryUrl.value, "_blank", "noopener,noreferrer");
 };
 
 const copyLink = async () => {
-    if (!navigator.clipboard) return;
+    try {
+        if (!navigator?.clipboard) return;
 
-    await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(window.location.href);
 
-    copied.value = true;
+        copied.value = true;
 
-    setTimeout(() => {
-        copied.value = false;
-    }, 1800);
-};
-
-const goToInquiry = () => {
-    activeTab.value = "inquiry";
-
-    const target = document.getElementById("details");
-
-    if (target) {
-        target.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-        });
+        setTimeout(() => {
+            copied.value = false;
+        }, 1800);
+    } catch (error) {
+        console.warn("Unable to copy link:", error);
     }
 };
 </script>
@@ -431,7 +525,7 @@ const goToInquiry = () => {
     <div
         class="relative min-h-screen overflow-hidden bg-[#050505] pb-28 text-white antialiased lg:pb-0"
     >
-        <!-- PREMIUM AMBIENT BACKGROUND -->
+        <!-- AMBIENT BACKGROUND -->
         <div class="pointer-events-none fixed inset-0 z-0">
             <div
                 class="absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,0.08),transparent_30%),radial-gradient(circle_at_84%_18%,rgba(161,161,170,0.10),transparent_32%),linear-gradient(180deg,#080808_0%,#050505_44%,#0a0a0a_100%)]"
@@ -459,7 +553,7 @@ const goToInquiry = () => {
             >
                 <Link
                     :href="route('welcome')"
-                    class="flex min-w-0 items-center"
+                    class="flex min-w-0 items-center transition duration-300 hover:opacity-80"
                 >
                     <MontreLogo />
                 </Link>
@@ -467,21 +561,14 @@ const goToInquiry = () => {
                 <div class="flex items-center gap-2">
                     <Link
                         :href="route('welcome') + '#collection'"
-                        class="hidden rounded-lg border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.07] hover:text-white sm:inline-flex"
+                        class="hidden rounded-xl border border-white/10 bg-white/[0.035] px-4 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.07] hover:text-white sm:inline-flex"
                     >
                         Collection
                     </Link>
 
-                    <Link
-                        href="/warranty-check"
-                        class="hidden rounded-lg border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.07] hover:text-white sm:inline-flex"
-                    >
-                        Warranty Check
-                    </Link>
-
                     <button
                         type="button"
-                        class="rounded-lg border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.07] hover:text-white"
+                        class="rounded-xl border border-white/10 bg-white/[0.035] px-4 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.07] hover:text-white"
                         @click="copyLink"
                     >
                         {{ copied ? "Copied" : "Share" }}
@@ -491,13 +578,12 @@ const goToInquiry = () => {
         </header>
 
         <main class="relative z-10 pb-8 lg:pb-14">
-            <!-- HERO / PRODUCT VIEW -->
+            <!-- PRODUCT HERO -->
             <section
                 class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-10"
             >
-                <!-- BREADCRUMB -->
                 <div
-                    class="mb-5 flex items-center gap-2 overflow-hidden text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600"
+                    class="mb-5 flex items-center gap-2 overflow-hidden text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600"
                 >
                     <Link
                         :href="route('welcome')"
@@ -519,35 +605,34 @@ const goToInquiry = () => {
                 </div>
 
                 <div
-                    class="grid gap-5 lg:grid-cols-[minmax(0,58%)_minmax(390px,1fr)] lg:items-start xl:grid-cols-[minmax(0,60%)_minmax(410px,1fr)]"
+                    class="product-hero-grid grid gap-5 lg:grid-cols-[minmax(0,58%)_minmax(390px,1fr)] lg:items-stretch xl:grid-cols-[minmax(0,60%)_minmax(410px,1fr)]"
                 >
                     <!-- GALLERY -->
-                    <section class="relative lg:sticky lg:top-24">
+                    <section
+                        class="fade-up relative lg:h-full lg:sticky lg:top-24"
+                    >
                         <div
-                            class="absolute -inset-3 rounded-2xl bg-white/[0.035] blur-2xl"
+                            class="absolute -inset-3 rounded-[1.6rem] bg-white/[0.035] blur-2xl"
                         ></div>
 
                         <div
-                            class="relative overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0B]/95 shadow-2xl shadow-black/50"
+                            class="premium-panel gallery-panel relative overflow-hidden"
                         >
+                            <div class="shine-line"></div>
+
                             <div
                                 class="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5"
                             >
                                 <div>
-                                    <p
-                                        class="text-[10px] font-black uppercase tracking-[0.28em] text-zinc-500"
-                                    >
-                                        Product Gallery
-                                    </p>
+                                    <p class="micro-label">Product Gallery</p>
                                     <p class="mt-1 text-xs text-zinc-500">
-                                        Actual photos · Swipe on mobile · Tap to
-                                        zoom
+                                        Swipe photos · tap to zoom
                                     </p>
                                 </div>
 
                                 <div
                                     v-if="images.length"
-                                    class="shrink-0 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-300"
+                                    class="shrink-0 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-300"
                                 >
                                     {{ selectedImageIndex + 1 }} /
                                     {{ images.length }}
@@ -555,7 +640,7 @@ const goToInquiry = () => {
                             </div>
 
                             <div
-                                class="relative flex h-[340px] touch-pan-y select-none items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_42%)] sm:h-[500px] lg:h-[650px]"
+                                class="gallery-stage relative flex h-[350px] touch-pan-y select-none items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08),transparent_44%)] sm:h-[510px] lg:h-auto lg:min-h-0"
                                 @touchstart.passive="handleTouchStart"
                                 @touchend.passive="handleTouchEnd"
                             >
@@ -582,29 +667,24 @@ const goToInquiry = () => {
                                     <div
                                         class="flex flex-col items-center text-center"
                                     >
-                                        <div
-                                            class="flex h-28 w-28 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04]"
-                                        >
+                                        <div class="mn-placeholder">
                                             <img
                                                 src="/images/montre-nova-logo.png"
                                                 alt="Montre Nova"
                                                 class="h-20 w-20 object-contain opacity-70"
                                             />
                                         </div>
-                                        <p
-                                            class="mt-4 text-[10px] font-black uppercase tracking-[0.28em] text-zinc-500"
-                                        >
+                                        <p class="mt-4 micro-label">
                                             Montre Nova
                                         </p>
                                     </div>
                                 </div>
 
-                                <!-- IMAGE BADGES -->
                                 <div
                                     class="pointer-events-none absolute left-4 top-4 z-10 flex max-w-[70%] flex-wrap gap-2"
                                 >
                                     <span
-                                        class="rounded-md border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] backdrop-blur"
+                                        class="rounded-lg border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] backdrop-blur"
                                         :class="statusClass"
                                     >
                                         {{ statusLabel }}
@@ -612,23 +692,15 @@ const goToInquiry = () => {
 
                                     <span
                                         v-if="hasDiscount"
-                                        class="rounded-md border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-violet-300 backdrop-blur"
+                                        class="rounded-lg border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-violet-300 backdrop-blur"
                                     >
                                         Below SRP
                                     </span>
                                 </div>
 
                                 <div
-                                    v-if="selectedImage"
-                                    class="pointer-events-none absolute right-4 top-4 z-10 hidden rounded-md border border-white/10 bg-black/55 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-300 backdrop-blur sm:block"
-                                >
-                                    Tap to zoom
-                                </div>
-
-                                <!-- IMAGE INDICATOR -->
-                                <div
                                     v-if="hasMultipleImages"
-                                    class="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-lg border border-white/10 bg-black/70 px-3 py-2 backdrop-blur"
+                                    class="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 rounded-xl border border-white/10 bg-black/70 px-3 py-2 backdrop-blur"
                                 >
                                     <button
                                         v-for="(_, index) in images"
@@ -644,11 +716,10 @@ const goToInquiry = () => {
                                     ></button>
                                 </div>
 
-                                <!-- ARROWS -->
                                 <button
                                     v-if="hasMultipleImages"
                                     type="button"
-                                    class="absolute left-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg border border-white/10 bg-black/60 text-2xl font-semibold text-white backdrop-blur transition hover:bg-white hover:text-black sm:left-5 sm:h-11 sm:w-11"
+                                    class="gallery-arrow left-3 sm:left-5"
                                     aria-label="Previous image"
                                     @click.stop="previousImage"
                                 >
@@ -658,7 +729,7 @@ const goToInquiry = () => {
                                 <button
                                     v-if="hasMultipleImages"
                                     type="button"
-                                    class="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg border border-white/10 bg-black/60 text-2xl font-semibold text-white backdrop-blur transition hover:bg-white hover:text-black sm:right-5 sm:h-11 sm:w-11"
+                                    class="gallery-arrow right-3 sm:right-5"
                                     aria-label="Next image"
                                     @click.stop="nextImage"
                                 >
@@ -666,19 +737,18 @@ const goToInquiry = () => {
                                 </button>
                             </div>
 
-                            <!-- THUMBNAILS -->
                             <div
-                                class="border-t border-white/10 bg-[#080808]/80 p-3 sm:p-4"
+                                v-if="hasMultipleImages"
+                                class="border-t border-white/10 bg-[#080808]/80 p-3 lg:p-3"
                             >
                                 <div
-                                    v-if="hasMultipleImages"
                                     class="thin-scrollbar flex gap-2 overflow-x-auto pb-1"
                                 >
                                     <button
                                         v-for="(image, index) in images"
                                         :key="image.id || index"
                                         type="button"
-                                        class="h-16 w-16 shrink-0 overflow-hidden rounded-lg border bg-[#050505] p-1 transition sm:h-20 sm:w-20"
+                                        class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-[#050505] p-1 transition sm:h-20 sm:w-20 lg:h-[4.5rem] lg:w-[4.5rem]"
                                         :class="
                                             selectedImageIndex === index
                                                 ? 'border-white bg-white/[0.06]'
@@ -693,36 +763,31 @@ const goToInquiry = () => {
                                                 image.hd_url
                                             "
                                             alt=""
-                                            class="h-full w-full rounded-md object-cover"
+                                            class="h-full w-full rounded-lg object-cover"
                                             loading="lazy"
                                         />
                                     </button>
-                                </div>
-
-                                <div
-                                    v-if="images.length"
-                                    class="mt-3 flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500"
-                                >
-                                    <span>Actual HD Photos</span>
-                                    <span class="hidden sm:inline"
-                                        >Swipe · Tap · Zoom</span
-                                    >
                                 </div>
                             </div>
                         </div>
                     </section>
 
-                    <!-- PRODUCT DETAILS -->
-                    <section class="space-y-4">
+                    <!-- PRODUCT INFO -->
+                    <section
+                        class="fade-up lg:h-full lg:[animation-delay:80ms]"
+                    >
                         <div
-                            class="overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0B]/95 shadow-2xl shadow-black/40"
+                            class="premium-panel product-panel flex min-h-0 flex-col overflow-hidden"
                         >
+                            <div class="shine-line"></div>
+
+                            <!-- MAIN PRODUCT DETAILS -->
                             <div
-                                class="border-b border-white/10 bg-white/[0.025] p-5 sm:p-6 lg:p-7"
+                                class="border-b border-white/10 bg-white/[0.025] p-5 sm:p-6 lg:p-6"
                             >
                                 <div class="flex flex-wrap items-center gap-2">
                                     <span
-                                        class="rounded-md border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em]"
+                                        class="rounded-lg border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em]"
                                         :class="statusClass"
                                     >
                                         {{ statusLabel }}
@@ -730,69 +795,38 @@ const goToInquiry = () => {
 
                                     <span
                                         v-if="watch.category"
-                                        class="rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-400"
+                                        class="soft-chip"
                                     >
                                         {{ watch.category }}
                                     </span>
 
                                     <span
                                         v-if="watch.condition"
-                                        class="rounded-md border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-400"
+                                        class="soft-chip"
                                     >
                                         {{ watch.condition }}
                                     </span>
                                 </div>
 
-                                <p
-                                    class="mt-7 text-[11px] font-black uppercase tracking-[0.34em] text-zinc-500"
-                                >
+                                <p class="mt-7 micro-label">
                                     {{ watch.brand || "Montre Nova" }}
                                 </p>
 
                                 <h1
-                                    class="mt-3 text-4xl font-black leading-[0.95] tracking-[-0.065em] text-white sm:text-5xl xl:text-6xl"
+                                    class="mt-3 text-4xl font-black leading-[0.95] tracking-[-0.065em] text-white sm:text-5xl xl:text-[3.35rem]"
                                 >
                                     {{ watch.model_name }}
                                 </h1>
-
-                                <div
-                                    class="mt-4 flex flex-wrap items-center gap-3 text-sm text-zinc-500"
-                                >
-                                    <p v-if="watch.reference_number">
-                                        Ref.
-                                        <span
-                                            class="font-semibold text-zinc-300"
-                                            >{{ watch.reference_number }}</span
-                                        >
-                                    </p>
-
-                                    <span
-                                        v-if="
-                                            watch.reference_number &&
-                                            watch.movement
-                                        "
-                                        class="text-zinc-700"
-                                        >•</span
-                                    >
-
-                                    <p v-if="watch.movement">
-                                        {{ watch.movement }}
-                                    </p>
-                                </div>
                             </div>
 
-                            <!-- PRICE / PRIMARY CTA -->
-                            <div class="p-5 sm:p-6 lg:p-7">
-                                <div
-                                    class="rounded-xl border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025))] p-5 shadow-inner shadow-white/[0.02]"
-                                >
+                            <!-- PRICE + CTA -->
+                            <div class="p-5 sm:p-6 lg:p-6">
+                                <div class="price-panel">
                                     <div
                                         class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between"
                                     >
                                         <div>
-                                            <p
-                                                class="text-[10px] font-black uppercase tracking-[0.28em] text-zinc-500"
-                                            >
+                                            <p class="micro-label">
                                                 Asking Price
                                             </p>
 
@@ -800,7 +834,7 @@ const goToInquiry = () => {
                                                 class="mt-3 flex flex-wrap items-end gap-3"
                                             >
                                                 <p
-                                                    class="text-4xl font-black tracking-[-0.065em] text-white sm:text-5xl"
+                                                    class="text-4xl font-black tracking-[-0.065em] text-white sm:text-[2.85rem]"
                                                 >
                                                     {{ peso(finalPrice) }}
                                                 </p>
@@ -816,485 +850,264 @@ const goToInquiry = () => {
 
                                         <span
                                             v-if="hasDiscount"
-                                            class="w-fit rounded-md border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-violet-300"
+                                            class="w-fit rounded-lg border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-violet-300"
                                         >
                                             Below SRP
                                         </span>
                                     </div>
-
-                                    <p
-                                        class="mt-3 text-xs leading-5 text-zinc-500"
-                                    >
-                                        Your editable inquiry message will be
-                                        copied before opening Messenger.
-                                    </p>
                                 </div>
 
-                                <div class="mt-5 max-w-2xl">
-                                    <p
-                                        class="text-sm leading-7 text-zinc-400 sm:text-base"
-                                    >
-                                        {{ productDescription }}
-                                    </p>
+                                <p
+                                    v-if="productDescription"
+                                    class="mt-5 text-sm leading-7 text-zinc-400 sm:text-base"
+                                >
+                                    {{ productDescription }}
+                                </p>
 
-                                    <div class="mt-5 flex justify-end">
-                                        <button
-                                            type="button"
-                                            class="group inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-black shadow-lg shadow-white/10 transition duration-300 hover:-translate-y-0.5 hover:bg-zinc-200 hover:shadow-white/20 active:scale-[0.98] sm:px-6"
-                                            @click="openMessengerInquiry()"
+                                <button
+                                    type="button"
+                                    class="primary-action mt-5 w-full"
+                                    @click="openMessengerInquiry()"
+                                >
+                                    Inquire on Messenger
+                                    <span aria-hidden="true">→</span>
+                                </button>
+                            </div>
+
+                            <!-- INLINE SPECS -->
+                            <div
+                                v-if="compactSpecs.length"
+                                class="inline-specs border-t border-white/10 bg-black/20 p-4 sm:p-5 lg:p-5"
+                            >
+                                <div class="inline-spec-head">
+                                    <div>
+                                        <p class="micro-label">
+                                            Specifications
+                                        </p>
+
+                                        <h2
+                                            class="mt-1.5 text-base font-black tracking-[-0.03em] text-white sm:text-lg"
                                         >
-                                            Ask via Messenger
-                                            <span
-                                                class="transition duration-300 group-hover:translate-x-1"
-                                                aria-hidden="true"
-                                            >
-                                                →
-                                            </span>
-                                        </button>
+                                            Watch details
+                                        </h2>
+                                    </div>
+
+                                    <Link
+                                        href="/warranty-check"
+                                        class="spec-warranty-link"
+                                    >
+                                        Warranty
+                                    </Link>
+                                </div>
+
+                                <div class="inline-spec-grid">
+                                    <div
+                                        v-for="spec in compactSpecs"
+                                        :key="spec.label"
+                                        class="inline-spec-row"
+                                    >
+                                        <span>{{
+                                            shortSpecLabel(spec.label)
+                                        }}</span>
+
+                                        <p>{{ spec.value }}</p>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- QUICK SPECS -->
-                        <div
-                            class="grid grid-cols-2 gap-3 rounded-xl border border-white/10 bg-[#0A0A0B]/95 p-3 sm:p-4"
-                        >
                             <div
-                                v-for="item in quickSpecs"
-                                :key="item.label"
-                                class="rounded-lg border border-white/10 bg-white/[0.03] p-4"
+                                v-else
+                                class="inline-specs border-t border-white/10 bg-black/20 p-4 sm:p-5 lg:p-5"
                             >
-                                <p
-                                    class="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500"
-                                >
-                                    {{ item.label }}
-                                </p>
-                                <p
-                                    class="mt-2 truncate text-xs font-bold text-white sm:text-sm"
-                                >
-                                    {{ item.value }}
-                                </p>
+                                <div class="inline-spec-empty">
+                                    Full specifications available upon request.
+                                </div>
                             </div>
                         </div>
                     </section>
                 </div>
             </section>
 
-            <!-- DETAILS -->
+            <!-- AVAILABLE WATCHES CAROUSEL -->
             <section
-                id="details"
-                class="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8"
+                v-if="carouselWatches.length"
+                class="mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8"
             >
-                <div
-                    class="overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0B]/95 shadow-2xl shadow-black/30"
-                >
-                    <div class="border-b border-white/10 p-3 sm:p-4">
-                        <div
-                            class="thin-scrollbar flex gap-2 overflow-x-auto rounded-lg border border-white/10 bg-[#050505] p-1"
-                        >
-                            <button
-                                v-for="tab in tabs"
-                                :key="tab.key"
-                                type="button"
-                                class="min-w-28 flex-1 rounded-md px-4 py-3 text-xs font-black uppercase tracking-[0.16em] transition"
-                                :class="
-                                    activeTab === tab.key
-                                        ? 'bg-white text-black shadow-lg shadow-white/10'
-                                        : 'text-zinc-500 hover:bg-white/[0.06] hover:text-white'
-                                "
-                                @click="activeTab = tab.key"
-                            >
-                                {{ tab.label }}
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- OVERVIEW TAB -->
-                    <div
-                        v-if="activeTab === 'overview'"
-                        class="p-5 sm:p-6 lg:p-7"
-                    >
-                        <div class="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-                            <div
-                                class="rounded-xl border border-white/10 bg-white/[0.03] p-5 sm:p-6"
-                            >
-                                <p
-                                    class="text-[11px] font-black uppercase tracking-[0.32em] text-zinc-500"
-                                >
-                                    Overview
-                                </p>
-
-                                <h2
-                                    class="mt-3 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
-                                >
-                                    About this timepiece
-                                </h2>
-
-                                <p class="mt-4 text-sm leading-7 text-zinc-400">
-                                    {{ productDescription }}
-                                </p>
-                            </div>
-
-                            <div
-                                class="rounded-xl border border-white/10 bg-white/[0.03] p-5 sm:p-6"
-                            >
-                                <p
-                                    class="text-[11px] font-black uppercase tracking-[0.32em] text-zinc-500"
-                                >
-                                    Deal Checklist
-                                </p>
-
-                                <div class="mt-5 divide-y divide-white/10">
-                                    <div
-                                        class="flex items-center justify-between gap-4 py-3 first:pt-0"
-                                    >
-                                        <span class="text-sm text-zinc-500"
-                                            >Box / Papers</span
-                                        >
-                                        <span
-                                            class="max-w-[58%] text-right text-sm font-bold text-white"
-                                        >
-                                            {{
-                                                watch.box_papers ||
-                                                "Upon request"
-                                            }}
-                                        </span>
-                                    </div>
-
-                                    <div
-                                        class="flex items-center justify-between gap-4 py-3"
-                                    >
-                                        <span class="text-sm text-zinc-500"
-                                            >Warranty</span
-                                        >
-                                        <span
-                                            class="max-w-[58%] text-right text-sm font-bold text-white"
-                                        >
-                                            {{
-                                                watch.warranty_type ||
-                                                "Montre Card"
-                                            }}
-                                        </span>
-                                    </div>
-
-                                    <div
-                                        class="flex items-center justify-between gap-4 py-3 last:pb-0"
-                                    >
-                                        <span class="text-sm text-zinc-500"
-                                            >Availability</span
-                                        >
-                                        <span
-                                            class="max-w-[58%] text-right text-sm font-bold text-emerald-300"
-                                        >
-                                            {{ statusLabel }}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- SPECS TAB -->
-                    <div v-if="activeTab === 'specs'" class="p-5 sm:p-6 lg:p-7">
-                        <div
-                            class="flex flex-col justify-between gap-2 sm:flex-row sm:items-end"
-                        >
-                            <div>
-                                <p
-                                    class="text-[11px] font-black uppercase tracking-[0.32em] text-zinc-500"
-                                >
-                                    Full Specifications
-                                </p>
-
-                                <h2
-                                    class="mt-3 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
-                                >
-                                    Watch details
-                                </h2>
-                            </div>
-
-                            <p class="max-w-xl text-sm leading-6 text-zinc-500">
-                                Grouped for easier comparison before
-                                reservation.
-                            </p>
-                        </div>
-
-                        <div
-                            v-if="availableSpecGroups.length"
-                            class="mt-6 grid gap-4 lg:grid-cols-2"
-                        >
-                            <div
-                                v-for="group in availableSpecGroups"
-                                :key="group.title"
-                                class="rounded-xl border border-white/10 bg-white/[0.03] p-5"
-                            >
-                                <h3
-                                    class="text-sm font-black uppercase tracking-[0.14em] text-white"
-                                >
-                                    {{ group.title }}
-                                </h3>
-
-                                <div class="mt-4 divide-y divide-white/10">
-                                    <div
-                                        v-for="spec in group.items"
-                                        :key="spec.label"
-                                        class="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0"
-                                    >
-                                        <p
-                                            class="text-xs font-bold uppercase tracking-[0.14em] text-zinc-500"
-                                        >
-                                            {{ spec.label }}
-                                        </p>
-
-                                        <p
-                                            class="max-w-[60%] text-right text-sm font-bold text-white"
-                                        >
-                                            {{ spec.value }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div
-                            v-else
-                            class="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-6 text-sm text-zinc-500"
-                        >
-                            Full specifications available upon request.
-                        </div>
-                    </div>
-
-                    <!-- WARRANTY TAB -->
-                    <div
-                        v-if="activeTab === 'warranty'"
-                        class="p-5 sm:p-6 lg:p-7"
-                    >
-                        <p
-                            class="text-[11px] font-black uppercase tracking-[0.32em] text-zinc-500"
-                        >
-                            Warranty
-                        </p>
-
-                        <h2
-                            class="mt-3 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
-                        >
-                            Montre Card Warranty
-                        </h2>
-
-                        <div
-                            class="mt-6 grid gap-3 text-sm leading-6 text-zinc-400 lg:grid-cols-3"
-                        >
-                            <div
-                                class="rounded-xl border border-white/10 bg-white/[0.03] p-5"
-                            >
-                                <p class="font-black text-white">
-                                    1 Year Coverage
-                                </p>
-                                <p class="mt-2">
-                                    The Montre Card warranty coverage is valid
-                                    for one year from the date of purchase.
-                                </p>
-                            </div>
-
-                            <div
-                                class="rounded-xl border border-white/10 bg-white/[0.03] p-5"
-                            >
-                                <p class="font-black text-white">
-                                    Movement Defects
-                                </p>
-                                <p class="mt-2">
-                                    Covers movement and internal mechanism
-                                    defects, including abnormal timekeeping,
-                                    significant gain or loss of time, and
-                                    movement stoppage.
-                                </p>
-                            </div>
-
-                            <div
-                                class="rounded-xl border border-white/10 bg-white/[0.03] p-5"
-                            >
-                                <p class="font-black text-white">Not Covered</p>
-                                <p class="mt-2">
-                                    Excludes scratches, dents, broken glass,
-                                    water damage, misuse, unauthorized repairs,
-                                    battery replacement for quartz models, and
-                                    cosmetic damage.
-                                </p>
-                            </div>
-                        </div>
-
-                        <Link
-                            href="/warranty-check"
-                            class="mt-6 inline-flex rounded-lg border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
-                        >
-                            Check Existing Warranty
-                        </Link>
-                    </div>
-
-                    <!-- INQUIRY TAB -->
-                    <div
-                        v-if="activeTab === 'inquiry'"
-                        class="p-5 sm:p-6 lg:p-7"
-                    >
-                        <div class="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-                            <div>
-                                <p
-                                    class="text-[11px] font-black uppercase tracking-[0.32em] text-zinc-500"
-                                >
-                                    Inquiry
-                                </p>
-
-                                <h2
-                                    class="mt-3 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
-                                >
-                                    Ready to reserve this watch?
-                                </h2>
-
-                                <p
-                                    class="mt-3 max-w-2xl text-sm leading-6 text-zinc-400"
-                                >
-                                    Edit the message preview if needed, then
-                                    copy it or open your preferred channel.
-                                    Messenger is recommended for the fastest
-                                    response.
-                                </p>
-
-                                <div class="mt-6 grid gap-3">
-                                    <button
-                                        type="button"
-                                        class="rounded-lg bg-white px-5 py-4 text-sm font-black text-black transition hover:bg-zinc-200"
-                                        @click="openMessengerInquiry"
-                                    >
-                                        Ask via Messenger
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        class="rounded-lg border border-white/10 bg-white/[0.03] px-5 py-4 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
-                                        @click="copyInquiryMessage"
-                                    >
-                                        {{
-                                            inquiryCopied
-                                                ? "Inquiry Message Copied"
-                                                : "Copy Inquiry Message"
-                                        }}
-                                    </button>
-
-                                    <button
-                                        v-for="link in contactLinks"
-                                        :key="link.label"
-                                        type="button"
-                                        class="group rounded-xl border p-4 text-left transition"
-                                        :class="
-                                            link.primary
-                                                ? 'border-emerald-400/20 bg-emerald-400/10 hover:border-emerald-400/40'
-                                                : 'border-white/10 bg-[#050505] hover:border-white/30'
-                                        "
-                                        @click="openInquiryChannel(link.href)"
-                                    >
-                                        <div
-                                            class="flex items-center justify-between gap-4"
-                                        >
-                                            <p
-                                                class="text-sm font-bold text-white"
-                                            >
-                                                {{ link.label }}
-                                            </p>
-
-                                            <span
-                                                class="text-zinc-500 transition group-hover:text-white"
-                                                >→</span
-                                            >
-                                        </div>
-
-                                        <p
-                                            class="mt-2 text-xs leading-5 text-zinc-500"
-                                        >
-                                            {{ link.description }}
-                                        </p>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div
-                                class="rounded-xl border border-white/10 bg-[#050505] p-5"
-                            >
-                                <div
-                                    class="flex flex-col justify-between gap-3 sm:flex-row sm:items-center"
-                                >
-                                    <div>
-                                        <p
-                                            class="text-[11px] font-black uppercase tracking-[0.24em] text-zinc-500"
-                                        >
-                                            Message Preview
-                                        </p>
-
-                                        <p
-                                            class="mt-1 text-xs leading-5 text-zinc-500"
-                                        >
-                                            Editable before copying or sending.
-                                        </p>
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-bold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white"
-                                        @click="resetInquiryMessage"
-                                    >
-                                        Reset Message
-                                    </button>
-                                </div>
-
-                                <textarea
-                                    v-model="inquiryMessage"
-                                    rows="10"
-                                    class="mt-4 w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm leading-7 text-zinc-300 outline-none transition placeholder:text-zinc-600 focus:border-white/30 focus:bg-white/[0.05]"
-                                ></textarea>
-
-                                <p class="mt-4 text-xs leading-5 text-zinc-500">
-                                    The exact message above will be copied
-                                    before opening Messenger, Viber, or
-                                    Instagram.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- MORE CTA -->
-            <section class="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
-                <div
-                    class="relative overflow-hidden rounded-xl border border-white/10 bg-[#0A0A0B]/95 p-5 shadow-2xl shadow-black/30 sm:p-6"
-                >
-                    <div
-                        class="absolute right-0 top-0 h-40 w-72 bg-white/[0.035] blur-3xl"
-                    ></div>
+                <div class="carousel-shell fade-up">
+                    <div class="shine-line"></div>
 
                     <div
-                        class="relative flex flex-col justify-between gap-4 sm:flex-row sm:items-center"
+                        class="flex flex-col justify-between gap-4 border-b border-white/10 p-5 sm:p-6 lg:flex-row lg:items-end"
                     >
                         <div>
-                            <p
-                                class="text-[11px] font-black uppercase tracking-[0.28em] text-zinc-500"
-                            >
-                                Still browsing?
-                            </p>
+                            <p class="micro-label">More Available Watches</p>
 
                             <h2
-                                class="mt-2 text-xl font-black tracking-[-0.03em] text-white"
+                                class="mt-3 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
                             >
-                                View more curated Montre Nova watches
+                                Continue browsing
                             </h2>
+
+                            <p
+                                class="mt-3 max-w-xl text-sm leading-6 text-zinc-500"
+                            >
+                                Other available pieces you can tap to view next.
+                            </p>
                         </div>
 
-                        <Link
-                            :href="route('welcome') + '#collection'"
-                            class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
+                        <div
+                            class="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500"
                         >
-                            Back to Collection
-                        </Link>
+                            <span
+                                class="h-1.5 w-1.5 rounded-full bg-white/70"
+                            ></span>
+                            Swipe / Scroll
+                        </div>
+                    </div>
+
+                    <div class="relative">
+                        <div
+                            class="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-16 bg-gradient-to-r from-[#0A0A0B] to-transparent sm:block"
+                        ></div>
+
+                        <div
+                            class="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-16 bg-gradient-to-l from-[#0A0A0B] to-transparent sm:block"
+                        ></div>
+
+                        <div class="carousel-row thin-scrollbar">
+                            <Link
+                                v-for="watchItem in carouselWatches"
+                                :key="watchItem.id"
+                                :href="
+                                    route('public.watches.show', watchItem.id)
+                                "
+                                class="carousel-card group"
+                            >
+                                <div
+                                    class="relative aspect-[4/5] overflow-hidden"
+                                >
+                                    <img
+                                        v-if="watchCardImage(watchItem)"
+                                        :src="watchCardImage(watchItem)"
+                                        :alt="`${watchItem.brand} ${watchItem.model_name}`"
+                                        class="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.055]"
+                                        loading="lazy"
+                                    />
+
+                                    <div
+                                        v-else
+                                        class="absolute inset-0 flex items-center justify-center bg-[#050505]"
+                                    >
+                                        <div class="text-center">
+                                            <div
+                                                class="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]"
+                                            >
+                                                <span
+                                                    class="text-2xl font-black tracking-[-0.1em] text-white"
+                                                >
+                                                    MN
+                                                </span>
+                                            </div>
+
+                                            <p class="mt-3 micro-label">
+                                                Montre Nova
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="absolute inset-0 bg-gradient-to-t from-black/92 via-black/28 to-black/10"
+                                    ></div>
+
+                                    <div class="carousel-top-row">
+                                        <span class="carousel-meta-pill">
+                                            Available
+                                        </span>
+
+                                        <span
+                                            v-if="itemHasDiscount(watchItem)"
+                                            class="carousel-meta-pill border-violet-400/20 bg-violet-400/10 text-violet-200"
+                                        >
+                                            Below SRP
+                                        </span>
+                                    </div>
+
+                                    <div
+                                        class="absolute inset-x-0 bottom-0 z-10 p-5"
+                                    >
+                                        <p
+                                            class="truncate text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400"
+                                        >
+                                            {{
+                                                watchItem.brand || "Montre Nova"
+                                            }}
+                                        </p>
+
+                                        <h3
+                                            class="mt-2 line-clamp-2 text-xl font-black leading-tight tracking-[-0.03em] text-white"
+                                        >
+                                            {{ watchItem.model_name }}
+                                        </h3>
+
+                                        <p
+                                            class="mt-2 truncate text-xs text-zinc-400"
+                                        >
+                                            Ref.
+                                            {{
+                                                watchItem.reference_number ||
+                                                "No reference"
+                                            }}
+                                        </p>
+
+                                        <div class="carousel-footer">
+                                            <div class="min-w-0">
+                                                <p
+                                                    class="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600"
+                                                >
+                                                    Price
+                                                </p>
+
+                                                <p
+                                                    class="mt-1 truncate text-lg font-black text-white"
+                                                >
+                                                    {{
+                                                        peso(
+                                                            itemFinalPrice(
+                                                                watchItem,
+                                                            ),
+                                                        )
+                                                    }}
+                                                </p>
+
+                                                <p
+                                                    v-if="
+                                                        itemHasDiscount(
+                                                            watchItem,
+                                                        )
+                                                    "
+                                                    class="text-[11px] text-zinc-500 line-through"
+                                                >
+                                                    {{
+                                                        peso(
+                                                            itemOriginalPrice(
+                                                                watchItem,
+                                                            ),
+                                                        )
+                                                    }}
+                                                </p>
+                                            </div>
+
+                                            <span class="view-chip">
+                                                View
+                                                <span aria-hidden="true"
+                                                    >→</span
+                                                >
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -1319,15 +1132,15 @@ const goToInquiry = () => {
 
                 <button
                     type="button"
-                    class="inline-flex items-center justify-center rounded-lg bg-white px-4 py-3 text-sm font-black text-black"
+                    class="inline-flex items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-black text-black"
                     @click="openMessengerInquiry"
                 >
-                    Ask
+                    Inquire
                 </button>
 
                 <button
                     type="button"
-                    class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white"
+                    class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white"
                     @click="copyLink"
                 >
                     {{ copied ? "Copied" : "Share" }}
@@ -1345,7 +1158,7 @@ const goToInquiry = () => {
             >
                 <button
                     type="button"
-                    class="absolute right-4 top-4 z-20 rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-sm font-bold text-white backdrop-blur transition hover:bg-white hover:text-black"
+                    class="absolute right-4 top-4 z-20 rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-bold text-white backdrop-blur transition hover:bg-white hover:text-black"
                     @click="closeImagePreview"
                 >
                     Close
@@ -1354,7 +1167,7 @@ const goToInquiry = () => {
                 <button
                     v-if="hasMultipleImages"
                     type="button"
-                    class="absolute left-4 top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-3xl text-white backdrop-blur transition hover:bg-white hover:text-black"
+                    class="absolute left-4 top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-3xl text-white backdrop-blur transition hover:bg-white hover:text-black"
                     @click.stop="previousImage"
                 >
                     ‹
@@ -1370,7 +1183,7 @@ const goToInquiry = () => {
                 <button
                     v-if="hasMultipleImages"
                     type="button"
-                    class="absolute right-4 top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-3xl text-white backdrop-blur transition hover:bg-white hover:text-black"
+                    class="absolute right-4 top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-xl border border-white/10 bg-white/10 text-3xl text-white backdrop-blur transition hover:bg-white hover:text-black"
                     @click.stop="nextImage"
                 >
                     ›
@@ -1378,7 +1191,7 @@ const goToInquiry = () => {
 
                 <div
                     v-if="images.length"
-                    class="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-white/10 bg-black/70 px-4 py-2 text-xs font-bold text-white backdrop-blur"
+                    class="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-white/10 bg-black/70 px-4 py-2 text-xs font-bold text-white backdrop-blur"
                 >
                     {{ selectedImageIndex + 1 }} / {{ images.length }}
                 </div>
@@ -1408,5 +1221,464 @@ const goToInquiry = () => {
 
 .thin-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgb(255 255 255 / 0.35);
+}
+
+.premium-panel {
+    position: relative;
+    border-radius: 1.35rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(10 10 11 / 0.95);
+    box-shadow: 0 28px 90px rgb(0 0 0 / 0.42);
+}
+
+.shine-line {
+    position: absolute;
+    top: 0;
+    right: 2rem;
+    left: 2rem;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgb(255 255 255 / 0.45),
+        transparent
+    );
+}
+
+.micro-label {
+    font-size: 0.62rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.28em;
+    color: rgb(113 113 122);
+}
+
+.soft-chip {
+    border-radius: 0.65rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(255 255 255 / 0.04);
+    padding: 0.375rem 0.75rem;
+    font-size: 0.625rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgb(161 161 170);
+}
+
+.mn-placeholder {
+    display: flex;
+    height: 7rem;
+    width: 7rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(255 255 255 / 0.04);
+}
+
+.gallery-arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 20;
+    display: flex;
+    height: 2.75rem;
+    width: 2.75rem;
+    transform: translateY(-50%);
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.85rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(0 0 0 / 0.6);
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: white;
+    backdrop-filter: blur(16px);
+    transition:
+        background-color 260ms ease,
+        color 260ms ease,
+        transform 260ms ease,
+        border-color 260ms ease;
+}
+
+.gallery-arrow:hover {
+    transform: translateY(-50%) scale(1.04);
+    border-color: rgb(255 255 255 / 0.25);
+    background: white;
+    color: black;
+}
+
+.price-panel {
+    border-radius: 1.1rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: linear-gradient(
+        135deg,
+        rgb(255 255 255 / 0.08),
+        rgb(255 255 255 / 0.025)
+    );
+    padding: 1rem;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.035);
+}
+
+.primary-action,
+.secondary-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0.95rem;
+    font-size: 0.75rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    transition:
+        transform 260ms ease,
+        background-color 260ms ease,
+        border-color 260ms ease,
+        color 260ms ease,
+        box-shadow 260ms ease;
+}
+
+.primary-action {
+    background: white;
+    padding: 1rem 1.25rem;
+    color: black;
+    box-shadow: 0 16px 45px rgb(255 255 255 / 0.1);
+}
+
+.primary-action:hover {
+    transform: translateY(-2px);
+    background: rgb(228 228 231);
+    box-shadow: 0 22px 60px rgb(255 255 255 / 0.16);
+}
+
+.secondary-action {
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(255 255 255 / 0.04);
+    padding: 1rem 1.25rem;
+    color: rgb(228 228 231);
+}
+
+.secondary-action:hover {
+    transform: translateY(-2px);
+    border-color: rgb(255 255 255 / 0.3);
+    background: rgb(255 255 255 / 0.075);
+    color: white;
+}
+
+.primary-action:active,
+.secondary-action:active {
+    transform: scale(0.985);
+}
+
+/* INLINE SPECS */
+.inline-specs {
+    flex: 1 1 auto;
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+}
+
+.inline-spec-head {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.spec-warranty-link {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(255 255 255 / 0.04);
+    padding: 0.45rem 0.75rem;
+    font-size: 0.58rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: rgb(113 113 122);
+    transition:
+        border-color 240ms ease,
+        background-color 240ms ease,
+        color 240ms ease;
+}
+
+.spec-warranty-link:hover {
+    border-color: rgb(255 255 255 / 0.3);
+    background: rgb(255 255 255 / 0.075);
+    color: white;
+}
+
+.inline-spec-grid {
+    margin-top: 0.9rem;
+    display: grid;
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(3.05rem, 1fr);
+    gap: 0.55rem;
+}
+
+.inline-spec-row {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    justify-content: center;
+    border-radius: 0.8rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background: linear-gradient(
+        135deg,
+        rgb(255 255 255 / 0.045),
+        rgb(255 255 255 / 0.02)
+    );
+    padding: 0.62rem 0.72rem;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03);
+    transition:
+        transform 240ms ease,
+        border-color 240ms ease,
+        background-color 240ms ease;
+}
+
+.inline-spec-row:hover {
+    transform: translateY(-1px);
+    border-color: rgb(255 255 255 / 0.18);
+    background: rgb(255 255 255 / 0.055);
+}
+
+.inline-spec-row span {
+    font-size: 0.55rem;
+    font-weight: 900;
+    line-height: 1.15;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: rgb(113 113 122);
+}
+
+.inline-spec-row p {
+    margin-top: 0.28rem;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 0.8rem;
+    font-weight: 850;
+    line-height: 1.22;
+    color: rgb(244 244 245);
+}
+
+.inline-spec-empty {
+    border-radius: 0.95rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(255 255 255 / 0.03);
+    padding: 1rem;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: rgb(113 113 122);
+}
+
+/* CAROUSEL */
+.carousel-shell {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.5rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: linear-gradient(
+        180deg,
+        rgb(10 10 11 / 0.98),
+        rgb(5 5 5 / 0.96)
+    );
+    box-shadow: 0 28px 90px rgb(0 0 0 / 0.4);
+}
+
+.carousel-row {
+    display: flex;
+    gap: 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding: 1.25rem;
+    padding-bottom: 1.5rem;
+}
+
+.carousel-card {
+    position: relative;
+    min-width: 74vw;
+    max-width: 74vw;
+    scroll-snap-align: start;
+    overflow: hidden;
+    border-radius: 1.35rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: black;
+    box-shadow: 0 25px 80px rgb(0 0 0 / 0.35);
+    transition:
+        transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
+        border-color 320ms ease,
+        box-shadow 320ms ease;
+}
+
+.carousel-card::before {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+    content: "";
+    border-radius: inherit;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16);
+}
+
+.carousel-card:hover {
+    transform: translateY(-4px);
+    border-color: rgb(255 255 255 / 0.25);
+    box-shadow: 0 35px 110px rgb(0 0 0 / 0.62);
+}
+
+.carousel-top-row {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    z-index: 10;
+    display: flex;
+    max-width: calc(100% - 2rem);
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.carousel-meta-pill {
+    border-radius: 0.7rem;
+    border: 1px solid rgb(52 211 153 / 0.2);
+    background: rgb(52 211 153 / 0.1);
+    padding: 0.38rem 0.7rem;
+    font-size: 0.56rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: rgb(167 243 208);
+    backdrop-filter: blur(16px);
+}
+
+.carousel-footer {
+    margin-top: 1rem;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    border-top: 1px solid rgb(255 255 255 / 0.1);
+    padding-top: 1rem;
+}
+
+.view-chip {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 9999px;
+    background: white;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.68rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: black;
+    box-shadow: 0 14px 34px rgb(255 255 255 / 0.12);
+    transition: transform 260ms ease;
+}
+
+.carousel-card:hover .view-chip {
+    transform: translateX(3px);
+}
+
+.fade-up {
+    animation: fadeUp 620ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* DESKTOP LAYOUT */
+@media (min-width: 1024px) {
+    .product-hero-grid {
+        align-items: stretch;
+    }
+
+    .product-hero-grid > section {
+        display: flex;
+        min-height: 0;
+    }
+
+    .gallery-panel,
+    .product-panel {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        flex-direction: column;
+    }
+
+    .product-panel {
+        overflow: hidden;
+    }
+
+    .gallery-stage {
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 0;
+    }
+
+    .gallery-stage img {
+        max-height: 100%;
+    }
+
+    .inline-specs {
+        padding-bottom: 1.15rem;
+    }
+
+    .inline-spec-grid {
+        grid-auto-rows: minmax(2.85rem, 1fr);
+    }
+
+    .carousel-row {
+        padding: 1.5rem;
+    }
+
+    .carousel-card {
+        min-width: 300px;
+        max-width: 300px;
+    }
+}
+
+@media (min-width: 640px) {
+    .carousel-card {
+        min-width: 285px;
+        max-width: 285px;
+    }
+}
+
+@media (max-width: 480px) {
+    .inline-spec-grid {
+        grid-template-columns: 1fr;
+        grid-auto-rows: auto;
+    }
+}
+
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.001ms !important;
+    }
 }
 </style>

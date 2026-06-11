@@ -90,6 +90,80 @@ const profitBadgeClass = (value) => {
         : "border-red-500/20 bg-red-500/10 text-red-300";
 };
 
+const numberValue = (value) => {
+    const amount = Number(value ?? 0);
+
+    return Number.isFinite(amount) ? amount : 0;
+};
+
+const saleSoldPrice = (sale) => {
+    return numberValue(sale?.sold_price);
+};
+
+const saleCapitalPrice = (sale) => {
+    return numberValue(
+        sale?.capital_price ??
+            sale?.capital ??
+            sale?.capital_cost ??
+            sale?.total_capital,
+    );
+};
+
+const saleProfitAmount = (sale) => {
+    /*
+    |--------------------------------------------------------------------------
+    | Correct sold profit basis
+    |--------------------------------------------------------------------------
+    | A sold watch profit should use the actual amount collected:
+    | sold_price - capital_price.
+    |
+    | sale.profit is only used as fallback for older payloads that do not include
+    | capital_price yet.
+    */
+    if (
+        sale &&
+        Object.prototype.hasOwnProperty.call(sale, "sold_price") &&
+        (Object.prototype.hasOwnProperty.call(sale, "capital_price") ||
+            Object.prototype.hasOwnProperty.call(sale, "capital") ||
+            Object.prototype.hasOwnProperty.call(sale, "capital_cost") ||
+            Object.prototype.hasOwnProperty.call(sale, "total_capital"))
+    ) {
+        return saleSoldPrice(sale) - saleCapitalPrice(sale);
+    }
+
+    return numberValue(sale?.profit ?? sale?.gross_profit);
+};
+
+const unitSalesTotal = (unit) => {
+    return numberValue(unit?.sales_total ?? unit?.sold_price_total);
+};
+
+const unitCapitalTotal = (unit) => {
+    return numberValue(unit?.capital_total ?? unit?.total_capital);
+};
+
+const unitProfitTotal = (unit) => {
+    /*
+    |--------------------------------------------------------------------------
+    | Correct grouped profit basis
+    |--------------------------------------------------------------------------
+    | For top sold units, use the summed sold prices minus summed capital when
+    | the backend sends capital_total. profit_total remains a fallback only.
+    */
+    if (
+        unit &&
+        Object.prototype.hasOwnProperty.call(unit, "sales_total") &&
+        (Object.prototype.hasOwnProperty.call(unit, "capital_total") ||
+            Object.prototype.hasOwnProperty.call(unit, "total_capital"))
+    ) {
+        return unitSalesTotal(unit) - unitCapitalTotal(unit);
+    }
+
+    return numberValue(
+        unit?.profit_total ?? unit?.profit ?? unit?.gross_profit,
+    );
+};
+
 const applyMonthFilter = () => {
     router.get(
         route("admin.sales.index"),
@@ -508,7 +582,8 @@ const insightCards = computed(() => [
                     </h3>
 
                     <p class="mt-2 text-sm text-zinc-500">
-                        Net profit is sales minus capital cost and expenses.
+                        Net profit uses the actual sold price minus capital cost
+                        and expenses.
                     </p>
                 </div>
 
@@ -652,20 +727,20 @@ const insightCards = computed(() => [
                                 <div class="mn-mini-card">
                                     <p class="mn-mini-label">Sales</p>
                                     <p class="mn-mini-value">
-                                        {{ compactPeso(unit.sales_total) }}
+                                        {{ compactPeso(unitSalesTotal(unit)) }}
                                     </p>
                                     <p class="mt-1 text-xs text-zinc-600">
-                                        {{ peso(unit.sales_total) }}
+                                        {{ peso(unitSalesTotal(unit)) }}
                                     </p>
                                 </div>
 
                                 <div class="mn-mini-card">
                                     <p class="mn-mini-label">Profit</p>
                                     <p class="mn-mini-value text-emerald-300">
-                                        {{ compactPeso(unit.profit_total) }}
+                                        {{ compactPeso(unitProfitTotal(unit)) }}
                                     </p>
                                     <p class="mt-1 text-xs text-zinc-600">
-                                        {{ peso(unit.profit_total) }}
+                                        {{ peso(unitProfitTotal(unit)) }}
                                     </p>
                                 </div>
                             </div>
@@ -756,7 +831,7 @@ const insightCards = computed(() => [
                                 <div class="mn-mini-card">
                                     <p class="mn-mini-label">Sold Price</p>
                                     <p class="mn-mini-value">
-                                        {{ compactPeso(sale.sold_price) }}
+                                        {{ compactPeso(saleSoldPrice(sale)) }}
                                     </p>
                                 </div>
 
@@ -764,9 +839,15 @@ const insightCards = computed(() => [
                                     <p class="mn-mini-label">Profit</p>
                                     <p
                                         class="mn-mini-value"
-                                        :class="netProfitClass(sale.profit)"
+                                        :class="
+                                            netProfitClass(
+                                                saleProfitAmount(sale),
+                                            )
+                                        "
                                     >
-                                        {{ compactPeso(sale.profit) }}
+                                        {{
+                                            compactPeso(saleProfitAmount(sale))
+                                        }}
                                     </p>
                                 </div>
                             </div>
@@ -855,14 +936,18 @@ const insightCards = computed(() => [
                                     <td
                                         class="px-6 py-5 text-sm font-semibold text-white"
                                     >
-                                        {{ peso(sale.sold_price) }}
+                                        {{ peso(saleSoldPrice(sale)) }}
                                     </td>
 
                                     <td
                                         class="px-6 py-5 text-sm font-semibold"
-                                        :class="netProfitClass(sale.profit)"
+                                        :class="
+                                            netProfitClass(
+                                                saleProfitAmount(sale),
+                                            )
+                                        "
                                     >
-                                        {{ peso(sale.profit) }}
+                                        {{ peso(saleProfitAmount(sale)) }}
                                     </td>
                                 </tr>
 

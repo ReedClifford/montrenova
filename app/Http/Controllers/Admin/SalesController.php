@@ -24,7 +24,6 @@ class SalesController extends Controller
         }
 
         $selectedMonthEnd = $selectedMonthStart->copy()->endOfMonth();
-
         $now = now();
 
         $salesPerformance = [
@@ -57,13 +56,23 @@ class SalesController extends Controller
                 'reference_number',
                 DB::raw('COUNT(*) as sold_count'),
                 DB::raw("COALESCE(SUM({$soldPriceSql}), 0) as sales_total"),
-                DB::raw("COALESCE(SUM({$soldPriceSql} - capital_price), 0) as profit_total"),
+                DB::raw("COALESCE(SUM(COALESCE(capital_price, 0)), 0) as capital_total"),
+                DB::raw("COALESCE(SUM({$soldPriceSql} - COALESCE(capital_price, 0)), 0) as profit_total"),
             ])
             ->groupBy('brand', 'model_name', 'reference_number')
             ->orderByDesc('sold_count')
             ->orderByDesc('sales_total')
             ->limit(5)
-            ->get();
+            ->get()
+            ->map(fn ($unit) => [
+                'brand' => $unit->brand,
+                'model_name' => $unit->model_name,
+                'reference_number' => $unit->reference_number,
+                'sold_count' => (int) $unit->sold_count,
+                'sales_total' => (float) $unit->sales_total,
+                'capital_total' => (float) $unit->capital_total,
+                'profit_total' => (float) $unit->profit_total,
+            ]);
 
         $recentSales = Watch::query()
             ->with('primaryImage')
@@ -73,21 +82,27 @@ class SalesController extends Controller
             ->limit(10)
             ->get()
             ->map(function ($watch) {
-                $soldPrice = $watch->discounted_price && $watch->discounted_price > 0
-                    ? $watch->discounted_price
-                    : $watch->selling_price;
+                $soldPrice = (float) ($watch->sold_price ?? 0);
+                $capitalPrice = (float) ($watch->capital_price ?? 0);
 
                 return [
                     'id' => $watch->id,
                     'brand' => $watch->brand,
                     'model_name' => $watch->model_name,
                     'reference_number' => $watch->reference_number,
-                    'capital_price' => (float) $watch->capital_price,
-                    'selling_price' => (float) $watch->selling_price,
-                    'discounted_price' => $watch->discounted_price ? (float) $watch->discounted_price : null,
-                    'sold_price' => (float) $soldPrice,
-                    'profit' => (float) $soldPrice - (float) $watch->capital_price,
-                    'date_sold' => $watch->date_sold?->format('Y-m-d'),
+
+                    'capital_price' => $capitalPrice,
+                    'selling_price' => (float) ($watch->selling_price ?? 0),
+                    'discounted_price' => $watch->discounted_price !== null
+                        ? (float) $watch->discounted_price
+                        : null,
+
+                    // IMPORTANT:
+                    // Sales analytics must use the actual final sold amount.
+                    'sold_price' => $soldPrice,
+                    'profit' => $soldPrice - $capitalPrice,
+
+                    'date_sold' => $this->formatDateValue($watch->date_sold),
                     'primary_image' => $watch->primaryImage,
                 ];
             });
@@ -114,8 +129,8 @@ class SalesController extends Controller
             ->selectRaw("
                 COUNT(*) as sold_count,
                 COALESCE(SUM({$soldPriceSql}), 0) as total_sales,
-                COALESCE(SUM(capital_price), 0) as total_capital,
-                COALESCE(SUM({$soldPriceSql} - capital_price), 0) as gross_profit
+                COALESCE(SUM(COALESCE(capital_price, 0)), 0) as total_capital,
+                COALESCE(SUM({$soldPriceSql} - COALESCE(capital_price, 0)), 0) as gross_profit
             ")
             ->first();
 
@@ -145,22 +160,50 @@ class SalesController extends Controller
             'label' => $start->format('F Y'),
             'date_range' => $start->format('M d, Y') . ' - ' . $end->format('M d, Y'),
             'sold_count' => (int) ($sales->sold_count ?? 0),
+
+            // Based on actual final sold amount.
             'total_sales' => $totalSales,
+
+            // Based on capital of sold watches.
             'total_capital' => $totalCapital,
+
+            // sold_price - capital_price
             'gross_profit' => $grossProfit,
+
+            // Expenses in the same period.
             'total_expenses' => $totalExpenses,
+
+            // gross_profit - expenses
             'net_profit' => $grossProfit - $totalExpenses,
         ];
     }
 
     private function soldPriceSql(): string
     {
-        return "
-            CASE
-                WHEN discounted_price IS NOT NULL AND discounted_price > 0
-                THEN discounted_price
-                ELSE selling_price
-            END
-        ";
+        /*
+        |--------------------------------------------------------------------------
+        | Final sold amount only
+        |--------------------------------------------------------------------------
+        | Do not use selling_price or discounted_price for sales analytics.
+        | sold_price is the actual final amount collected when the watch was sold.
+        */
+        return 'COALESCE(sold_price, 0)';
+    }
+
+    private function formatDateValue($value): ?string
+    {
+        if (!$value) {
+            return null;
+        }
+
+        if ($value instanceof Carbon) {
+            return $value->format('Y-m-d');
+        }
+
+        try {
+            return Carbon::parse($value)->format('Y-m-d');
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 }

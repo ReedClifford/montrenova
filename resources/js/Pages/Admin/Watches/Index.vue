@@ -92,6 +92,8 @@ const isSearchPending = ref(false);
 const isArrangeMode = ref(false);
 const arrangeItems = ref([]);
 const isSavingOrder = ref(false);
+const arrangeBaselineIds = ref([]);
+const arrangeFeedback = ref("");
 
 const isBulkMode = ref(false);
 const selectedWatchIds = ref([]);
@@ -1027,24 +1029,102 @@ const setActionFilter = (value) => {
     actionFilter.value = value;
 };
 
+const arrangeWatchImageUrl = (watch) => {
+    return (
+        watch?.primary_image?.image_url ||
+        watch?.primary_image?.url ||
+        watch?.primary_image?.thumbnail_url ||
+        watch?.image_url ||
+        null
+    );
+};
+
+const isArrangeEligible = (watch) => {
+    return watch?.status === "available" && Boolean(watch?.is_visible);
+};
+
+const arrangeSortValue = (watch) => {
+    const value = Number(watch?.display_order ?? watch?.sort_order ?? 0);
+
+    return Number.isFinite(value) && value > 0 ? value : null;
+};
+
+const normalizeArrangeSource = (items = []) => {
+    return items
+        .filter(isArrangeEligible)
+        .map((watch, index) => ({
+            ...watch,
+            _arrange_source_index: index,
+            _arrange_sort_value: arrangeSortValue(watch),
+        }))
+        .sort((a, b) => {
+            const aOrder = a._arrange_sort_value;
+            const bOrder = b._arrange_sort_value;
+
+            if (aOrder !== null && bOrder !== null && aOrder !== bOrder) {
+                return aOrder - bOrder;
+            }
+
+            if (aOrder !== null && bOrder === null) return -1;
+            if (aOrder === null && bOrder !== null) return 1;
+
+            return a._arrange_source_index - b._arrange_source_index;
+        });
+};
+
 const arrangeSourceWatches = computed(() => {
-    return (props.arrangeWatches || []).filter((watch) => {
-        return watch.status === "available" && Boolean(watch.is_visible);
-    });
+    const fullArrangeList = normalizeArrangeSource(props.arrangeWatches || []);
+
+    if (fullArrangeList.length) {
+        return fullArrangeList;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Fallback safety
+    |--------------------------------------------------------------------------
+    | The controller should send arrangeWatches as the full available + visible
+    | website list. If it ever comes back empty because of a partial reload,
+    | we still let the admin arrange the currently loaded page instead of making
+    | the feature look broken.
+    */
+    return normalizeArrangeSource(currentPageWatches.value || []);
 });
+
+const arrangeWatchIds = (items) => {
+    return (items || [])
+        .map((watch) => Number(watch?.id))
+        .filter((id) => Number.isFinite(id) && id > 0);
+};
+
+const arrangeBaselineKey = computed(() => arrangeBaselineIds.value.join("|"));
+
+const arrangedKey = computed(() =>
+    arrangeWatchIds(arrangeItems.value).join("|"),
+);
 
 const canArrangeWatches = computed(() => {
     return arrangeSourceWatches.value.length > 1;
 });
 
 const hasArrangeChanges = computed(() => {
-    const sourceIds = arrangeSourceWatches.value.map((watch) => watch.id);
-    const arrangedIds = arrangeItems.value.map((watch) => watch.id);
+    if (!isArrangeMode.value) return false;
+    if (!arrangeItems.value.length) return false;
 
-    if (sourceIds.length !== arrangedIds.length) return true;
-
-    return sourceIds.some((id, index) => id !== arrangedIds[index]);
+    return arrangedKey.value !== arrangeBaselineKey.value;
 });
+
+const resetArrangeItemsFromSource = () => {
+    const source = arrangeSourceWatches.value.map((watch) => ({ ...watch }));
+
+    arrangeItems.value = source;
+    arrangeBaselineIds.value = arrangeWatchIds(source);
+};
+
+const refreshArrangeItems = () => {
+    resetArrangeItemsFromSource();
+    arrangeFeedback.value = "Display order list refreshed.";
+};
 
 const enterArrangeMode = () => {
     clearSearchDebounce();
@@ -1057,15 +1137,16 @@ const enterArrangeMode = () => {
         localStorage.setItem("watch_admin_active_tab", "inventory");
     }
 
+    arrangeFeedback.value = "";
     isArrangeMode.value = true;
-    arrangeItems.value = arrangeSourceWatches.value.map((watch) => ({
-        ...watch,
-    }));
+    resetArrangeItemsFromSource();
 };
 
 const cancelArrangeMode = () => {
     isArrangeMode.value = false;
     arrangeItems.value = [];
+    arrangeBaselineIds.value = [];
+    arrangeFeedback.value = "";
     isSavingOrder.value = false;
 };
 
@@ -1075,10 +1156,9 @@ const moveArrangeItem = (index, direction) => {
     if (targetIndex < 0 || targetIndex >= arrangeItems.value.length) return;
 
     const items = [...arrangeItems.value];
-    const currentItem = items[index];
+    const [selected] = items.splice(index, 1);
 
-    items[index] = items[targetIndex];
-    items[targetIndex] = currentItem;
+    items.splice(targetIndex, 0, selected);
 
     arrangeItems.value = items;
 };
@@ -1087,9 +1167,20 @@ const moveArrangeItemToTop = (index) => {
     if (index <= 0) return;
 
     const items = [...arrangeItems.value];
-    const selected = items.splice(index, 1)[0];
+    const [selected] = items.splice(index, 1);
 
     items.unshift(selected);
+
+    arrangeItems.value = items;
+};
+
+const moveArrangeItemToBottom = (index) => {
+    if (index >= arrangeItems.value.length - 1) return;
+
+    const items = [...arrangeItems.value];
+    const [selected] = items.splice(index, 1);
+
+    items.push(selected);
 
     arrangeItems.value = items;
 };
@@ -1097,17 +1188,34 @@ const moveArrangeItemToTop = (index) => {
 const saveArrangeOrder = () => {
     if (!arrangeItems.value.length || isSavingOrder.value) return;
 
+    const orderedIds = arrangeWatchIds(arrangeItems.value);
+
+    if (orderedIds.length !== arrangeItems.value.length) {
+        arrangeFeedback.value =
+            "Some watches have missing IDs. Refresh the page and try arranging again.";
+        return;
+    }
+
+    if (!hasArrangeChanges.value) {
+        arrangeFeedback.value = "No display order changes to save.";
+        return;
+    }
+
     isSavingOrder.value = true;
+    arrangeFeedback.value = "Saving display order...";
 
     router.patch(
         route("admin.watches.reorder"),
         {
-            watch_ids: arrangeItems.value.map((watch) => watch.id),
+            watch_ids: orderedIds,
         },
         {
             preserveScroll: true,
-            preserveState: true,
+            preserveState: false,
+            replace: true,
             onSuccess: () => {
+                arrangeBaselineIds.value = orderedIds;
+                arrangeFeedback.value = "Display order saved.";
                 cancelArrangeMode();
 
                 router.reload({
@@ -1118,12 +1226,15 @@ const saveArrangeOrder = () => {
                         "summary",
                     ],
                     preserveScroll: true,
+                    preserveState: false,
                 });
             },
-            onFinish: () => {
-                isSavingOrder.value = false;
+            onError: (errors) => {
+                console.error("Watch reorder failed:", errors);
+                arrangeFeedback.value =
+                    "Unable to save display order. Please check the reorder route/controller.";
             },
-            onError: () => {
+            onFinish: () => {
                 isSavingOrder.value = false;
             },
         },
@@ -1272,42 +1383,14 @@ const actionCards = computed(() => [
     },
 ]);
 
-const quickActionFilters = computed(() => [
-    {
-        label: "All",
-        value: "all",
-        count: currentPageWatches.value.length,
-    },
-    {
-        label: "Visible",
-        value: "visible",
-        count: watchActionStats.value.visible,
-    },
-    {
-        label: "Needs Push",
-        value: "needs_push",
-        count: watchActionStats.value.needsPush,
-    },
-    {
-        label: "No Photo",
-        value: "no_photo",
-        count: watchActionStats.value.noPhoto,
-    },
-    {
-        label: "Low Margin",
-        value: "low_margin",
-        count: watchActionStats.value.lowMargin,
-    },
-    {
-        label: "Overdue",
-        value: "reservation_overdue",
-        count: watchActionStats.value.reservationOverdue,
-    },
-    {
-        label: "Ready",
-        value: "ready_to_post",
-        count: watchActionStats.value.readyToPost,
-    },
+const priorityFilterLabels = computed(() => [
+    { label: "All", value: "all" },
+    { label: "Visible", value: "visible" },
+    { label: "Needs Push", value: "needs_push" },
+    { label: "No Photo", value: "no_photo" },
+    { label: "Low Margin", value: "low_margin" },
+    { label: "Overdue", value: "reservation_overdue" },
+    { label: "Ready", value: "ready_to_post" },
 ]);
 
 const statusTabs = computed(() => [
@@ -1336,7 +1419,7 @@ const selectedStatusLabel = computed(() => {
 
 const selectedActionFilterLabel = computed(() => {
     return (
-        quickActionFilters.value.find(
+        priorityFilterLabels.value.find(
             (filter) => filter.value === actionFilter.value,
         )?.label || "All"
     );
@@ -1366,7 +1449,7 @@ const filterStateLabel = computed(() => {
     }
 
     if (selectedActionFilterLabel.value !== "All") {
-        parts.push(`Quick: ${selectedActionFilterLabel.value}`);
+        parts.push(`Priority: ${selectedActionFilterLabel.value}`);
     }
 
     return parts.join(" • ");
@@ -1845,12 +1928,20 @@ const clearReservation = (watch) => {
 
                                 <button
                                     type="button"
+                                    class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-zinc-200 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white"
+                                    @click="refreshArrangeItems"
+                                >
+                                    Refresh
+                                </button>
+
+                                <button
+                                    type="button"
                                     :disabled="
                                         isSavingOrder ||
                                         !arrangeItems.length ||
                                         !hasArrangeChanges
                                     "
-                                    class="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+                                    class="col-span-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400 sm:col-span-1"
                                     @click="saveArrangeOrder"
                                 >
                                     {{
@@ -1862,6 +1953,21 @@ const clearReservation = (watch) => {
                                     }}
                                 </button>
                             </div>
+                        </div>
+
+                        <div
+                            v-if="arrangeFeedback"
+                            class="mt-5 rounded-2xl border px-4 py-3 text-sm font-semibold"
+                            :class="
+                                arrangeFeedback.includes('Unable') ||
+                                arrangeFeedback.includes('missing')
+                                    ? 'border-red-500/20 bg-red-500/10 text-red-300'
+                                    : arrangeFeedback.includes('Saving')
+                                      ? 'border-white/10 bg-white/[0.04] text-zinc-300'
+                                      : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+                            "
+                        >
+                            {{ arrangeFeedback }}
                         </div>
 
                         <div
@@ -1931,10 +2037,11 @@ const clearReservation = (watch) => {
                                             class="relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#050505]"
                                         >
                                             <img
-                                                v-if="watch.primary_image"
+                                                v-if="
+                                                    arrangeWatchImageUrl(watch)
+                                                "
                                                 :src="
-                                                    watch.primary_image
-                                                        .image_url
+                                                    arrangeWatchImageUrl(watch)
                                                 "
                                                 class="h-full w-full object-cover"
                                                 alt=""
@@ -2074,8 +2181,17 @@ const clearReservation = (watch) => {
                                     </div>
 
                                     <div
-                                        class="grid grid-cols-3 gap-2 md:w-44 md:grid-cols-1"
+                                        class="grid grid-cols-4 gap-2 md:w-44 md:grid-cols-1"
                                     >
+                                        <button
+                                            type="button"
+                                            :disabled="index === 0"
+                                            class="mn-arrange-btn"
+                                            @click="moveArrangeItemToTop(index)"
+                                        >
+                                            Top
+                                        </button>
+
                                         <button
                                             type="button"
                                             :disabled="index === 0"
@@ -2084,16 +2200,7 @@ const clearReservation = (watch) => {
                                                 moveArrangeItem(index, 'up')
                                             "
                                         >
-                                            Move Up
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            :disabled="index === 0"
-                                            class="mn-arrange-btn"
-                                            @click="moveArrangeItemToTop(index)"
-                                        >
-                                            Top
+                                            Up
                                         </button>
 
                                         <button
@@ -2107,7 +2214,21 @@ const clearReservation = (watch) => {
                                                 moveArrangeItem(index, 'down')
                                             "
                                         >
-                                            Move Down
+                                            Down
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            :disabled="
+                                                index ===
+                                                arrangeItems.length - 1
+                                            "
+                                            class="mn-arrange-btn"
+                                            @click="
+                                                moveArrangeItemToBottom(index)
+                                            "
+                                        >
+                                            Bottom
                                         </button>
                                     </div>
                                 </div>
@@ -2117,13 +2238,21 @@ const clearReservation = (watch) => {
                         <div
                             class="sticky bottom-0 mt-5 rounded-2xl border border-white/10 bg-[#050505]/95 p-3 shadow-2xl shadow-black/60 backdrop-blur md:hidden"
                         >
-                            <div class="grid grid-cols-2 gap-3">
+                            <div class="grid grid-cols-3 gap-2">
                                 <button
                                     type="button"
-                                    class="rounded-xl border border-white/10 px-4 py-3 text-sm font-semibold text-zinc-300"
+                                    class="rounded-xl border border-white/10 px-3 py-3 text-sm font-semibold text-zinc-300"
                                     @click="cancelArrangeMode"
                                 >
                                     Cancel
+                                </button>
+
+                                <button
+                                    type="button"
+                                    class="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3 text-sm font-semibold text-zinc-200"
+                                    @click="refreshArrangeItems"
+                                >
+                                    Refresh
                                 </button>
 
                                 <button
@@ -2133,14 +2262,10 @@ const clearReservation = (watch) => {
                                         !arrangeItems.length ||
                                         !hasArrangeChanges
                                     "
-                                    class="rounded-xl bg-white px-4 py-3 text-sm font-semibold text-black disabled:bg-zinc-700 disabled:text-zinc-400"
+                                    class="rounded-xl bg-white px-3 py-3 text-sm font-semibold text-black disabled:bg-zinc-700 disabled:text-zinc-400"
                                     @click="saveArrangeOrder"
                                 >
-                                    {{
-                                        isSavingOrder
-                                            ? "Saving..."
-                                            : "Save Order"
-                                    }}
+                                    {{ isSavingOrder ? "Saving..." : "Save" }}
                                 </button>
                             </div>
                         </div>
@@ -2212,7 +2337,7 @@ const clearReservation = (watch) => {
                 <!-- FILTERS -->
                 <section
                     v-if="!isArrangeMode"
-                    class="relative hidden overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 sm:p-6 md:block"
+                    class="relative hidden overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-4 shadow-2xl shadow-black/20 sm:p-5 md:block"
                 >
                     <div
                         v-if="isFiltering || isSearchPending"
@@ -2223,22 +2348,22 @@ const clearReservation = (watch) => {
                         ></div>
                     </div>
 
-                    <div class="flex flex-col gap-5">
+                    <div class="flex flex-col gap-4">
                         <div
-                            class="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center"
+                            class="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end"
                         >
                             <div>
                                 <p
                                     class="mb-3 text-xs uppercase tracking-[0.24em] text-zinc-600"
                                 >
-                                    Search Stocks
+                                    Search
                                 </p>
 
                                 <div class="relative">
                                     <input
                                         v-model="search"
                                         type="text"
-                                        placeholder="Search brand, model, reference, buyer, serial..."
+                                        placeholder="Search model or reference number..."
                                         class="mn-input pr-24"
                                     />
 
@@ -2322,36 +2447,6 @@ const clearReservation = (watch) => {
                                         class="ml-1 opacity-70"
                                     >
                                         {{ tab.count }}
-                                    </span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <p
-                                class="mb-3 text-xs uppercase tracking-[0.24em] text-zinc-600"
-                            >
-                                Quick Filters
-                            </p>
-
-                            <div
-                                class="thin-scrollbar flex gap-2 overflow-x-auto pb-1"
-                            >
-                                <button
-                                    v-for="filter in quickActionFilters"
-                                    :key="filter.value"
-                                    type="button"
-                                    class="shrink-0 rounded-2xl border px-4 py-2 text-sm font-medium transition"
-                                    :class="
-                                        actionFilter === filter.value
-                                            ? 'border-white bg-white text-black'
-                                            : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/30 hover:text-white'
-                                    "
-                                    @click="setActionFilter(filter.value)"
-                                >
-                                    {{ filter.label }}
-                                    <span class="ml-1 opacity-70">
-                                        {{ filter.count }}
                                     </span>
                                 </button>
                             </div>
@@ -2808,10 +2903,11 @@ const clearReservation = (watch) => {
 
                                         <div class="aspect-square">
                                             <img
-                                                v-if="watch.primary_image"
+                                                v-if="
+                                                    arrangeWatchImageUrl(watch)
+                                                "
                                                 :src="
-                                                    watch.primary_image
-                                                        .image_url
+                                                    arrangeWatchImageUrl(watch)
                                                 "
                                                 class="h-full w-full object-cover"
                                                 alt=""
@@ -4348,7 +4444,7 @@ const clearReservation = (watch) => {
                         <p
                             class="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500"
                         >
-                            Controls
+                            Manage
                         </p>
 
                         <p class="mt-0.5 truncate text-sm font-bold text-white">
@@ -4419,13 +4515,13 @@ const clearReservation = (watch) => {
                     </div>
 
                     <template v-if="activeTab === 'inventory'">
-                        <div class="mt-3 grid grid-cols-2 gap-2">
+                        <div class="mt-3 grid grid-cols-3 gap-2">
                             <button
                                 type="button"
                                 class="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-xs font-black text-white transition active:scale-[0.98]"
                                 @click="startBulkMode"
                             >
-                                Bulk Select
+                                Select
                             </button>
 
                             <button
@@ -4438,10 +4534,10 @@ const clearReservation = (watch) => {
 
                             <button
                                 type="button"
-                                class="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-3 py-3 text-xs font-black text-amber-200 transition active:scale-[0.98]"
-                                @click="setActionFilter('needs_push')"
+                                class="rounded-2xl bg-white px-3 py-3 text-xs font-black text-black transition active:scale-[0.98]"
+                                @click="openCreateModal"
                             >
-                                Needs Push
+                                Add
                             </button>
                         </div>
 
@@ -4534,8 +4630,7 @@ const clearReservation = (watch) => {
                                     type="button"
                                     class="rounded-xl border px-3 py-2.5 text-xs font-black transition active:scale-[0.98]"
                                     :class="
-                                        status === tab.value &&
-                                        actionFilter === 'all'
+                                        status === tab.value
                                             ? 'border-white bg-white text-black shadow-lg shadow-white/10'
                                             : 'border-white/10 bg-white/[0.04] text-zinc-400'
                                     "
@@ -4548,30 +4643,6 @@ const clearReservation = (watch) => {
                                     >
                                         {{ tab.count }}
                                     </span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="mt-4">
-                            <p class="mn-mobile-panel-label">Quick Filters</p>
-
-                            <div class="mt-2 grid grid-cols-2 gap-2">
-                                <button
-                                    v-for="filter in quickActionFilters"
-                                    :key="filter.value"
-                                    type="button"
-                                    class="rounded-xl border px-3 py-2.5 text-xs font-black transition active:scale-[0.98]"
-                                    :class="
-                                        actionFilter === filter.value
-                                            ? 'border-white bg-white text-black shadow-lg shadow-white/10'
-                                            : 'border-white/10 bg-white/[0.04] text-zinc-400'
-                                    "
-                                    @click="setActionFilter(filter.value)"
-                                >
-                                    <span>{{ filter.label }}</span>
-                                    <span class="ml-1 opacity-60">{{
-                                        filter.count
-                                    }}</span>
                                 </button>
                             </div>
                         </div>
@@ -4755,8 +4826,8 @@ const clearReservation = (watch) => {
     border-radius: 0.9rem;
     border: 1px solid rgb(255 255 255 / 0.1);
     background: rgb(255 255 255 / 0.03);
-    padding: 0.75rem 0.85rem;
-    font-size: 0.75rem;
+    padding: 0.72rem 0.65rem;
+    font-size: 0.72rem;
     font-weight: 800;
     color: rgb(212 212 216);
     transition:

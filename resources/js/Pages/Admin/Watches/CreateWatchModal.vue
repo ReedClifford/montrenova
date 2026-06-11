@@ -88,13 +88,13 @@ const tabs = [
         key: "basic",
         label: "Basic",
         title: "Basic Information",
-        helper: "Brand, model, condition, category, and description.",
+        helper: "Brand, model, reference, condition, and category.",
     },
     {
         key: "pricing",
         label: "Pricing",
-        title: "Pricing & Visibility",
-        helper: "Set capital, selling price, stock status, and website display.",
+        title: "Pricing & Status",
+        helper: "Set capital, selling price, stock status, and visibility.",
     },
     {
         key: "specs",
@@ -107,12 +107,6 @@ const tabs = [
         label: "Photos",
         title: "HD Product Photos",
         helper: "Upload up to 5 compressed photos. First photo is primary.",
-    },
-    {
-        key: "terms",
-        label: "Terms",
-        title: "Public Listing Terms",
-        helper: "Set purchase process, warranty, and payment instructions.",
     },
 ];
 
@@ -170,7 +164,7 @@ const applyDuplicateSource = () => {
 
     form.condition = source.condition || "Brand New";
     form.category = source.category || "";
-    form.description = source.description || "";
+    form.description = "";
 
     form.movement = source.movement || "";
     form.case_size = source.case_size || "";
@@ -344,18 +338,11 @@ const photosComplete = computed(() => {
     );
 });
 
-const termsComplete = computed(() => {
-    return form.sections.every((section) => {
-        return clean(section.title) !== "" && clean(section.content) !== "";
-    });
-});
-
 const stepCompletion = computed(() => ({
     basic: basicComplete.value,
     pricing: pricingComplete.value,
     specs: specsComplete.value,
     photos: photosComplete.value,
-    terms: termsComplete.value,
 }));
 
 const currentStepComplete = computed(() => {
@@ -378,6 +365,10 @@ const currentTabIndex = computed(() => {
     return tabs.findIndex((tab) => tab.key === activeTab.value);
 });
 
+const isLastTab = computed(() => {
+    return currentTabIndex.value === tabs.length - 1;
+});
+
 const canSaveDraft = computed(() => {
     return (
         basicComplete.value && !form.processing && !isCompressingImages.value
@@ -390,7 +381,6 @@ const canSubmit = computed(() => {
         pricingComplete.value &&
         specsComplete.value &&
         photosComplete.value &&
-        termsComplete.value &&
         !form.processing &&
         !isCompressingImages.value
     );
@@ -412,7 +402,6 @@ const missingRequirements = computed(() => {
     if (!pricingComplete.value) missing.push("Pricing");
     if (!specsComplete.value) missing.push("Specs");
     if (!photosComplete.value) missing.push("Photos");
-    if (!termsComplete.value) missing.push("Terms");
 
     return missing;
 });
@@ -420,7 +409,7 @@ const missingRequirements = computed(() => {
 const firstIncompleteTab = () => {
     const incomplete = tabs.find((tab) => !stepCompletion.value[tab.key]);
 
-    return incomplete?.key || "terms";
+    return incomplete?.key || "photos";
 };
 
 const getTabIndex = (key) => {
@@ -646,10 +635,7 @@ const previewWarnings = computed(() => {
         warnings.push(`Status is ${form.status || "not set"}.`);
     if (!previewPrimaryImage.value)
         warnings.push("No product photo selected yet.");
-    if (form.display_price && finalSellingPrice.value <= 0)
-        warnings.push("Display price is on but final price is not set.");
-    if (!form.allow_inquiry)
-        warnings.push("Customer inquiry button is disabled.");
+    if (finalSellingPrice.value <= 0) warnings.push("Final price is not set.");
 
     return warnings;
 });
@@ -806,7 +792,7 @@ onBeforeUnmount(() => {
                                         {{
                                             isDuplicateMode
                                                 ? "Copied details are ready. Add new photos and review price before publishing."
-                                                : "Encode stock details, pricing, specifications, terms, and up to 5 HD photos."
+                                                : "Encode stock details, pricing, specifications, and up to 5 HD photos."
                                         }}
                                     </p>
                                 </div>
@@ -876,7 +862,7 @@ onBeforeUnmount(() => {
                                         ></div>
                                     </div>
 
-                                    <div class="mt-3 grid grid-cols-5 gap-1.5">
+                                    <div class="mt-3 grid grid-cols-4 gap-1.5">
                                         <button
                                             v-for="(tab, index) in tabs"
                                             :key="tab.key"
@@ -1109,7 +1095,7 @@ onBeforeUnmount(() => {
                                     />
                                 </div>
 
-                                <div>
+                                <div class="md:col-span-2">
                                     <label class="mn-label">Category</label>
 
                                     <input
@@ -1121,22 +1107,6 @@ onBeforeUnmount(() => {
                                     <InputError
                                         class="mt-2"
                                         :message="form.errors.category"
-                                    />
-                                </div>
-
-                                <div class="md:col-span-2">
-                                    <label class="mn-label">Description</label>
-
-                                    <textarea
-                                        v-model="form.description"
-                                        rows="5"
-                                        class="mn-input"
-                                        placeholder="Short product description..."
-                                    ></textarea>
-
-                                    <InputError
-                                        class="mt-2"
-                                        :message="form.errors.description"
                                     />
                                 </div>
                             </div>
@@ -1292,7 +1262,7 @@ onBeforeUnmount(() => {
                                             <h3
                                                 class="text-lg font-semibold text-white"
                                             >
-                                                Status & Display
+                                                Status
                                             </h3>
 
                                             <span
@@ -1361,28 +1331,6 @@ onBeforeUnmount(() => {
                                                     <input
                                                         v-model="
                                                             form.is_featured
-                                                        "
-                                                        type="checkbox"
-                                                        class="mn-checkbox"
-                                                    />
-                                                </label>
-
-                                                <label class="mn-toggle">
-                                                    <span>Display price</span>
-                                                    <input
-                                                        v-model="
-                                                            form.display_price
-                                                        "
-                                                        type="checkbox"
-                                                        class="mn-checkbox"
-                                                    />
-                                                </label>
-
-                                                <label class="mn-toggle">
-                                                    <span>Allow inquiry</span>
-                                                    <input
-                                                        v-model="
-                                                            form.allow_inquiry
                                                         "
                                                         type="checkbox"
                                                         class="mn-checkbox"
@@ -1782,58 +1730,128 @@ onBeforeUnmount(() => {
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- TERMS -->
-                            <div v-if="activeTab === 'terms'" class="space-y-4">
-                                <div
-                                    v-for="(section, index) in form.sections"
-                                    :key="index"
-                                    class="rounded-[1.25rem] border border-white/10 bg-white/[0.03] p-4 sm:rounded-[1.5rem] sm:p-5"
-                                >
-                                    <div
-                                        class="mb-4 flex items-center justify-between"
-                                    >
-                                        <p
-                                            class="text-xs font-bold uppercase tracking-[0.2em] text-zinc-600"
-                                        >
-                                            Section {{ index + 1 }}
-                                        </p>
-                                    </div>
-
-                                    <label class="mn-label">
-                                        Section Title
-                                        <span class="text-red-400">*</span>
-                                    </label>
-
-                                    <input
-                                        v-model="section.title"
-                                        class="mn-input"
-                                        placeholder="Section Title"
-                                    />
-
-                                    <label class="mn-label mt-4">
-                                        Content
-                                        <span class="text-red-400">*</span>
-                                    </label>
-
-                                    <textarea
-                                        v-model="section.content"
-                                        rows="5"
-                                        class="mn-input"
-                                        placeholder="Section content..."
-                                    ></textarea>
-                                </div>
-                            </div>
                         </div>
 
                         <!-- FOOTER -->
                         <div
-                            class="safe-bottom border-t border-white/10 bg-[#0B0B0D] px-4 py-3 sm:px-6 sm:py-5"
+                            class="safe-bottom border-t border-white/10 bg-[#0B0B0D] px-3 py-3 sm:px-6 sm:py-5"
                         >
                             <div
-                                class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
+                                v-if="!canSubmit && missingRequirements.length"
+                                class="mb-3 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-xs font-semibold leading-5 text-amber-100/80"
                             >
-                                <div class="hidden text-xs leading-5 sm:block">
+                                Missing:
+                                <span class="text-amber-200">
+                                    {{ missingRequirements.join(", ") }}
+                                </span>
+                            </div>
+
+                            <!-- MOBILE FOOTER -->
+                            <div class="sm:hidden">
+                                <div
+                                    class="mb-3 flex items-center justify-between gap-3"
+                                >
+                                    <div class="min-w-0 text-[11px] leading-5">
+                                        <p
+                                            class="truncate font-semibold"
+                                            :class="
+                                                canSubmit
+                                                    ? 'text-emerald-300'
+                                                    : canSaveDraft
+                                                      ? 'text-zinc-300'
+                                                      : 'text-zinc-500'
+                                            "
+                                        >
+                                            {{ saveStatusLabel }}
+                                        </p>
+
+                                        <p class="text-zinc-600">
+                                            Step {{ currentTabIndex + 1 }} /
+                                            {{ tabs.length }} •
+                                            {{ currentTab.label }}
+                                        </p>
+                                    </div>
+
+                                    <div
+                                        class="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-bold text-zinc-400"
+                                    >
+                                        {{ completedStepCount }}/{{
+                                            tabs.length
+                                        }}
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button
+                                        type="button"
+                                        class="rounded-2xl border border-white/10 px-3 py-3 text-sm font-semibold text-zinc-300"
+                                        @click="
+                                            activeTab === 'basic'
+                                                ? closeModal()
+                                                : goToPreviousTab()
+                                        "
+                                    >
+                                        {{
+                                            activeTab === "basic"
+                                                ? "Close"
+                                                : "Back"
+                                        }}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        class="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-3 text-sm font-semibold text-zinc-200"
+                                        @click="openPublicPreview"
+                                    >
+                                        Preview
+                                    </button>
+
+                                    <button
+                                        v-if="!isLastTab"
+                                        type="button"
+                                        :disabled="!currentStepComplete"
+                                        class="rounded-2xl bg-white px-3 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+                                        @click="goToNextTab"
+                                    >
+                                        Next
+                                    </button>
+
+                                    <button
+                                        v-else
+                                        type="submit"
+                                        :disabled="!canSubmit"
+                                        class="rounded-2xl bg-white px-3 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+                                    >
+                                        {{
+                                            isCompressingImages
+                                                ? "Compressing..."
+                                                : form.processing &&
+                                                    saveMode === "publish"
+                                                  ? "Saving..."
+                                                  : "Publish"
+                                        }}
+                                    </button>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    :disabled="!canSaveDraft"
+                                    class="mt-2 w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                    @click="submit('draft')"
+                                >
+                                    {{
+                                        form.processing && saveMode === "draft"
+                                            ? "Saving Draft..."
+                                            : "Save as Draft"
+                                    }}
+                                </button>
+                            </div>
+
+                            <!-- DESKTOP FOOTER -->
+                            <div
+                                class="hidden flex-col gap-4 sm:flex lg:flex-row lg:items-center lg:justify-between"
+                            >
+                                <div class="text-xs leading-5">
                                     <p
                                         class="font-semibold"
                                         :class="
@@ -1846,55 +1864,12 @@ onBeforeUnmount(() => {
                                     >
                                         {{ saveStatusLabel }}
                                     </p>
-
-                                    <p
-                                        v-if="
-                                            !canSubmit &&
-                                            missingRequirements.length
-                                        "
-                                        class="mt-1 text-zinc-500"
-                                    >
-                                        Publish missing:
-                                        <span class="text-red-300">
-                                            {{ missingRequirements.join(", ") }}
-                                        </span>
-                                    </p>
                                 </div>
 
-                                <div class="text-[11px] leading-5 sm:hidden">
-                                    <p
-                                        class="truncate font-semibold"
-                                        :class="
-                                            canSubmit
-                                                ? 'text-emerald-300'
-                                                : canSaveDraft
-                                                  ? 'text-zinc-300'
-                                                  : 'text-zinc-500'
-                                        "
-                                    >
-                                        {{ saveStatusLabel }}
-                                    </p>
-
-                                    <p
-                                        v-if="
-                                            !canSubmit &&
-                                            missingRequirements.length
-                                        "
-                                        class="truncate text-zinc-600"
-                                    >
-                                        Publish missing:
-                                        <span class="text-red-300">
-                                            {{ missingRequirements.join(", ") }}
-                                        </span>
-                                    </p>
-                                </div>
-
-                                <div
-                                    class="grid grid-cols-2 gap-3 sm:flex sm:justify-end"
-                                >
+                                <div class="flex justify-end gap-3">
                                     <button
                                         type="button"
-                                        class="hidden rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 sm:inline-flex"
+                                        class="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30"
                                         @click="closeModal"
                                     >
                                         Cancel
@@ -1921,11 +1896,6 @@ onBeforeUnmount(() => {
                                         type="button"
                                         :disabled="!canSaveDraft"
                                         class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-zinc-200 transition hover:border-white/30 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
-                                        :class="
-                                            activeTab !== 'basic'
-                                                ? 'order-3 col-span-2 sm:order-none sm:col-span-1'
-                                                : ''
-                                        "
                                         @click="submit('draft')"
                                     >
                                         {{
@@ -1937,7 +1907,7 @@ onBeforeUnmount(() => {
                                     </button>
 
                                     <button
-                                        v-if="activeTab !== 'terms'"
+                                        v-if="!isLastTab"
                                         type="button"
                                         :disabled="!currentStepComplete"
                                         class="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
@@ -1947,7 +1917,7 @@ onBeforeUnmount(() => {
                                     </button>
 
                                     <button
-                                        v-if="activeTab === 'terms'"
+                                        v-else
                                         type="submit"
                                         :disabled="!canSubmit"
                                         class="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
@@ -2119,20 +2089,6 @@ onBeforeUnmount(() => {
                                                 </span>
                                             </div>
 
-                                            <p
-                                                v-if="form.description"
-                                                class="mt-5 text-sm leading-7 text-zinc-400"
-                                            >
-                                                {{ form.description }}
-                                            </p>
-
-                                            <p
-                                                v-else
-                                                class="mt-5 text-sm leading-7 text-zinc-600"
-                                            >
-                                                No description added yet.
-                                            </p>
-
                                             <div
                                                 class="mt-5 grid grid-cols-2 gap-3"
                                             >
@@ -2202,37 +2158,6 @@ onBeforeUnmount(() => {
                                                         class="mt-2 text-sm font-semibold text-zinc-200"
                                                     >
                                                         {{ spec.value }}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            v-if="previewSections.length"
-                                            class="rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 sm:p-6"
-                                        >
-                                            <h3
-                                                class="text-lg font-semibold text-white"
-                                            >
-                                                Listing Terms
-                                            </h3>
-
-                                            <div class="mt-4 space-y-3">
-                                                <div
-                                                    v-for="section in previewSections"
-                                                    :key="section.title"
-                                                    class="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
-                                                >
-                                                    <p
-                                                        class="text-sm font-semibold text-white"
-                                                    >
-                                                        {{ section.title }}
-                                                    </p>
-
-                                                    <p
-                                                        class="mt-2 text-sm leading-6 text-zinc-500"
-                                                    >
-                                                        {{ section.content }}
                                                     </p>
                                                 </div>
                                             </div>
