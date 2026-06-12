@@ -144,7 +144,7 @@ const navSections = computed(() => {
             id: "available",
             label: "Available",
             shortLabel: "Available",
-            href: "#available",
+            href: "#collection",
         },
     ];
 
