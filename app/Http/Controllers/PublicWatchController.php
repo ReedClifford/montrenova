@@ -291,10 +291,10 @@ class PublicWatchController extends Controller
             ->values();
 
         if ($withCategory->isNotEmpty()) {
-            return $withCategory->take(6)->values();
+            return $withCategory->take(8)->values();
         }
 
-        return collect($watches)->take(6)->values();
+        return collect($watches)->take(8)->values();
     }
 
     private function publicWatchCard(Watch $watch): array
