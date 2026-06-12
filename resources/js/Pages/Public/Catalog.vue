@@ -507,9 +507,9 @@ const rawWatchKeys = computed(() => {
                             <p
                                 class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400 sm:mt-5 sm:text-base"
                             >
-                                **Note:** Prices are subject to change without
-                                prior notice. For the latest price and
-                                availability, kindly message us directly.
+                                Note: Prices are subject to change without prior
+                                notice. For the latest price and availability,
+                                kindly message us directly.
                             </p>
                         </div>
 
@@ -739,12 +739,6 @@ const rawWatchKeys = computed(() => {
                                                 class="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500"
                                             >
                                                 Price
-                                            </p>
-
-                                            <p
-                                                class="mt-1 truncate text-xl font-black text-white"
-                                            >
-                                                {{ displayPrice(watch) }}
                                             </p>
 
                                             <p
