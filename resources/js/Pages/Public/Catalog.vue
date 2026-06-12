@@ -151,6 +151,12 @@ const categoryFilters = computed(() => {
     ];
 });
 
+const activeCategoryLabel = computed(() => {
+    const active = String(props.activeCategory || "all").trim();
+
+    return normalizeCategory(active) === "all" ? "All Watches" : active;
+});
+
 const isActiveCategory = (category) => {
     return (
         normalizeCategory(props.activeCategory) === normalizeCategory(category)
@@ -412,13 +418,17 @@ const rawWatchKeys = computed(() => {
             ></div>
 
             <div
-                class="absolute left-1/2 top-[42rem] h-[28rem] w-[42rem] -translate-x-1/2 rounded-full bg-white/[0.025] blur-[135px]"
+                class="absolute left-1/2 top-[39rem] h-[26rem] w-[38rem] -translate-x-1/2 rounded-full bg-white/[0.025] blur-[135px]"
+            ></div>
+
+            <div
+                class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
             ></div>
         </div>
 
         <!-- HEADER -->
         <header
-            class="fixed inset-x-0 top-0 z-[90] border-b border-white/10 bg-black/80 shadow-xl shadow-black/30 backdrop-blur-2xl"
+            class="fixed inset-x-0 top-0 z-[90] border-b border-white/10 bg-black/82 shadow-xl shadow-black/30 backdrop-blur-2xl"
         >
             <div
                 class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8"
@@ -470,55 +480,74 @@ const rawWatchKeys = computed(() => {
         </Transition>
 
         <main
-            class="relative z-10 px-4 pb-20 pt-[5.65rem] sm:px-6 sm:pt-[5.9rem] lg:px-8"
+            class="relative z-10 px-3 pb-24 pt-[5.35rem] sm:px-6 sm:pt-[5.9rem] lg:px-8"
         >
             <section class="mx-auto max-w-7xl">
                 <!-- HERO -->
                 <div
-                    class="catalog-hero mb-5 overflow-hidden rounded-[1.4rem] border border-white/10 bg-white/[0.035] p-5 shadow-2xl shadow-black/35 sm:mb-7 sm:p-7 lg:p-8"
+                    class="catalog-hero mb-4 overflow-hidden rounded-[1.25rem] border border-white/10 bg-white/[0.035] p-4 shadow-2xl shadow-black/35 sm:mb-7 sm:rounded-[1.4rem] sm:p-7 lg:p-8"
                 >
                     <div class="shine-line"></div>
 
                     <div
-                        class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between"
+                        class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"
                     >
                         <div class="max-w-4xl">
-                            <p class="section-kicker">Montre Nova Catalog</p>
+                            <div class="premium-eyebrow">
+                                <span class="pulse-dot"></span>
+                                Montre Nova Catalog
+                            </div>
 
                             <h1
-                                class="mt-4 text-[2.45rem] font-black leading-[0.9] tracking-[-0.075em] text-white sm:text-6xl lg:text-7xl"
+                                class="mt-4 text-[2.55rem] font-black leading-[0.88] tracking-[-0.08em] text-white min-[390px]:text-[2.85rem] sm:text-6xl lg:text-7xl"
                             >
-                                Browse all curated watches.
+                                Browse curated watches.
                             </h1>
 
                             <p
-                                class="mt-5 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base"
+                                class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400 sm:mt-5 sm:text-base"
                             >
-                                Pick a category, tap a watch, and message Montre
-                                Nova directly to ask availability.
+                                Swipe through the catalog, pick a category, and
+                                tap a watch to ask availability.
                             </p>
                         </div>
 
                         <div
-                            class="rounded-2xl border border-white/10 bg-black/35 p-4 sm:min-w-[13rem]"
+                            class="grid grid-cols-2 gap-2 sm:flex sm:min-w-[22rem] sm:justify-end"
                         >
-                            <p
-                                class="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600"
-                            >
-                                Showing
-                            </p>
+                            <div class="mini-stat">
+                                <p>Showing</p>
+                                <strong>{{ catalogWatches.length }}</strong>
+                            </div>
 
-                            <p class="mt-1 text-xl font-black text-white">
-                                {{ resultSummary }}
-                            </p>
+                            <div class="mini-stat">
+                                <p>Category</p>
+                                <strong>{{ activeCategoryLabel }}</strong>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- CATEGORY FILTERS -->
                 <div
-                    class="sticky top-[4.25rem] z-30 mb-5 -mx-4 border-y border-white/10 bg-black/80 px-4 py-3 shadow-xl shadow-black/30 backdrop-blur-2xl sm:-mx-6 sm:mb-7 sm:px-6 lg:-mx-8 lg:px-8"
+                    class="sticky top-[4.18rem] z-30 mb-4 -mx-3 border-y border-white/10 bg-black/82 px-3 py-3 shadow-xl shadow-black/30 backdrop-blur-2xl sm:-mx-6 sm:mb-7 sm:px-6 lg:-mx-8 lg:px-8"
                 >
+                    <div
+                        class="mb-2 flex items-center justify-between sm:hidden"
+                    >
+                        <p
+                            class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600"
+                        >
+                            Categories
+                        </p>
+
+                        <p
+                            class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600"
+                        >
+                            Swipe →
+                        </p>
+                    </div>
+
                     <div
                         class="flex gap-2 overflow-x-auto pr-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     >
@@ -565,10 +594,27 @@ const rawWatchKeys = computed(() => {
                     </div>
                 </Transition>
 
-                <!-- WATCH GRID -->
+                <div
+                    v-if="catalogWatches.length"
+                    class="mb-3 flex items-center justify-between px-1 sm:hidden"
+                >
+                    <p
+                        class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600"
+                    >
+                        {{ resultSummary }}
+                    </p>
+
+                    <p
+                        class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600"
+                    >
+                        Swipe cards →
+                    </p>
+                </div>
+
+                <!-- WATCH CAROUSEL / GRID -->
                 <template v-if="catalogWatches.length">
                     <div
-                        class="catalog-grid grid gap-4 transition duration-300 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5"
+                        class="catalog-carousel flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-5 pr-5 transition duration-300 overscroll-x-contain sm:gap-4 md:grid md:snap-none md:grid-cols-2 md:overflow-visible md:pb-0 md:pr-0 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                         :class="
                             isCatalogLoading
                                 ? 'pointer-events-none scale-[0.997] opacity-60 blur-[1px]'
@@ -582,7 +628,7 @@ const rawWatchKeys = computed(() => {
                                 `${watch.brand}-${watch.model_name}-${index}`
                             "
                             type="button"
-                            class="catalog-card group text-left"
+                            class="catalog-card group min-w-[84vw] max-w-[84vw] snap-start text-left min-[390px]:min-w-[80vw] min-[390px]:max-w-[80vw] sm:min-w-[22rem] sm:max-w-[22rem] md:min-w-0 md:max-w-none"
                             :style="{ animationDelay: `${index * 45}ms` }"
                             :aria-label="
                                 'Ask availability for ' +
@@ -592,7 +638,7 @@ const rawWatchKeys = computed(() => {
                             @click="openInquiry(watch)"
                         >
                             <div
-                                class="relative min-h-[385px] overflow-hidden bg-[#050505] sm:min-h-[430px]"
+                                class="relative min-h-[430px] overflow-hidden bg-[#050505] min-[390px]:min-h-[455px] sm:min-h-[470px] md:min-h-[430px] lg:min-h-[455px]"
                             >
                                 <div class="image-shimmer"></div>
 
@@ -625,11 +671,11 @@ const rawWatchKeys = computed(() => {
                                 </div>
 
                                 <div
-                                    class="absolute inset-0 z-[2] bg-gradient-to-t from-black/94 via-black/34 to-black/8"
+                                    class="absolute inset-0 z-[2] bg-gradient-to-t from-black/96 via-black/36 to-black/8"
                                 ></div>
 
                                 <div
-                                    class="absolute inset-x-0 top-0 z-[3] h-28 bg-gradient-to-b from-black/40 to-transparent"
+                                    class="absolute inset-x-0 top-0 z-[3] h-28 bg-gradient-to-b from-black/44 to-transparent"
                                 ></div>
 
                                 <div
@@ -667,7 +713,7 @@ const rawWatchKeys = computed(() => {
                                     </p>
 
                                     <h2
-                                        class="mt-3 line-clamp-2 text-[1.45rem] font-medium leading-tight tracking-[0.02em] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.75)] sm:text-2xl"
+                                        class="mt-3 line-clamp-2 text-[1.55rem] font-medium leading-tight tracking-[0.01em] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.75)] sm:text-2xl"
                                     >
                                         {{
                                             watch.model_name || "Curated Watch"
@@ -709,7 +755,7 @@ const rawWatchKeys = computed(() => {
                                         </div>
 
                                         <span class="ask-pill">
-                                            Ask
+                                            Inquire
                                             <span aria-hidden="true">→</span>
                                         </span>
                                     </div>
@@ -836,12 +882,37 @@ const rawWatchKeys = computed(() => {
     color: rgb(113 113 122);
 }
 
+.premium-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.07);
+    background: rgb(255 255 255 / 0.04);
+    padding: 0.55rem 0.85rem;
+    font-size: 0.61rem;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.24em;
+    color: rgb(161 161 170);
+    box-shadow: 0 16px 45px rgb(0 0 0 / 0.24);
+}
+
+.pulse-dot {
+    height: 0.38rem;
+    width: 0.38rem;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.9);
+    box-shadow: 0 0 0 0 rgb(255 255 255 / 0.26);
+    animation: pulseDot 2.4s ease-out infinite;
+}
+
 .catalog-hero {
     position: relative;
     background:
         radial-gradient(
             circle at top right,
-            rgb(255 255 255 / 0.08),
+            rgb(255 255 255 / 0.09),
             transparent 32%
         ),
         linear-gradient(180deg, rgb(13 13 15 / 0.96), rgb(5 5 5 / 0.95));
@@ -859,6 +930,34 @@ const rawWatchKeys = computed(() => {
         rgb(255 255 255 / 0.45),
         transparent
     );
+}
+
+.mini-stat {
+    min-width: 0;
+    border-radius: 1rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background: rgb(0 0 0 / 0.28);
+    padding: 0.9rem;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+
+.mini-stat p {
+    font-size: 0.58rem;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: rgb(82 82 91);
+}
+
+.mini-stat strong {
+    margin-top: 0.35rem;
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 1.05rem;
+    font-weight: 950;
+    color: white;
 }
 
 .catalog-loading-bar {
@@ -908,13 +1007,12 @@ const rawWatchKeys = computed(() => {
 .catalog-card {
     position: relative;
     display: block;
-    width: 100%;
     overflow: hidden;
     border-radius: 1.25rem;
     border: 1px solid rgb(255 255 255 / 0.055);
     background: linear-gradient(
         180deg,
-        rgb(255 255 255 / 0.03),
+        rgb(255 255 255 / 0.032),
         rgb(0 0 0 / 0.96)
     );
     color: inherit;
@@ -1124,6 +1222,20 @@ const rawWatchKeys = computed(() => {
 
     to {
         background-position: -220% 0;
+    }
+}
+
+@keyframes pulseDot {
+    0% {
+        box-shadow: 0 0 0 0 rgb(255 255 255 / 0.28);
+    }
+
+    70% {
+        box-shadow: 0 0 0 0.55rem rgb(255 255 255 / 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgb(255 255 255 / 0);
     }
 }
 

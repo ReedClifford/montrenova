@@ -141,10 +141,10 @@ const hasCatalogPreview = computed(() => {
 const navSections = computed(() => {
     const sections = [
         {
-            id: "collection",
-            label: "Collection",
-            shortLabel: "Collection",
-            href: "#collection",
+            id: "available",
+            label: "Available",
+            shortLabel: "Available",
+            href: "#available",
         },
     ];
 
@@ -389,6 +389,12 @@ const contactLinks = [
     {
         label: "Messenger",
         description: "Availability, reservations, and watch assistance.",
+        href: "https://m.me/montrenova",
+        icon: "MS",
+    },
+    {
+        label: "Facebook",
+        description: "Follow us for more updates.",
         href: "https://m.me/montrenova",
         icon: "FB",
     },
@@ -773,7 +779,7 @@ const productBadges = (watch) => {
                             class="primary-button group w-full !justify-between px-8 py-4 text-sm"
                             @click="activateSection('collection')"
                         >
-                            <span>View Collection</span>
+                            <span>View Available Watches</span>
 
                             <span class="transition group-hover:translate-x-1">
                                 →
@@ -1386,7 +1392,7 @@ const productBadges = (watch) => {
                                     </div>
 
                                     <span class="view-detail-pill">
-                                        Ask
+                                        Inquire
                                         <span aria-hidden="true">→</span>
                                     </span>
                                 </div>
