@@ -683,13 +683,6 @@ const rawWatchKeys = computed(() => {
                                     class="absolute left-4 top-4 z-20 flex max-w-[92%] flex-wrap gap-1.5"
                                 >
                                     <span
-                                        class="rounded-md border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] shadow-lg shadow-black/40 backdrop-blur"
-                                        :class="statusClass(watch)"
-                                    >
-                                        {{ statusLabel(watch) }}
-                                    </span>
-
-                                    <span
                                         v-if="watch.category"
                                         class="rounded-md border border-white/10 bg-black/45 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] text-zinc-200 shadow-lg shadow-black/40 backdrop-blur"
                                     >
@@ -734,20 +727,7 @@ const rawWatchKeys = computed(() => {
                                     <div
                                         class="mt-5 flex items-end justify-between gap-4 border-t border-white/10 pt-4"
                                     >
-                                        <div class="min-w-0">
-                                            <p
-                                                class="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500"
-                                            >
-                                                Price
-                                            </p>
-
-                                            <p
-                                                v-if="isBelowSrp(watch)"
-                                                class="text-xs text-zinc-500 line-through"
-                                            >
-                                                {{ peso(originalPrice(watch)) }}
-                                            </p>
-                                        </div>
+                                        <div class="min-w-0"></div>
 
                                         <span class="ask-pill">
                                             Inquire
