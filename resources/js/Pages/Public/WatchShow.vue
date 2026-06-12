@@ -523,7 +523,7 @@ const copyLink = async () => {
     </Head>
 
     <div
-        class="relative min-h-screen overflow-hidden bg-[#050505] pb-28 text-white antialiased lg:pb-0"
+        class="relative min-h-screen overflow-hidden bg-[#050505] pb-10 text-white antialiased"
     >
         <!-- AMBIENT BACKGROUND -->
         <div class="pointer-events-none fixed inset-0 z-0">
@@ -546,38 +546,48 @@ const copyLink = async () => {
 
         <!-- HEADER -->
         <header
-            class="sticky top-0 z-50 border-b border-white/10 bg-[#050505]/82 backdrop-blur-2xl"
+            class="fixed inset-x-0 top-0 z-[90] border-b border-white/10 bg-[#050505]/85 shadow-xl shadow-black/30 backdrop-blur-2xl"
         >
             <div
                 class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8"
             >
                 <Link
                     :href="route('welcome')"
-                    class="flex min-w-0 items-center transition duration-300 hover:opacity-80"
+                    class="flex min-w-0 items-center rounded-xl transition duration-300 hover:opacity-80 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                 >
                     <MontreLogo />
                 </Link>
 
-                <div class="flex items-center gap-2">
-                    <Link
-                        :href="route('welcome') + '#collection'"
-                        class="hidden rounded-xl border border-white/10 bg-white/[0.035] px-4 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.07] hover:text-white sm:inline-flex"
+                <Link
+                    :href="route('welcome')"
+                    class="group inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.035] text-zinc-300 shadow-lg shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/35 hover:bg-white hover:text-black hover:shadow-xl hover:shadow-white/15 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2.5"
+                    aria-label="Back to home"
+                >
+                    <svg
+                        viewBox="0 0 24 24"
+                        class="h-4 w-4 transition duration-300 group-hover:-translate-y-0.5 group-hover:scale-110"
+                        aria-hidden="true"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
                     >
-                        Collection
-                    </Link>
+                        <path d="M3 10.5 12 3l9 7.5" />
+                        <path d="M5 10v10h14V10" />
+                        <path d="M9 20v-6h6v6" />
+                    </svg>
 
-                    <button
-                        type="button"
-                        class="rounded-xl border border-white/10 bg-white/[0.035] px-4 py-2.5 text-xs font-bold uppercase tracking-[0.12em] text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.07] hover:text-white"
-                        @click="copyLink"
+                    <span
+                        class="hidden text-xs font-bold uppercase tracking-[0.12em] sm:inline"
                     >
-                        {{ copied ? "Copied" : "Share" }}
-                    </button>
-                </div>
+                        Home
+                    </span>
+                </Link>
             </div>
         </header>
 
-        <main class="relative z-10 pb-8 lg:pb-14">
+        <main class="relative z-10 pt-[4.75rem] pb-8 lg:pb-14">
             <!-- PRODUCT HERO -->
             <section
                 class="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8 lg:py-10"
@@ -781,10 +791,8 @@ const copyLink = async () => {
                         >
                             <div class="shine-line"></div>
 
-                            <!-- MAIN PRODUCT DETAILS -->
-                            <div
-                                class="border-b border-white/10 bg-white/[0.025] p-5 sm:p-6 lg:p-6"
-                            >
+                            <!-- PRODUCT DETAILS + PRICE + CTA -->
+                            <div class="bg-white/[0.025] p-5 sm:p-6 lg:p-6">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <span
                                         class="rounded-lg border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em]"
@@ -806,54 +814,47 @@ const copyLink = async () => {
                                     >
                                         {{ watch.condition }}
                                     </span>
+
+                                    <span
+                                        v-if="hasDiscount"
+                                        class="rounded-lg border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-violet-300"
+                                    >
+                                        Below SRP
+                                    </span>
                                 </div>
 
-                                <p class="mt-7 micro-label">
-                                    {{ watch.brand || "Montre Nova" }}
-                                </p>
+                                <div class="mt-7">
+                                    <p class="micro-label">
+                                        {{ watch.brand || "Montre Nova" }}
+                                    </p>
 
-                                <h1
-                                    class="mt-3 text-4xl font-black leading-[0.95] tracking-[-0.065em] text-white sm:text-5xl xl:text-[3.35rem]"
-                                >
-                                    {{ watch.model_name }}
-                                </h1>
-                            </div>
-
-                            <!-- PRICE + CTA -->
-                            <div class="p-5 sm:p-6 lg:p-6">
-                                <div class="price-panel">
-                                    <div
-                                        class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between"
+                                    <h1
+                                        class="mt-3 text-4xl font-black leading-[0.95] tracking-[-0.065em] text-white sm:text-5xl xl:text-[3.35rem]"
                                     >
-                                        <div>
-                                            <p class="micro-label">
-                                                Asking Price
-                                            </p>
+                                        {{ watch.model_name }}
+                                    </h1>
+                                </div>
 
-                                            <div
-                                                class="mt-3 flex flex-wrap items-end gap-3"
-                                            >
-                                                <p
-                                                    class="text-4xl font-black tracking-[-0.065em] text-white sm:text-[2.85rem]"
-                                                >
-                                                    {{ peso(finalPrice) }}
-                                                </p>
+                                <div
+                                    class="mt-7 rounded-2xl border border-white/10 bg-black/35 p-5 shadow-xl shadow-black/20"
+                                >
+                                    <p class="micro-label">Asking Price</p>
 
-                                                <p
-                                                    v-if="hasDiscount"
-                                                    class="pb-1 text-sm font-semibold text-zinc-500 line-through"
-                                                >
-                                                    {{ peso(originalPrice) }}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <span
-                                            v-if="hasDiscount"
-                                            class="w-fit rounded-lg border border-violet-400/20 bg-violet-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-violet-300"
+                                    <div
+                                        class="mt-3 flex flex-wrap items-end gap-3"
+                                    >
+                                        <p
+                                            class="text-4xl font-black tracking-[-0.065em] text-white sm:text-[2.85rem]"
                                         >
-                                            Below SRP
-                                        </span>
+                                            {{ peso(finalPrice) }}
+                                        </p>
+
+                                        <p
+                                            v-if="hasDiscount"
+                                            class="pb-1 text-sm font-semibold text-zinc-500 line-through"
+                                        >
+                                            {{ peso(originalPrice) }}
+                                        </p>
                                     </div>
                                 </div>
 
@@ -866,7 +867,7 @@ const copyLink = async () => {
 
                                 <button
                                     type="button"
-                                    class="primary-action mt-5 w-full"
+                                    class="primary-action mt-6 w-full"
                                     @click="openMessengerInquiry()"
                                 >
                                     Inquire on Messenger
@@ -891,13 +892,6 @@ const copyLink = async () => {
                                             Watch details
                                         </h2>
                                     </div>
-
-                                    <Link
-                                        href="/warranty-check"
-                                        class="spec-warranty-link"
-                                    >
-                                        Warranty
-                                    </Link>
                                 </div>
 
                                 <div class="inline-spec-grid">
@@ -937,7 +931,7 @@ const copyLink = async () => {
                     <div class="shine-line"></div>
 
                     <div
-                        class="flex flex-col justify-between gap-4 border-b border-white/10 p-5 sm:p-6 lg:flex-row lg:items-end"
+                        class="flex flex-col justify-between gap-4 border-white/10 p-5 sm:p-6 lg:flex-row lg:items-end"
                     >
                         <div>
                             <p class="micro-label">More Available Watches</p>
@@ -953,15 +947,6 @@ const copyLink = async () => {
                             >
                                 Other available pieces you can tap to view next.
                             </p>
-                        </div>
-
-                        <div
-                            class="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500"
-                        >
-                            <span
-                                class="h-1.5 w-1.5 rounded-full bg-white/70"
-                            ></span>
-                            Swipe / Scroll
                         </div>
                     </div>
 
@@ -1113,40 +1098,28 @@ const copyLink = async () => {
             </section>
         </main>
 
-        <!-- MOBILE STICKY CTA -->
-        <div
-            class="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#050505]/95 p-3 backdrop-blur-2xl sm:hidden"
+        <!-- MOBILE MESSENGER FLOATING BUTTON -->
+        <button
+            type="button"
+            class="messenger-float-button fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 z-[80] lg:hidden"
+            aria-label="Inquire on Messenger"
+            @click="openMessengerInquiry()"
         >
-            <div class="grid grid-cols-[1fr_auto_auto] items-center gap-2">
-                <div class="min-w-0">
-                    <p
-                        class="truncate text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500"
-                    >
-                        {{ statusLabel }}
-                    </p>
+            <span class="messenger-float-ring"></span>
 
-                    <p class="truncate text-base font-black text-white">
-                        {{ peso(finalPrice) }}
-                    </p>
-                </div>
+            <svg
+                viewBox="0 0 24 24"
+                class="h-7 w-7"
+                aria-hidden="true"
+                fill="currentColor"
+            >
+                <path
+                    d="M12 2.25C6.49 2.25 2.25 6.27 2.25 11.7c0 2.84 1.17 5.28 3.08 6.95v3.1c0 .48.5.8.94.59l3.2-1.5c.81.22 1.66.34 2.53.34 5.51 0 9.75-4.02 9.75-9.45S17.51 2.25 12 2.25Zm1.03 12.5-2.48-2.64-4.84 2.64 5.32-5.65 2.48 2.64 4.79-2.64-5.27 5.65Z"
+                />
+            </svg>
 
-                <button
-                    type="button"
-                    class="inline-flex items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-black text-black"
-                    @click="openMessengerInquiry"
-                >
-                    Inquire
-                </button>
-
-                <button
-                    type="button"
-                    class="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white"
-                    @click="copyLink"
-                >
-                    {{ copied ? "Copied" : "Share" }}
-                </button>
-            </div>
-        </div>
+            <span class="messenger-online-dot"></span>
+        </button>
 
         <!-- FULLSCREEN IMAGE PREVIEW -->
         <Teleport to="body">
@@ -1442,12 +1415,6 @@ const copyLink = async () => {
         background-color 240ms ease;
 }
 
-.inline-spec-row:hover {
-    transform: translateY(-1px);
-    border-color: rgb(255 255 255 / 0.18);
-    background: rgb(255 255 255 / 0.055);
-}
-
 .inline-spec-row span {
     font-size: 0.55rem;
     font-weight: 900;
@@ -1593,6 +1560,97 @@ const copyLink = async () => {
     animation: fadeUp 620ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+.messenger-float-button {
+    display: flex;
+    height: 3.65rem;
+    width: 3.65rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.2);
+    background: linear-gradient(135deg, #00a6ff, #006aff);
+    color: white;
+    box-shadow:
+        0 24px 70px rgb(0 0 0 / 0.68),
+        0 0 0 1px rgb(255 255 255 / 0.14),
+        0 0 46px rgb(0 132 255 / 0.32),
+        inset 0 1px 0 rgb(255 255 255 / 0.22);
+    isolation: isolate;
+    transition:
+        transform 240ms ease,
+        box-shadow 240ms ease,
+        filter 240ms ease;
+    animation: messengerFloatAttention 5.2s ease-in-out infinite;
+}
+
+.messenger-float-button:active {
+    transform: scale(0.94);
+}
+
+.messenger-float-button:focus-visible {
+    outline: 2px solid rgb(255 255 255 / 0.7);
+    outline-offset: 4px;
+}
+
+.messenger-online-dot {
+    position: absolute;
+    right: 0.32rem;
+    bottom: 0.34rem;
+    height: 0.78rem;
+    width: 0.78rem;
+    border-radius: 9999px;
+    border: 2px solid white;
+    background: #22c55e;
+    box-shadow: 0 0 14px rgb(34 197 94 / 0.8);
+}
+
+.messenger-float-ring {
+    position: absolute;
+    inset: -0.45rem;
+    z-index: -1;
+    border-radius: 9999px;
+    border: 1px solid rgb(0 132 255 / 0.45);
+    opacity: 0;
+    animation: messengerFloatRing 2.6s ease-out infinite;
+}
+
+@keyframes messengerFloatRing {
+    0% {
+        opacity: 0.7;
+        transform: scale(0.9);
+    }
+
+    70% {
+        opacity: 0;
+        transform: scale(1.22);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1.22);
+    }
+}
+
+@keyframes messengerFloatAttention {
+    0%,
+    72%,
+    100% {
+        transform: translateY(0);
+    }
+
+    78% {
+        transform: translateY(-5px);
+    }
+
+    84% {
+        transform: translateY(0);
+    }
+
+    90% {
+        transform: translateY(-2px);
+    }
+}
+
 /* DESKTOP LAYOUT */
 @media (min-width: 1024px) {
     .product-hero-grid {
@@ -1679,6 +1737,12 @@ const copyLink = async () => {
         animation-iteration-count: 1 !important;
         scroll-behavior: auto !important;
         transition-duration: 0.001ms !important;
+    }
+}
+
+@media (min-width: 1024px) {
+    .messenger-float-button {
+        display: none !important;
     }
 }
 </style>

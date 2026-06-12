@@ -30,6 +30,10 @@ Route::post('/warranty-check', [PublicWarrantyController::class, 'check'])
 Route::get('/watches/{watch}', [PublicWatchController::class, 'show'])
     ->name('public.watches.show');
 
+
+Route::get('/catalog', [PublicWatchController::class, 'catalog'])
+    ->name('public.catalog');
+
 /*
 |--------------------------------------------------------------------------
 | Dashboard
