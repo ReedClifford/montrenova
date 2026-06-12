@@ -507,8 +507,9 @@ const rawWatchKeys = computed(() => {
                             <p
                                 class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400 sm:mt-5 sm:text-base"
                             >
-                                Swipe through the catalog, pick a category, and
-                                tap a watch to ask availability.
+                                **Note:** Prices are subject to change without
+                                prior notice. For the latest price and
+                                availability, kindly message us directly.
                             </p>
                         </div>
 
