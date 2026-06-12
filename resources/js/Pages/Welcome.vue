@@ -1392,7 +1392,7 @@ const productBadges = (watch) => {
                                     </div>
 
                                     <span class="view-detail-pill">
-                                        Inquiry
+                                        Inquire
                                         <span aria-hidden="true">→</span>
                                     </span>
                                 </div>
