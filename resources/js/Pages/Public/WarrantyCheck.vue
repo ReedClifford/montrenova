@@ -160,16 +160,31 @@ const submit = () => {
                 <div class="flex items-center gap-2">
                     <Link
                         href="/"
-                        class="hidden rounded-lg border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-zinc-400 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white sm:inline-flex"
+                        aria-label="Back to home"
+                        class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-black transition hover:bg-zinc-200 sm:h-auto sm:w-auto sm:px-4 sm:py-2"
                     >
-                        Collection
-                    </Link>
+                        <!-- Mobile home icon -->
+                        <svg
+                            class="h-5 w-5 sm:hidden"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2.2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                        >
+                            <path d="M3 10.5 12 3l9 7.5" />
+                            <path d="M5 10v10h14V10" />
+                            <path d="M9 20v-6h6v6" />
+                        </svg>
 
-                    <Link
-                        href="/"
-                        class="rounded-lg bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-black transition hover:bg-zinc-200"
-                    >
-                        Back Home
+                        <!-- Desktop text -->
+                        <span
+                            class="hidden text-xs font-black uppercase tracking-[0.12em] sm:inline"
+                        >
+                            Back Home
+                        </span>
                     </Link>
                 </div>
             </header>
