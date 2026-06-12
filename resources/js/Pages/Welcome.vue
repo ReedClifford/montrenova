@@ -429,7 +429,7 @@ const orderSteps = [
         number: "03",
         title: "Delivery",
         description:
-            "Metro Manila orders can be shipped through Lalamove. Nationwide orders can be shipped through LBC after payment confirmation.",
+            "Metro Manila orders may be delivered via Lalamove, while nationwide orders are shipped through LBC after payment confirmation.Scheduled meetups around Metro Manila are also available every Friday, Saturday, and Sunday.",
     },
 ];
 
@@ -1370,26 +1370,7 @@ const productBadges = (watch) => {
                                 <div
                                     class="mt-6 flex items-end justify-between gap-4 border-t border-white/10 pt-4"
                                 >
-                                    <div>
-                                        <p
-                                            class="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500"
-                                        >
-                                            Price
-                                        </p>
-
-                                        <p
-                                            class="mt-1 text-xl font-black tracking-tight text-white sm:text-2xl"
-                                        >
-                                            {{ peso(finalPrice(watch)) }}
-                                        </p>
-
-                                        <p
-                                            v-if="isBelowSrp(watch)"
-                                            class="text-[11px] text-zinc-500 line-through sm:text-xs"
-                                        >
-                                            {{ peso(originalPrice(watch)) }}
-                                        </p>
-                                    </div>
+                                    <div></div>
 
                                     <span class="view-detail-pill">
                                         Inquire
