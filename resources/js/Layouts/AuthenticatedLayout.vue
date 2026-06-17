@@ -36,6 +36,13 @@ const sidebarLinks = computed(() => [
         active: isActive("/admin/watches"),
     },
     {
+        label: "Catalog",
+        shortLabel: "Catalog",
+        href: route("admin.catalog.index"),
+        icon: "M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5",
+        active: isActive("/admin/catalog"),
+    },
+    {
         label: "Sales",
         shortLabel: "Sales",
         href: route("admin.sales.index"),
@@ -51,20 +58,7 @@ const sidebarLinks = computed(() => [
     },
 ]);
 
-const mobileBottomLinks = computed(() => [
-    sidebarLinks.value[0],
-    sidebarLinks.value[1],
-    {
-        label: "Add Watch",
-        shortLabel: "Add",
-        href: route("admin.watches.create"),
-        icon: "M12 4.5v15m7.5-7.5h-15",
-        active: false,
-        primary: true,
-    },
-    sidebarLinks.value[2],
-    sidebarLinks.value[3],
-]);
+const mobileBottomLinks = computed(() => sidebarLinks.value);
 
 const initials = computed(() => {
     if (!user.value?.name) return "MN";

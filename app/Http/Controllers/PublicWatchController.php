@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CatalogWatch;
 use App\Models\Watch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -69,12 +70,18 @@ class PublicWatchController extends Controller
             ->map(fn ($watch) => $this->publicWatchCard($watch))
             ->values();
 
+        /*
+        |--------------------------------------------------------------------------
+        | Catalog Preview
+        |--------------------------------------------------------------------------
+        | This is now from catalog_watches table, not watches table.
+        */
         $catalogSource = $this->uniquePublicCatalogWatches(
             $this->catalogBaseQuery()->get()
         );
 
         $catalogPreviewWatches = $this->catalogPreviewWatches($catalogSource)
-            ->map(fn ($watch) => $this->publicWatchCard($watch))
+            ->map(fn ($watch) => $this->publicCatalogWatchCard($watch))
             ->values()
             ->all();
 
@@ -162,7 +169,7 @@ class PublicWatchController extends Controller
 
         return Inertia::render('Public/Catalog', [
             'watches' => $filteredWatches
-                ->map(fn ($watch) => $this->publicWatchCard($watch))
+                ->map(fn ($watch) => $this->publicCatalogWatchCard($watch))
                 ->values()
                 ->all(),
             'categories' => $categories
@@ -172,14 +179,6 @@ class PublicWatchController extends Controller
             'categoryCounts' => $this->catalogCategoryCounts($catalogSource),
             'totalCatalogWatches' => $catalogSource->count(),
             'canLogin' => Route::has('login'),
-
-            // temporary helpful debug values
-            'catalogDebug' => [
-                'database_watch_count' => Watch::query()->count(),
-                'catalog_source_count' => $catalogSource->count(),
-                'filtered_watch_count' => $filteredWatches->count(),
-                'selected_category' => $selectedCategory ?: 'all',
-            ],
         ]);
     }
 
@@ -218,19 +217,10 @@ class PublicWatchController extends Controller
 
     private function catalogBaseQuery()
     {
-        return Watch::query()
-            ->with(['primaryImage'])
-            ->withCount('images')
-            ->orderByRaw("
-                CASE
-                    WHEN LOWER(TRIM(COALESCE(status, 'available'))) = 'available' THEN 0
-                    WHEN LOWER(TRIM(COALESCE(status, 'available'))) = 'reserved' THEN 1
-                    WHEN LOWER(TRIM(COALESCE(status, 'available'))) = 'sold' THEN 2
-                    ELSE 3
-                END
-            ")
-            ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
-            ->orderBy('display_order')
+        return CatalogWatch::query()
+            ->where('is_visible', true)
+            ->orderByRaw('CASE WHEN sort_order IS NULL OR sort_order = 0 THEN 1 ELSE 0 END')
+            ->orderBy('sort_order')
             ->latest('id');
     }
 
@@ -256,7 +246,7 @@ class PublicWatchController extends Controller
         $fallbackKey = trim($brand . '|' . $model . '|' . $category, '| ');
 
         if ($fallbackKey !== '') {
-            return 'watch:' . Str::lower($fallbackKey);
+            return 'catalog:' . Str::lower($fallbackKey);
         }
 
         return 'id:' . $watch->id;
@@ -295,6 +285,47 @@ class PublicWatchController extends Controller
         }
 
         return collect($watches)->take(8)->values();
+    }
+
+    private function publicCatalogWatchCard(CatalogWatch $watch): array
+    {
+        return [
+            'id' => $watch->id,
+            'brand' => $watch->brand ?: 'Seiko',
+            'model_name' => $watch->model_name,
+            'reference_number' => $watch->reference_number,
+            'condition' => null,
+            'category' => $watch->category,
+            'description' => null,
+
+            'selling_price' => 0,
+            'discounted_price' => null,
+            'sold_price' => 0,
+            'price' => 0,
+
+            'status' => 'available',
+            'is_featured' => false,
+            'display_order' => (int) ($watch->sort_order ?? 0),
+            'created_at' => $this->formatDateTime($watch->created_at),
+            'updated_at' => $this->formatDateTime($watch->updated_at),
+            'date_sold' => null,
+            'images_count' => $watch->image_url ? 1 : 0,
+
+            'primary_image_url' => $watch->image_url,
+            'primary_hd_url' => $watch->image_url,
+            'image_url' => $watch->image_url,
+            'thumbnail_url' => $watch->image_url,
+
+            'primary_image' => $watch->image_url ? [
+                'id' => null,
+                'image_url' => $watch->image_url,
+                'hd_url' => $watch->image_url,
+                'thumbnail_url' => $watch->image_url,
+                'is_primary' => true,
+            ] : null,
+
+            'is_catalog_item' => true,
+        ];
     }
 
     private function publicWatchCard(Watch $watch): array

@@ -8,6 +8,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicWarrantyController;
 use App\Http\Controllers\PublicWatchController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\CatalogWatchController;
+use App\Http\Controllers\PublicCatalogController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,12 +29,18 @@ Route::get('/warranty-check', [PublicWarrantyController::class, 'index'])
 Route::post('/warranty-check', [PublicWarrantyController::class, 'check'])
     ->name('public.warranty-check.check');
 
+Route::get('/catalog', [PublicCatalogController::class, 'index'])
+    ->name('public.catalog');
+
 Route::get('/watches/{watch}', [PublicWatchController::class, 'show'])
     ->name('public.watches.show');
 
 
-Route::get('/catalog', [PublicWatchController::class, 'catalog'])
-    ->name('public.catalog');
+// `Route::get('/catalog', [PublicWatchController::class, 'catalog'])
+//     ->name('public.catalog');`
+
+
+
 
 /*
 |--------------------------------------------------------------------------
@@ -176,6 +184,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::delete('/admin/expenses/{expense}', [ExpenseController::class, 'destroy'])
         ->name('admin.expenses.destroy');
+
+
+
+
+    Route::resource('/admin/catalog', CatalogWatchController::class)
+        ->except(['show', 'create', 'edit'])
+        ->names('admin.catalog');
 });
 
 require __DIR__ . '/auth.php';
