@@ -1,4 +1,5 @@
 <script setup>
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, Link, router, useForm } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 
@@ -91,12 +92,15 @@ const submit = () => {
     if (editingWatch.value) {
         form.transform((data) => ({
             ...data,
-            _method: "PUT",
-        })).post(route("admin.catalog.update", editingWatch.value.id), {
-            forceFormData: true,
-            preserveScroll: true,
-            onSuccess: () => closeForm(),
-        });
+            _method: "PATCH",
+        })).post(
+            route("admin.catalog.update", { catalog: editingWatch.value.id }),
+            {
+                forceFormData: true,
+                preserveScroll: true,
+                onSuccess: () => closeForm(),
+            },
+        );
 
         return;
     }
@@ -158,7 +162,7 @@ const cleanPaginationLabel = (label) => {
 <template>
     <Head title="Catalog Watches" />
 
-    <div class="min-h-screen bg-zinc-950 px-4 py-6 text-white sm:px-6 lg:px-8">
+    <AuthenticatedLayout title="Catalog Watches">
         <div class="mx-auto max-w-7xl">
             <div
                 class="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end"
@@ -171,7 +175,7 @@ const cleanPaginationLabel = (label) => {
                     </p>
 
                     <h1
-                        class="mt-2 text-3xl font-black tracking-[-0.04em] sm:text-4xl"
+                        class="mt-2 text-3xl font-black tracking-[-0.04em] text-white sm:text-4xl"
                     >
                         Catalog Watches
                     </h1>
@@ -182,13 +186,23 @@ const cleanPaginationLabel = (label) => {
                     </p>
                 </div>
 
-                <button
-                    type="button"
-                    class="rounded-xl bg-white px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-black transition hover:bg-zinc-200"
-                    @click="openCreateForm"
-                >
-                    Add Catalog Watch
-                </button>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <Link
+                        :href="route('public.catalog')"
+                        target="_blank"
+                        class="inline-flex items-center justify-center rounded-xl border border-white/10 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-zinc-300 transition hover:border-white/30 hover:text-white"
+                    >
+                        View Public Catalog
+                    </Link>
+
+                    <button
+                        type="button"
+                        class="rounded-xl bg-white px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-black transition hover:bg-zinc-200"
+                        @click="openCreateForm"
+                    >
+                        Add Catalog Watch
+                    </button>
+                </div>
             </div>
 
             <div
@@ -227,7 +241,7 @@ const cleanPaginationLabel = (label) => {
                 class="mb-6 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl shadow-black/40"
             >
                 <div class="border-b border-white/10 p-5">
-                    <h2 class="text-xl font-black">
+                    <h2 class="text-xl font-black text-white">
                         {{
                             editingWatch
                                 ? "Edit Catalog Watch"
@@ -523,7 +537,9 @@ const cleanPaginationLabel = (label) => {
                 v-else
                 class="rounded-2xl border border-white/10 bg-white/[0.04] p-10 text-center"
             >
-                <h3 class="text-xl font-black">No catalog watches yet.</h3>
+                <h3 class="text-xl font-black text-white">
+                    No catalog watches yet.
+                </h3>
                 <p class="mt-3 text-sm text-zinc-500">
                     Add your first catalog watch to show it on the public
                     catalog.
@@ -562,5 +578,5 @@ const cleanPaginationLabel = (label) => {
                 </template>
             </div>
         </div>
-    </div>
+    </AuthenticatedLayout>
 </template>
