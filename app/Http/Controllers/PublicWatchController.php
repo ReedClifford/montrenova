@@ -65,13 +65,16 @@ class PublicWatchController extends Controller
             ])
             ->count();
 
-        $soldWatches = Watch::query()
+        $soldWatchPool = Watch::query()
             ->with(['primaryImage'])
             ->withCount('images')
             ->whereRaw('LOWER(TRIM(status)) = ?', ['sold'])
             ->orderByRaw('COALESCE(date_sold, updated_at, created_at) DESC')
-            ->limit(8)
-            ->get()
+            ->limit(300)
+            ->get();
+
+        $soldWatches = $soldWatchPool
+            ->take(8)
             ->map(fn ($watch) => $this->publicWatchCard($watch))
             ->values();
 
@@ -79,16 +82,50 @@ class PublicWatchController extends Controller
         |--------------------------------------------------------------------------
         | Hero Best Seller Carousel
         |--------------------------------------------------------------------------
-        | Uses sold watches first as client-favorite / best-seller social proof.
-        | If there are no sold watches yet, it falls back to featured available watches.
+        | Top 5 best-selling models by number of sold records.
+        | Groups sold watches by reference number when available, otherwise by
+        | brand + model name. The carousel uses the latest sold watch photo as
+        | the representative image for each best-selling model.
         */
-        $bestSellerWatches = $soldWatches
-            ->take(6)
+        $bestSellerWatches = $soldWatchPool
+            ->groupBy(fn ($watch) => $this->bestSellerModelKey($watch))
+            ->map(function ($items) {
+                $latestSoldWatch = $items
+                    ->sortByDesc(fn ($watch) => $this->soldSortTimestamp($watch))
+                    ->first();
+
+                return [
+                    'watch' => $latestSoldWatch,
+                    'sold_count' => $items->count(),
+                    'latest_sold_timestamp' => $this->soldSortTimestamp($latestSoldWatch),
+                ];
+            })
+            ->sort(function ($a, $b) {
+                return ($b['sold_count'] <=> $a['sold_count'])
+                    ?: ($b['latest_sold_timestamp'] <=> $a['latest_sold_timestamp']);
+            })
+            ->take(5)
+            ->values()
+            ->map(function ($item, $index) {
+                $card = $this->publicWatchCard($item['watch']);
+
+                $card['sold_count'] = $item['sold_count'];
+                $card['best_seller_rank'] = $index + 1;
+
+                return $card;
+            })
             ->values();
 
         if ($bestSellerWatches->isEmpty()) {
             $bestSellerWatches = $featuredWatches
-                ->map(fn ($watch) => $this->publicWatchCard($watch))
+                ->take(5)
+                ->map(fn ($watch, $index) => array_merge(
+                    $this->publicWatchCard($watch),
+                    [
+                        'sold_count' => 0,
+                        'best_seller_rank' => $index + 1,
+                    ]
+                ))
                 ->values();
         }
 
@@ -312,6 +349,46 @@ class PublicWatchController extends Controller
         }
 
         return collect($watches)->take(8)->values();
+    }
+
+    private function bestSellerModelKey(Watch $watch): string
+    {
+        $reference = Str::lower(trim((string) ($watch->reference_number ?? '')));
+
+        if ($reference !== '') {
+            return 'ref:' . $reference;
+        }
+
+        $brand = Str::lower(trim((string) ($watch->brand ?? '')));
+        $model = Str::lower(trim((string) ($watch->model_name ?? '')));
+        $fallbackKey = trim($brand . '|' . $model, '| ');
+
+        if ($fallbackKey !== '') {
+            return 'model:' . $fallbackKey;
+        }
+
+        return 'id:' . $watch->id;
+    }
+
+    private function soldSortTimestamp(?Watch $watch): int
+    {
+        if (! $watch) {
+            return 0;
+        }
+
+        $value = $watch->date_sold ?: $watch->updated_at ?: $watch->created_at;
+
+        if (! $value) {
+            return 0;
+        }
+
+        try {
+            return $value instanceof Carbon
+                ? $value->getTimestamp()
+                : Carbon::parse($value)->getTimestamp();
+        } catch (\Throwable) {
+            return 0;
+        }
     }
 
     private function publicCatalogWatchCard(CatalogWatch $watch): array
