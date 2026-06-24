@@ -108,9 +108,13 @@ class PublicWatchController extends Controller
             ->values()
             ->map(function ($item, $index) {
                 $card = $this->publicWatchCard($item['watch']);
+                $wristShotUrl = $this->bestSellerWristShotUrl($item['watch']);
 
                 $card['sold_count'] = $item['sold_count'];
                 $card['best_seller_rank'] = $index + 1;
+                $card['wristshot_image_url'] = $wristShotUrl;
+                $card['hero_image_url'] = $wristShotUrl
+                    ?: ($card['primary_hd_url'] ?? $card['primary_image_url'] ?? $card['image_url'] ?? null);
 
                 return $card;
             })
@@ -119,13 +123,18 @@ class PublicWatchController extends Controller
         if ($bestSellerWatches->isEmpty()) {
             $bestSellerWatches = $featuredWatches
                 ->take(5)
-                ->map(fn ($watch, $index) => array_merge(
-                    $this->publicWatchCard($watch),
-                    [
-                        'sold_count' => 0,
-                        'best_seller_rank' => $index + 1,
-                    ]
-                ))
+                ->map(function ($watch, $index) {
+                    $card = $this->publicWatchCard($watch);
+                    $wristShotUrl = $this->bestSellerWristShotUrl($watch);
+
+                    $card['sold_count'] = 0;
+                    $card['best_seller_rank'] = $index + 1;
+                    $card['wristshot_image_url'] = $wristShotUrl;
+                    $card['hero_image_url'] = $wristShotUrl
+                        ?: ($card['primary_hd_url'] ?? $card['primary_image_url'] ?? $card['image_url'] ?? null);
+
+                    return $card;
+                })
                 ->values();
         }
 
@@ -349,6 +358,68 @@ class PublicWatchController extends Controller
         }
 
         return collect($watches)->take(8)->values();
+    }
+
+    private function bestSellerWristShotUrl(Watch $watch): ?string
+    {
+        $modelKey = $this->bestSellerModelKey($watch);
+        $reference = trim((string) ($watch->reference_number ?? ''));
+        $brand = trim((string) ($watch->brand ?? ''));
+        $model = trim((string) ($watch->model_name ?? ''));
+
+        /*
+        |--------------------------------------------------------------------------
+        | Manual Best-Seller Wrist Shots
+        |--------------------------------------------------------------------------
+        | Put your images inside: public/images/best-sellers/
+        |
+        | Easiest naming option:
+        | - If the watch has reference SSC813, upload:
+        |   public/images/best-sellers/ssc813.jpg
+        |
+        | Or manually map a specific best-seller key below:
+        | - Reference key format: ref:ssc813
+        | - Fallback model key format: model:seiko|speedtimer panda
+        */
+        $manualWristShots = [
+            // 'ref:ssc813' => 'images/best-sellers/ssc813.jpg',
+            // 'model:seiko|speedtimer panda' => 'images/best-sellers/seiko-speedtimer-panda.jpg',
+        ];
+
+        if (isset($manualWristShots[$modelKey])) {
+            return $this->publicAssetUrlIfExists($manualWristShots[$modelKey]);
+        }
+
+        $baseNames = collect([
+            $reference !== '' ? Str::slug($reference) : null,
+            trim($brand . ' ' . $model) !== '' ? Str::slug(trim($brand . ' ' . $model)) : null,
+            $model !== '' ? Str::slug($model) : null,
+        ])->filter()->unique()->values();
+
+        foreach ($baseNames as $baseName) {
+            foreach (['jpg', 'jpeg', 'png', 'webp', 'gif'] as $extension) {
+                $assetUrl = $this->publicAssetUrlIfExists("images/best-sellers/{$baseName}.{$extension}");
+
+                if ($assetUrl) {
+                    return $assetUrl;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function publicAssetUrlIfExists(?string $path): ?string
+    {
+        $cleanPath = ltrim(trim((string) $path), '/');
+
+        if ($cleanPath === '') {
+            return null;
+        }
+
+        return file_exists(public_path($cleanPath))
+            ? asset($cleanPath)
+            : null;
     }
 
     private function bestSellerModelKey(Watch $watch): string

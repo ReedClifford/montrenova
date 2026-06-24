@@ -166,27 +166,33 @@ const bestSellerCarouselWatches = computed(() => {
     const featuredFromProp = toCollectionArray(props.featuredWatches);
     const featuredFromCollection = watches.value.filter(hasFeaturedFlag);
 
-    const candidates = [
-        ...bestSellersFromProp,
-        ...soldBestSellers,
-        ...featuredFromProp,
-        ...(featuredWatch.value ? [featuredWatch.value] : []),
-        ...featuredFromCollection,
-        ...watches.value,
-    ].filter(Boolean);
+    const candidates = (
+        bestSellersFromProp.length
+            ? bestSellersFromProp
+            : [
+                  ...soldBestSellers,
+                  ...featuredFromProp,
+                  ...(featuredWatch.value ? [featuredWatch.value] : []),
+                  ...featuredFromCollection,
+                  ...watches.value,
+              ]
+    ).filter(Boolean);
 
     const uniqueWatches = new Map();
 
     candidates.forEach((watch, index) => {
         const key =
-            watch?.id ?? watch?.reference_number ?? `best-seller-${index}`;
+            watch?.best_seller_rank ||
+            watch?.id ||
+            watch?.reference_number ||
+            `best-seller-${index}`;
 
         if (!uniqueWatches.has(key) && isHeroEligibleWatch(watch)) {
             uniqueWatches.set(key, watch);
         }
     });
 
-    return [...uniqueWatches.values()].slice(0, 6);
+    return [...uniqueWatches.values()].slice(0, 5);
 });
 
 const activeBestSellerWatch = computed(() => {
@@ -198,12 +204,16 @@ const activeBestSellerWatch = computed(() => {
 });
 
 const bestSellerPreviewWatches = computed(() => {
-    return bestSellerCarouselWatches.value.slice(0, 6);
+    return bestSellerCarouselWatches.value.slice(0, 5);
 });
 
 const hasBestSellerCarousel = computed(() => {
     return bestSellerCarouselWatches.value.length > 1;
 });
+
+const bestSellerRank = (watch = null, fallbackIndex = 0) => {
+    return Number(watch?.best_seller_rank || fallbackIndex + 1);
+};
 
 const heroParallaxImageStyle = computed(() => {
     const direction = activeBestSellerIndex.value % 2 === 0 ? 1 : -1;
@@ -737,7 +747,11 @@ const normalizeImageUrl = (url) => {
 
 const watchImage = (watch) => {
     return normalizeImageUrl(
-        watch?.primary_hd_url ||
+        watch?.hero_image_url ||
+            watch?.wristshot_image_url ||
+            watch?.wrist_shot_url ||
+            watch?.wristshot_url ||
+            watch?.primary_hd_url ||
             watch?.primary_image_url ||
             watch?.image_url ||
             watch?.thumbnail_url ||
@@ -1109,6 +1123,22 @@ const productBadges = (watch) => {
                                 class="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-40 bg-gradient-to-t from-black/42 to-transparent"
                             ></div>
 
+                            <div
+                                class="pointer-events-none absolute left-4 top-4 z-40 flex items-center gap-2 sm:left-5 sm:top-5"
+                            >
+                                <span
+                                    class="rounded-full border border-white/20 bg-black/55 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-white shadow-xl shadow-black/35 backdrop-blur-xl"
+                                >
+                                    #{{
+                                        bestSellerRank(
+                                            activeBestSellerWatch,
+                                            activeBestSellerIndex,
+                                        )
+                                    }}
+                                    Best Seller
+                                </span>
+                            </div>
+
                             <Link
                                 v-if="isAvailableWatch(activeBestSellerWatch)"
                                 :href="
@@ -1208,7 +1238,7 @@ const productBadges = (watch) => {
 
                         <div
                             v-if="hasBestSellerCarousel"
-                            class="featured-dock image-only-dock grid grid-cols-6 gap-2 rounded-[1rem] border border-white/10 bg-white/[0.035] p-2 backdrop-blur"
+                            class="featured-dock image-only-dock grid grid-cols-5 gap-2 rounded-[1rem] border border-white/10 bg-white/[0.035] p-2 backdrop-blur"
                         >
                             <button
                                 v-for="(
@@ -1233,6 +1263,12 @@ const productBadges = (watch) => {
                                 <span
                                     class="relative block aspect-square overflow-hidden rounded-[0.75rem] bg-black"
                                 >
+                                    <span
+                                        class="pointer-events-none absolute left-1.5 top-1.5 z-10 flex h-6 min-w-6 items-center justify-center rounded-full border border-white/20 bg-black/60 px-1.5 text-[9px] font-black text-white shadow-lg shadow-black/30 backdrop-blur"
+                                    >
+                                        #{{ bestSellerRank(watch, index) }}
+                                    </span>
+
                                     <img
                                         v-if="watchImage(watch)"
                                         :src="watchImage(watch)"
