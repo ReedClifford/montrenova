@@ -1,7 +1,7 @@
 <script setup>
 import MontreLogo from "@/Components/MontreLogo.vue";
 import { Head, Link } from "@inertiajs/vue3";
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
 const props = defineProps({
     canLogin: {
@@ -15,10 +15,6 @@ const props = defineProps({
     featuredWatch: {
         type: Object,
         default: null,
-    },
-    featuredWatches: {
-        type: [Array, Object],
-        default: () => [],
     },
     watches: {
         type: [Array, Object],
@@ -53,10 +49,8 @@ const props = defineProps({
 const isPageOpening = ref(false);
 const isMobileCtaOpen = ref(false);
 const activeSection = ref("");
-const activeFeaturedIndex = ref(0);
 
 let sectionObserver = null;
-let featuredCarouselTimer = null;
 
 const toggleMobileCta = () => {
     isMobileCtaOpen.value = !isMobileCtaOpen.value;
@@ -136,113 +130,6 @@ const soldWatches = computed(() => {
 const recentSoldWatches = computed(() => soldWatches.value.slice(0, 8));
 const featuredWatch = computed(() => props.featuredWatch);
 
-const hasFeaturedFlag = (watch) => {
-    const value = watch?.is_featured;
-
-    return value === true || value === 1 || value === "1" || value === "true";
-};
-
-const isHeroEligibleWatch = (watch) => {
-    const status = String(watch?.status || "available").toLowerCase();
-
-    return !["sold", "hidden", "draft"].includes(status);
-};
-
-const featuredCarouselWatches = computed(() => {
-    const featuredFromProp = toCollectionArray(props.featuredWatches);
-    const featuredFromCollection = watches.value.filter(hasFeaturedFlag);
-    const candidates = [
-        ...featuredFromProp,
-        ...(featuredWatch.value ? [featuredWatch.value] : []),
-        ...featuredFromCollection,
-    ].filter(Boolean);
-
-    const uniqueWatches = new Map();
-
-    candidates.forEach((watch, index) => {
-        const key = watch?.id ?? watch?.reference_number ?? `featured-${index}`;
-
-        if (!uniqueWatches.has(key) && isHeroEligibleWatch(watch)) {
-            uniqueWatches.set(key, watch);
-        }
-    });
-
-    const featuredOnly = [...uniqueWatches.values()].filter((watch) => {
-        return hasFeaturedFlag(watch) || watch?.id === featuredWatch.value?.id;
-    });
-
-    if (featuredOnly.length) {
-        return featuredOnly.slice(0, 6);
-    }
-
-    const fallbackWatch = featuredWatch.value || watches.value[0] || null;
-
-    return fallbackWatch ? [fallbackWatch] : [];
-});
-
-const activeFeaturedWatch = computed(() => {
-    return (
-        featuredCarouselWatches.value[activeFeaturedIndex.value] ||
-        featuredCarouselWatches.value[0] ||
-        null
-    );
-});
-
-const featuredPreviewWatches = computed(() => {
-    return featuredCarouselWatches.value.slice(0, 6);
-});
-
-const hasFeaturedCarousel = computed(() => {
-    return featuredCarouselWatches.value.length > 1;
-});
-
-const setActiveFeatured = (index) => {
-    const total = featuredCarouselWatches.value.length;
-
-    if (!total) return;
-
-    activeFeaturedIndex.value = ((index % total) + total) % total;
-};
-
-const nextFeatured = () => {
-    setActiveFeatured(activeFeaturedIndex.value + 1);
-};
-
-const previousFeatured = () => {
-    setActiveFeatured(activeFeaturedIndex.value - 1);
-};
-
-const stopFeaturedAutoPlay = () => {
-    if (featuredCarouselTimer) {
-        window.clearInterval(featuredCarouselTimer);
-        featuredCarouselTimer = null;
-    }
-};
-
-const startFeaturedAutoPlay = () => {
-    stopFeaturedAutoPlay();
-
-    if (!hasFeaturedCarousel.value) return;
-
-    featuredCarouselTimer = window.setInterval(() => {
-        nextFeatured();
-    }, 4800);
-};
-
-const resetFeaturedAutoPlay = () => {
-    startFeaturedAutoPlay();
-};
-
-watch(featuredCarouselWatches, () => {
-    if (activeFeaturedIndex.value >= featuredCarouselWatches.value.length) {
-        activeFeaturedIndex.value = 0;
-    }
-
-    if (typeof window !== "undefined") {
-        startFeaturedAutoPlay();
-    }
-});
-
 const catalogPreviewWatches = computed(() => {
     return toCollectionArray(props.catalogPreviewWatches);
 });
@@ -251,82 +138,16 @@ const hasCatalogPreview = computed(() => {
     return catalogPreviewWatches.value.length > 0;
 });
 
-const vlogs = [
-    {
-        id: 1,
-        title: "GIFT KAY ERPAT",
-        description:
-            "A special Montre Nova handoff story made for a meaningful birthday gift.",
-        url: "https://www.facebook.com/reel/2215560775962814",
-        thumbnail: "/images/021.jpg",
-        preview: "/videos/vlogs/vlog-021.mp4",
-    },
-    {
-        id: 2,
-        title: "LEFT INSPIRED",
-        description:
-            "A quick Montre Nova vlog feature with one of our recent watch stories.",
-        url: "https://www.facebook.com/reel/959389140424011",
-        thumbnail: "/images/020.jpg",
-        preview: "/videos/vlogs/vlog-020.mp4",
-    },
-    {
-        id: 3,
-        title: "DOUBLE DEAL CLOSED",
-        description:
-            "Two watches, one smooth transaction, and another successful Montre Nova deal.",
-        url: "https://www.facebook.com/reel/1422997365989569",
-        thumbnail: "/images/011.jpg",
-        preview: "/videos/vlogs/vlog-011.mp4",
-    },
-    // Add more Facebook Reel or video links here.
-    // Upload thumbnails inside: public/images/vlogs/
-    // Upload short muted hover preview clips inside: public/videos/vlogs/
-    // Example:
-    // {
-    //     id: 4,
-    //     title: "Montre Nova Vlog 004",
-    //     description: "Short description for your next vlog.",
-    //     url: "PASTE_FACEBOOK_REEL_OR_VIDEO_LINK_HERE",
-    //     thumbnail: "/images/vlogs/vlog-004.jpg",
-    //     preview: "/videos/vlogs/vlog-004.mp4",
-    // },
-];
-
-const hasVlogs = computed(() => vlogs.length > 0);
-
-const playVlogPreview = (event) => {
-    const video = event?.currentTarget?.querySelector("video");
-
-    if (!video) return;
-
-    video.currentTime = 0;
-
-    const playPromise = video.play();
-
-    if (playPromise?.catch) {
-        playPromise.catch(() => {});
-    }
-};
-
-const pauseVlogPreview = (event) => {
-    const video = event?.currentTarget?.querySelector("video");
-
-    if (!video) return;
-
-    video.pause();
-    video.currentTime = 0;
-};
-
 const navSections = computed(() => {
     const sections = [
         {
-            id: "collection",
+            id: "available",
             label: "Available",
             shortLabel: "Available",
             href: "#collection",
         },
     ];
+
     if (hasCatalogPreview.value) {
         sections.push({
             id: "catalog",
@@ -342,15 +163,6 @@ const navSections = computed(() => {
             label: "Sold Gallery",
             shortLabel: "Sold",
             href: "#recently-sold",
-        });
-    }
-
-    if (hasVlogs.value) {
-        sections.push({
-            id: "vlogs",
-            label: "Vlogs",
-            shortLabel: "Vlogs",
-            href: "#vlogs",
         });
     }
 
@@ -407,7 +219,6 @@ onMounted(() => {
         "collection",
         "catalog",
         "recently-sold",
-        "vlogs",
         "process",
         "contact",
     ];
@@ -439,16 +250,12 @@ onMounted(() => {
     );
 
     sections.forEach((section) => sectionObserver.observe(section));
-
-    startFeaturedAutoPlay();
 });
 
 onBeforeUnmount(() => {
     if (sectionObserver) {
         sectionObserver.disconnect();
     }
-
-    stopFeaturedAutoPlay();
 });
 
 const paginationLinks = computed(() => {
@@ -778,7 +585,7 @@ const isNewDrop = (watch) => {
 };
 
 const isFeatured = (watch) => {
-    return hasFeaturedFlag(watch);
+    return Boolean(watch?.is_featured);
 };
 
 const isBelowSrp = (watch) => {
@@ -993,7 +800,7 @@ const productBadges = (watch) => {
                     </div>
                 </div>
 
-                <!-- FEATURED DROPS CAROUSEL -->
+                <!-- FEATURED WATCH -->
                 <div
                     class="hero-feature-wrap animated-in relative flex h-full items-stretch lg:pl-4 lg:[animation-delay:120ms]"
                 >
@@ -1002,167 +809,25 @@ const productBadges = (watch) => {
                     ></div>
 
                     <div
-                        class="featured-lux-card lux-card relative flex w-full flex-col gap-3 overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0A0A0B]/95 p-3 shadow-2xl shadow-black/45 ring-1 ring-white/[0.04] sm:p-4"
-                        @mouseenter="stopFeaturedAutoPlay"
-                        @mouseleave="startFeaturedAutoPlay"
-                        @focusin="stopFeaturedAutoPlay"
-                        @focusout="startFeaturedAutoPlay"
+                        class="featured-lux-card lux-card relative flex w-full overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0A0A0B]/95 p-3 shadow-2xl shadow-black/45 ring-1 ring-white/[0.04] sm:p-4"
                     >
                         <div class="shine-line"></div>
 
-                        <div
-                            v-if="activeFeaturedWatch"
-                            class="featured-carousel-stage relative flex min-h-[510px] flex-1 overflow-hidden rounded-[1.25rem] border border-white/10 bg-black focus-within:ring-2 focus-within:ring-white/50 sm:min-h-[620px] lg:min-h-0"
+                        <Link
+                            v-if="featuredWatch"
+                            :href="
+                                route('public.watches.show', featuredWatch.id)
+                            "
+                            class="featured-media group relative flex min-h-[510px] flex-1 overflow-hidden rounded-[1.25rem] border border-white/10 bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:min-h-[620px] lg:min-h-0"
+                            :aria-label="`View details for ${watchFullName(featuredWatch)}${watchReference(featuredWatch)}`"
+                            @click="preparePageOpen"
                         >
-                            <Link
-                                :href="
-                                    route(
-                                        'public.watches.show',
-                                        activeFeaturedWatch.id,
-                                    )
-                                "
-                                class="group absolute inset-0 z-10 block focus:outline-none"
-                                :aria-label="`View details for ${watchFullName(activeFeaturedWatch)}${watchReference(activeFeaturedWatch)}`"
-                                @click="preparePageOpen"
-                            >
-                                <img
-                                    v-if="watchImage(activeFeaturedWatch)"
-                                    :src="watchImage(activeFeaturedWatch)"
-                                    :alt="`${activeFeaturedWatch.brand} ${activeFeaturedWatch.model_name}`"
-                                    class="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.045]"
-                                    @error="handleImageError"
-                                />
-
-                                <div
-                                    v-else
-                                    class="absolute inset-0 flex h-full items-center justify-center bg-[#050505]"
-                                >
-                                    <div class="text-center">
-                                        <div class="placeholder-logo">
-                                            <span>MN</span>
-                                        </div>
-
-                                        <p class="mt-5 brand-kicker">
-                                            Montre Nova
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="absolute inset-0 bg-gradient-to-t from-black/92 via-black/28 to-black/18"
-                                ></div>
-
-                                <div
-                                    class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.04)_48%,rgba(0,0,0,0.48)_100%)]"
-                                ></div>
-
-                                <div
-                                    class="absolute inset-x-0 bottom-0 z-20 p-5 sm:p-6"
-                                >
-                                    <div
-                                        class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 backdrop-blur"
-                                    >
-                                        <span
-                                            class="h-1.5 w-1.5 rounded-full bg-white"
-                                        ></span>
-
-                                        <span class="brand-kicker">
-                                            This Week's Drop
-                                        </span>
-                                    </div>
-
-                                    <div
-                                        class="mt-3 flex items-end justify-between gap-4"
-                                    >
-                                        <div class="min-w-0">
-                                            <h2
-                                                class="line-clamp-2 text-2xl font-black tracking-[-0.04em] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.85)] sm:text-3xl"
-                                            >
-                                                {{ activeFeaturedWatch.brand }}
-                                                {{
-                                                    activeFeaturedWatch.model_name
-                                                }}
-                                            </h2>
-
-                                            <p
-                                                class="mt-1 truncate text-sm font-medium text-zinc-300"
-                                            >
-                                                Ref.
-                                                {{
-                                                    activeFeaturedWatch.reference_number ||
-                                                    "No reference"
-                                                }}
-                                                ·
-                                                {{
-                                                    activeFeaturedWatch.condition ||
-                                                    "Condition upon request"
-                                                }}
-                                            </p>
-                                        </div>
-
-                                        <div
-                                            class="hidden shrink-0 text-right sm:block"
-                                        >
-                                            <p
-                                                class="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500"
-                                            >
-                                                Price
-                                            </p>
-
-                                            <p
-                                                class="mt-1 text-xl font-black text-white sm:text-2xl"
-                                            >
-                                                {{
-                                                    peso(
-                                                        finalPrice(
-                                                            activeFeaturedWatch,
-                                                        ),
-                                                    )
-                                                }}
-                                            </p>
-
-                                            <p
-                                                v-if="
-                                                    isBelowSrp(
-                                                        activeFeaturedWatch,
-                                                    )
-                                                "
-                                                class="text-xs text-zinc-500 line-through"
-                                            >
-                                                {{
-                                                    peso(
-                                                        originalPrice(
-                                                            activeFeaturedWatch,
-                                                        ),
-                                                    )
-                                                }}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div
-                                        class="mt-5 flex items-center justify-between gap-4 border-t border-white/10 pt-4"
-                                    >
-                                        <p
-                                            class="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500"
-                                        >
-                                            Featured-tagged selection
-                                        </p>
-
-                                        <span class="view-detail-pill">
-                                            View Details
-                                            <span aria-hidden="true">→</span>
-                                        </span>
-                                    </div>
-                                </div>
-                            </Link>
-
                             <div
-                                class="absolute left-4 top-4 z-30 flex max-w-[88%] flex-wrap gap-2 sm:left-5 sm:top-5"
+                                class="absolute left-4 top-4 z-20 flex max-w-[90%] flex-wrap gap-2"
                             >
                                 <span
                                     v-for="badge in productBadges(
-                                        activeFeaturedWatch,
+                                        featuredWatch,
                                     ).slice(0, 3)"
                                     :key="badge.label"
                                     class="rounded-md border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] shadow-lg shadow-black/30 backdrop-blur"
@@ -1172,39 +837,104 @@ const productBadges = (watch) => {
                                 </span>
                             </div>
 
+                            <img
+                                v-if="watchImage(featuredWatch)"
+                                :src="watchImage(featuredWatch)"
+                                :alt="`${featuredWatch.brand} ${featuredWatch.model_name}`"
+                                class="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.045]"
+                                @error="handleImageError"
+                            />
+
                             <div
-                                class="featured-count-pill absolute right-4 top-4 z-30 hidden rounded-full border border-white/10 bg-black/45 px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-300 shadow-lg shadow-black/35 backdrop-blur sm:block"
+                                v-else
+                                class="absolute inset-0 flex h-full items-center justify-center bg-[#050505]"
                             >
-                                {{ activeFeaturedIndex + 1 }} /
-                                {{ featuredCarouselWatches.length }}
+                                <div class="text-center">
+                                    <div class="placeholder-logo">
+                                        <span>MN</span>
+                                    </div>
+
+                                    <p class="mt-5 brand-kicker">Montre Nova</p>
+                                </div>
                             </div>
 
-                            <template v-if="hasFeaturedCarousel">
-                                <button
-                                    type="button"
-                                    class="featured-arrow left-4"
-                                    aria-label="Previous featured watch"
-                                    @click.stop="
-                                        previousFeatured();
-                                        resetFeaturedAutoPlay();
-                                    "
-                                >
-                                    ‹
-                                </button>
+                            <div
+                                class="absolute inset-0 bg-gradient-to-t from-black/88 via-black/30 to-transparent"
+                            ></div>
 
-                                <button
-                                    type="button"
-                                    class="featured-arrow right-4"
-                                    aria-label="Next featured watch"
-                                    @click.stop="
-                                        nextFeatured();
-                                        resetFeaturedAutoPlay();
-                                    "
+                            <div
+                                class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.03)_52%,rgba(0,0,0,0.36)_100%)]"
+                            ></div>
+
+                            <div
+                                class="absolute inset-x-0 bottom-0 z-20 p-5 sm:p-6"
+                            >
+                                <p class="brand-kicker">Featured Drop</p>
+
+                                <div
+                                    class="mt-2 flex items-end justify-between gap-4"
                                 >
-                                    ›
-                                </button>
-                            </template>
-                        </div>
+                                    <div class="min-w-0">
+                                        <h2
+                                            class="truncate text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
+                                        >
+                                            {{ featuredWatch.brand }}
+                                            {{ featuredWatch.model_name }}
+                                        </h2>
+
+                                        <p
+                                            class="mt-1 truncate text-sm text-zinc-400"
+                                        >
+                                            Ref.
+                                            {{
+                                                featuredWatch.reference_number ||
+                                                "No reference"
+                                            }}
+                                            ·
+                                            {{
+                                                featuredWatch.condition ||
+                                                "Condition upon request"
+                                            }}
+                                        </p>
+                                    </div>
+
+                                    <div class="shrink-0 text-right">
+                                        <p
+                                            class="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500"
+                                        >
+                                            Price
+                                        </p>
+
+                                        <p
+                                            class="mt-1 text-xl font-black text-white sm:text-2xl"
+                                        >
+                                            {{
+                                                peso(finalPrice(featuredWatch))
+                                            }}
+                                        </p>
+
+                                        <p
+                                            v-if="isBelowSrp(featuredWatch)"
+                                            class="text-xs text-zinc-500 line-through"
+                                        >
+                                            {{
+                                                peso(
+                                                    originalPrice(
+                                                        featuredWatch,
+                                                    ),
+                                                )
+                                            }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div
+                                class="pointer-events-none absolute bottom-5 right-5 z-30 hidden rounded-full border border-white/15 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-black shadow-xl shadow-black/30 transition duration-300 group-hover:translate-x-1 md:inline-flex"
+                            >
+                                View Details →
+                            </div>
+                        </Link>
 
                         <a
                             v-else
@@ -1231,70 +961,19 @@ const productBadges = (watch) => {
                             <div
                                 class="absolute inset-x-0 bottom-0 z-20 p-5 sm:p-6"
                             >
-                                <p class="brand-kicker">Featured Drops</p>
+                                <p class="brand-kicker">Featured Drop</p>
 
                                 <h2
                                     class="mt-2 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
                                 >
-                                    Premium Timepieces
+                                    Premium Timepiece
                                 </h2>
 
                                 <p class="mt-1 text-sm text-zinc-400">
-                                    Featured selections will appear here once
-                                    tagged in the admin dashboard.
+                                    Brand New · Complete Set · Available
                                 </p>
                             </div>
                         </a>
-
-                        <div
-                            v-if="hasFeaturedCarousel"
-                            class="featured-dock grid grid-cols-3 gap-2 rounded-[1rem] border border-white/10 bg-white/[0.035] p-2 backdrop-blur sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4"
-                        >
-                            <button
-                                v-for="(watch, index) in featuredPreviewWatches"
-                                :key="
-                                    watch.id || watch.reference_number || index
-                                "
-                                type="button"
-                                class="featured-thumb-button group/thumb"
-                                :class="
-                                    activeFeaturedIndex === index
-                                        ? 'is-active'
-                                        : ''
-                                "
-                                :aria-label="`Show ${watchFullName(watch)}${watchReference(watch)} in featured carousel`"
-                                @click="
-                                    setActiveFeatured(index);
-                                    resetFeaturedAutoPlay();
-                                "
-                            >
-                                <span
-                                    class="relative block aspect-square overflow-hidden rounded-[0.75rem] bg-black"
-                                >
-                                    <img
-                                        v-if="watchImage(watch)"
-                                        :src="watchImage(watch)"
-                                        :alt="`${watch.brand} ${watch.model_name}`"
-                                        class="h-full w-full object-cover transition duration-500 group-hover/thumb:scale-105"
-                                        loading="lazy"
-                                        @error="handleImageError"
-                                    />
-
-                                    <span
-                                        v-else
-                                        class="flex h-full w-full items-center justify-center text-xs font-black text-zinc-500"
-                                    >
-                                        MN
-                                    </span>
-                                </span>
-
-                                <span
-                                    class="mt-2 block truncate px-1 text-left text-[10px] font-black uppercase tracking-[0.12em] text-zinc-500"
-                                >
-                                    {{ watch.model_name || "Featured" }}
-                                </span>
-                            </button>
-                        </div>
                     </div>
                 </div>
             </section>
@@ -1871,202 +1550,6 @@ const productBadges = (watch) => {
                 </TransitionGroup>
             </section>
 
-            <!-- VLOGS -->
-            <section
-                v-if="hasVlogs"
-                id="vlogs"
-                class="scroll-mt-28 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"
-            >
-                <div
-                    class="animated-in mb-8 flex flex-col justify-between gap-5 sm:mb-10 md:flex-row md:items-end"
-                >
-                    <div>
-                        <p class="section-kicker">Montre Nova Vlogs</p>
-
-                        <h2 class="section-title">Watch Our Stories</h2>
-
-                        <p
-                            class="mt-4 max-w-2xl text-sm leading-7 text-zinc-400"
-                        >
-                            Short stories from our watch handoffs, client
-                            features, and curated Montre Nova deals. Hover on
-                            desktop to preview, then open the full reel on
-                            Facebook.
-                        </p>
-                    </div>
-
-                    <a
-                        href="https://www.facebook.com/montrenova"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="secondary-button w-full px-5 py-3 text-sm sm:w-auto"
-                    >
-                        Follow on Facebook
-                    </a>
-                </div>
-
-                <p
-                    v-if="vlogs.length > 1"
-                    class="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-zinc-600 md:hidden"
-                >
-                    Swipe vlogs →
-                </p>
-
-                <div
-                    class="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 pr-4 overscroll-x-contain md:grid md:snap-none md:grid-cols-2 md:overflow-visible md:pb-0 md:pr-0 lg:grid-cols-3 xl:gap-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                >
-                    <a
-                        v-for="(vlog, index) in vlogs"
-                        :key="vlog.id"
-                        :href="vlog.url"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="vlog-card group"
-                        :style="{ animationDelay: `${index * 65}ms` }"
-                        :aria-label="`Watch ${vlog.title} on Facebook`"
-                        @mouseenter="playVlogPreview"
-                        @mouseleave="pauseVlogPreview"
-                        @focusin="playVlogPreview"
-                        @focusout="pauseVlogPreview"
-                    >
-                        <div
-                            class="relative overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#050505] shadow-2xl shadow-black/45 ring-1 ring-white/[0.035] transition duration-300 group-hover:border-white/25 group-hover:bg-white/[0.04] group-hover:shadow-black/70"
-                        >
-                            <div
-                                class="relative aspect-[9/16] min-h-[460px] overflow-hidden bg-black sm:min-h-[560px]"
-                            >
-                                <img
-                                    v-if="vlog.thumbnail"
-                                    :src="normalizeImageUrl(vlog.thumbnail)"
-                                    :alt="`${vlog.title} thumbnail`"
-                                    class="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.045] group-hover:brightness-75"
-                                    loading="lazy"
-                                    @error="handleImageError"
-                                />
-
-                                <video
-                                    v-if="vlog.preview"
-                                    :src="normalizeImageUrl(vlog.preview)"
-                                    :poster="normalizeImageUrl(vlog.thumbnail)"
-                                    class="absolute inset-0 h-full w-full object-cover opacity-0 transition duration-500 group-hover:scale-[1.045] group-hover:opacity-100 group-focus-visible:opacity-100"
-                                    muted
-                                    loop
-                                    playsinline
-                                    preload="metadata"
-                                    @error="
-                                        $event.target.style.display = 'none'
-                                    "
-                                ></video>
-
-                                <div
-                                    v-if="!vlog.thumbnail && !vlog.preview"
-                                    class="absolute inset-0 flex items-center justify-center bg-[#050505]"
-                                >
-                                    <div class="text-center">
-                                        <div class="placeholder-logo">
-                                            <span>MN</span>
-                                        </div>
-
-                                        <p class="mt-4 brand-kicker">
-                                            Montre Nova
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="absolute inset-0 bg-gradient-to-t from-black via-black/42 to-black/20 transition duration-500 group-hover:from-black/96 group-hover:via-black/28 group-hover:to-black/10"
-                                ></div>
-
-                                <div
-                                    class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.08)_48%,rgba(0,0,0,0.62)_100%)]"
-                                ></div>
-
-                                <div class="shine-line"></div>
-
-                                <div
-                                    class="absolute left-4 top-4 z-20 flex max-w-[92%] flex-wrap gap-1.5 sm:left-5 sm:top-5"
-                                >
-                                    <span
-                                        class="rounded-md border border-white/15 bg-black/60 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-zinc-100 shadow-lg shadow-black/40 backdrop-blur"
-                                    >
-                                        Facebook Reel
-                                    </span>
-
-                                    <span
-                                        v-if="vlog.preview"
-                                        class="rounded-md border border-emerald-300/20 bg-emerald-300/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-100 shadow-lg shadow-black/40 backdrop-blur"
-                                    >
-                                        Hover Preview
-                                    </span>
-                                </div>
-
-                                <div
-                                    class="absolute inset-0 z-20 flex items-center justify-center"
-                                >
-                                    <div
-                                        class="flex h-16 w-16 items-center justify-center rounded-full border border-white/25 bg-white/95 text-black shadow-2xl shadow-black/50 backdrop-blur transition duration-300 group-hover:scale-105 group-hover:bg-white sm:h-20 sm:w-20"
-                                    >
-                                        <svg
-                                            viewBox="0 0 24 24"
-                                            class="ml-1 h-7 w-7 sm:h-8 sm:w-8"
-                                            aria-hidden="true"
-                                            fill="currentColor"
-                                        >
-                                            <path
-                                                d="M8 5.14v13.72c0 .76.84 1.22 1.48.8l10.3-6.86a.96.96 0 0 0 0-1.6L9.48 4.34A.96.96 0 0 0 8 5.14Z"
-                                            />
-                                        </svg>
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="absolute inset-x-0 bottom-0 z-30 p-4 sm:p-5"
-                                >
-                                    <div
-                                        class="rounded-2xl border border-white/10 bg-black/72 p-4 shadow-2xl shadow-black/45 backdrop-blur-xl transition duration-300 group-hover:border-white/20 group-hover:bg-black/78 sm:p-5"
-                                    >
-                                        <p
-                                            class="text-[10px] font-black uppercase tracking-[0.28em] text-zinc-300"
-                                        >
-                                            Montre Nova Vlog
-                                        </p>
-
-                                        <h3
-                                            class="mt-2 line-clamp-2 text-2xl font-black leading-tight tracking-[-0.04em] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] sm:text-3xl"
-                                        >
-                                            {{ vlog.title }}
-                                        </h3>
-
-                                        <p
-                                            class="mt-3 line-clamp-2 text-sm leading-6 text-zinc-200/90"
-                                        >
-                                            {{ vlog.description }}
-                                        </p>
-
-                                        <div
-                                            class="mt-5 flex items-center justify-between gap-4 border-t border-white/10 pt-4"
-                                        >
-                                            <p
-                                                class="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-400"
-                                            >
-                                                Opens on Facebook
-                                            </p>
-
-                                            <span class="view-detail-pill">
-                                                Watch
-                                                <span aria-hidden="true"
-                                                    >→</span
-                                                >
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            </section>
-
             <!-- HOW TO ORDER -->
             <section
                 id="process"
@@ -2268,7 +1751,6 @@ const productBadges = (watch) => {
 }
 
 :global(#collection),
-:global(#vlogs),
 :global(#catalog),
 :global(#recently-sold),
 :global(#process),
@@ -2278,7 +1760,6 @@ const productBadges = (watch) => {
 
 @media (min-width: 768px) {
     :global(#collection),
-    :global(#vlogs),
     :global(#catalog),
     :global(#recently-sold),
     :global(#process),
@@ -2288,7 +1769,6 @@ const productBadges = (watch) => {
 }
 
 :global(#collection:target),
-:global(#vlogs:target),
 :global(#catalog:target),
 :global(#recently-sold:target),
 :global(#process:target),
@@ -2343,87 +1823,6 @@ main > section {
 .featured-media {
     border-color: rgb(255 255 255 / 0.055);
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
-}
-
-.featured-carousel-stage {
-    border-color: rgb(255 255 255 / 0.055);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
-}
-
-.featured-arrow {
-    position: absolute;
-    top: 50%;
-    z-index: 40;
-    display: none;
-    height: 2.75rem;
-    width: 2.75rem;
-    transform: translateY(-50%);
-    align-items: center;
-    justify-content: center;
-    border-radius: 9999px;
-    border: 1px solid rgb(255 255 255 / 0.12);
-    background: rgb(0 0 0 / 0.42);
-    color: white;
-    font-size: 2rem;
-    font-weight: 300;
-    line-height: 1;
-    box-shadow: 0 16px 36px rgb(0 0 0 / 0.34);
-    backdrop-filter: blur(18px);
-    transition:
-        transform 260ms ease,
-        border-color 260ms ease,
-        background-color 260ms ease,
-        color 260ms ease;
-}
-
-.featured-arrow:hover {
-    transform: translateY(-50%) scale(1.04);
-    border-color: rgb(255 255 255 / 0.24);
-    background: white;
-    color: black;
-}
-
-.featured-arrow:active {
-    transform: translateY(-50%) scale(0.96);
-}
-
-@media (min-width: 768px) {
-    .featured-arrow {
-        display: inline-flex;
-    }
-}
-
-.featured-dock {
-    box-shadow:
-        inset 0 1px 0 rgb(255 255 255 / 0.045),
-        0 20px 48px rgb(0 0 0 / 0.24);
-}
-
-.featured-thumb-button {
-    min-width: 0;
-    border-radius: 0.9rem;
-    border: 1px solid transparent;
-    padding: 0.35rem;
-    transition:
-        transform 260ms ease,
-        border-color 260ms ease,
-        background-color 260ms ease,
-        opacity 260ms ease;
-}
-
-.featured-thumb-button:hover {
-    transform: translateY(-1px);
-    border-color: rgb(255 255 255 / 0.14);
-    background: rgb(255 255 255 / 0.045);
-}
-
-.featured-thumb-button.is-active {
-    border-color: rgb(255 255 255 / 0.42);
-    background: rgb(255 255 255 / 0.085);
-}
-
-.featured-thumb-button.is-active span:last-child {
-    color: white;
 }
 
 .primary-button,
@@ -2691,50 +2090,6 @@ main > section {
 
 .watch-card {
     cursor: pointer;
-}
-
-.vlog-card {
-    display: block;
-    min-width: 82vw;
-    max-width: 82vw;
-    scroll-snap-align: start;
-    color: inherit;
-    text-decoration: none;
-    animation: fadeLift 700ms both;
-    transition:
-        transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
-        filter 320ms ease;
-}
-
-.vlog-card:focus-visible {
-    outline: 2px solid rgb(255 255 255 / 0.72);
-    outline-offset: 4px;
-}
-
-.vlog-card:hover {
-    filter: brightness(1.04);
-}
-
-.vlog-card video {
-    pointer-events: none;
-}
-
-@media (min-width: 640px) {
-    .vlog-card {
-        min-width: 390px;
-        max-width: 390px;
-    }
-}
-
-@media (min-width: 768px) {
-    .vlog-card {
-        min-width: 0;
-        max-width: none;
-    }
-
-    .vlog-card:hover {
-        transform: translateY(-0.25rem);
-    }
 }
 
 .watch-card:focus-visible {
