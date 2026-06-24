@@ -14,19 +14,24 @@ class PublicWatchController extends Controller
 {
     public function welcome()
     {
-        $featuredWatch = Watch::query()
+        $featuredWatches = Watch::query()
             ->with(['primaryImage', 'images'])
+            ->withCount('images')
             ->whereRaw('LOWER(TRIM(status)) = ?', ['available'])
             ->where('is_visible', true)
             ->where('is_featured', true)
             ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
             ->orderBy('display_order')
             ->latest('id')
-            ->first();
+            ->limit(6)
+            ->get();
+
+        $featuredWatch = $featuredWatches->first();
 
         if (! $featuredWatch) {
             $featuredWatch = Watch::query()
                 ->with(['primaryImage', 'images'])
+                ->withCount('images')
                 ->whereRaw('LOWER(TRIM(status)) = ?', ['available'])
                 ->where('is_visible', true)
                 ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
@@ -72,6 +77,23 @@ class PublicWatchController extends Controller
 
         /*
         |--------------------------------------------------------------------------
+        | Hero Best Seller Carousel
+        |--------------------------------------------------------------------------
+        | Uses sold watches first as client-favorite / best-seller social proof.
+        | If there are no sold watches yet, it falls back to featured available watches.
+        */
+        $bestSellerWatches = $soldWatches
+            ->take(6)
+            ->values();
+
+        if ($bestSellerWatches->isEmpty()) {
+            $bestSellerWatches = $featuredWatches
+                ->map(fn ($watch) => $this->publicWatchCard($watch))
+                ->values();
+        }
+
+        /*
+        |--------------------------------------------------------------------------
         | Catalog Preview
         |--------------------------------------------------------------------------
         | This is now from catalog_watches table, not watches table.
@@ -95,6 +117,11 @@ class PublicWatchController extends Controller
             'featuredWatch' => $featuredWatch
                 ? $this->publicWatchCard($featuredWatch)
                 : null,
+            'featuredWatches' => $featuredWatches
+                ->map(fn ($watch) => $this->publicWatchCard($watch))
+                ->values()
+                ->all(),
+            'bestSellerWatches' => $bestSellerWatches->all(),
             'watches' => $watches,
             'soldWatches' => $soldWatches,
             'soldCount' => $soldCount,

@@ -20,6 +20,10 @@ const props = defineProps({
         type: [Array, Object],
         default: () => [],
     },
+    bestSellerWatches: {
+        type: [Array, Object],
+        default: () => [],
+    },
     watches: {
         type: [Array, Object],
         default: () => [],
@@ -53,10 +57,10 @@ const props = defineProps({
 const isPageOpening = ref(false);
 const isMobileCtaOpen = ref(false);
 const activeSection = ref("");
-const activeFeaturedIndex = ref(0);
+const activeBestSellerIndex = ref(0);
 
 let sectionObserver = null;
-let featuredCarouselTimer = null;
+let bestSellerCarouselTimer = null;
 
 const toggleMobileCta = () => {
     isMobileCtaOpen.value = !isMobileCtaOpen.value;
@@ -142,104 +146,145 @@ const hasFeaturedFlag = (watch) => {
     return value === true || value === 1 || value === "1" || value === "true";
 };
 
+const isAvailableWatch = (watch) => {
+    return String(watch?.status || "available").toLowerCase() === "available";
+};
+
+const isSoldWatch = (watch) => {
+    return String(watch?.status || "").toLowerCase() === "sold";
+};
+
 const isHeroEligibleWatch = (watch) => {
     const status = String(watch?.status || "available").toLowerCase();
 
-    return !["sold", "hidden", "draft"].includes(status);
+    return !["hidden", "draft"].includes(status);
 };
 
-const featuredCarouselWatches = computed(() => {
+const bestSellerCarouselWatches = computed(() => {
+    const bestSellersFromProp = toCollectionArray(props.bestSellerWatches);
+    const soldBestSellers = soldWatches.value;
     const featuredFromProp = toCollectionArray(props.featuredWatches);
     const featuredFromCollection = watches.value.filter(hasFeaturedFlag);
+
     const candidates = [
+        ...bestSellersFromProp,
+        ...soldBestSellers,
         ...featuredFromProp,
         ...(featuredWatch.value ? [featuredWatch.value] : []),
         ...featuredFromCollection,
+        ...watches.value,
     ].filter(Boolean);
 
     const uniqueWatches = new Map();
 
     candidates.forEach((watch, index) => {
-        const key = watch?.id ?? watch?.reference_number ?? `featured-${index}`;
+        const key =
+            watch?.id ?? watch?.reference_number ?? `best-seller-${index}`;
 
         if (!uniqueWatches.has(key) && isHeroEligibleWatch(watch)) {
             uniqueWatches.set(key, watch);
         }
     });
 
-    const featuredOnly = [...uniqueWatches.values()].filter((watch) => {
-        return hasFeaturedFlag(watch) || watch?.id === featuredWatch.value?.id;
-    });
-
-    if (featuredOnly.length) {
-        return featuredOnly.slice(0, 6);
-    }
-
-    const fallbackWatch = featuredWatch.value || watches.value[0] || null;
-
-    return fallbackWatch ? [fallbackWatch] : [];
+    return [...uniqueWatches.values()].slice(0, 6);
 });
 
-const activeFeaturedWatch = computed(() => {
+const activeBestSellerWatch = computed(() => {
     return (
-        featuredCarouselWatches.value[activeFeaturedIndex.value] ||
-        featuredCarouselWatches.value[0] ||
+        bestSellerCarouselWatches.value[activeBestSellerIndex.value] ||
+        bestSellerCarouselWatches.value[0] ||
         null
     );
 });
 
-const featuredPreviewWatches = computed(() => {
-    return featuredCarouselWatches.value.slice(0, 6);
+const bestSellerPreviewWatches = computed(() => {
+    return bestSellerCarouselWatches.value.slice(0, 6);
 });
 
-const hasFeaturedCarousel = computed(() => {
-    return featuredCarouselWatches.value.length > 1;
+const hasBestSellerCarousel = computed(() => {
+    return bestSellerCarouselWatches.value.length > 1;
 });
 
-const setActiveFeatured = (index) => {
-    const total = featuredCarouselWatches.value.length;
+const heroParallaxImageStyle = computed(() => {
+    const direction = activeBestSellerIndex.value % 2 === 0 ? 1 : -1;
+
+    return {
+        transform: `scale(1.08) translate3d(${direction * 14}px, 0, 0)`,
+    };
+});
+
+const heroParallaxBackdropStyle = computed(() => {
+    const direction = activeBestSellerIndex.value % 2 === 0 ? -1 : 1;
+
+    return {
+        transform: `scale(1.18) translate3d(${direction * 18}px, 0, 0)`,
+    };
+});
+
+const heroCarouselLabel = (watch = null) => {
+    if (isSoldWatch(watch)) {
+        return "Client Favorite";
+    }
+
+    if (hasFeaturedFlag(watch)) {
+        return "Featured Favorite";
+    }
+
+    return "Best Seller";
+};
+
+const heroCtaLabel = (watch = null) => {
+    return isAvailableWatch(watch) ? "View Watch" : "Source Similar";
+};
+
+const heroStatusLabel = (watch = null) => {
+    return isAvailableWatch(watch) ? "Available now" : "Sold favorite";
+};
+
+const setActiveBestSeller = (index) => {
+    const total = bestSellerCarouselWatches.value.length;
 
     if (!total) return;
 
-    activeFeaturedIndex.value = ((index % total) + total) % total;
+    activeBestSellerIndex.value = ((index % total) + total) % total;
 };
 
-const nextFeatured = () => {
-    setActiveFeatured(activeFeaturedIndex.value + 1);
+const nextBestSeller = () => {
+    setActiveBestSeller(activeBestSellerIndex.value + 1);
 };
 
-const previousFeatured = () => {
-    setActiveFeatured(activeFeaturedIndex.value - 1);
+const previousBestSeller = () => {
+    setActiveBestSeller(activeBestSellerIndex.value - 1);
 };
 
-const stopFeaturedAutoPlay = () => {
-    if (featuredCarouselTimer) {
-        window.clearInterval(featuredCarouselTimer);
-        featuredCarouselTimer = null;
+const stopBestSellerAutoPlay = () => {
+    if (bestSellerCarouselTimer) {
+        window.clearInterval(bestSellerCarouselTimer);
+        bestSellerCarouselTimer = null;
     }
 };
 
-const startFeaturedAutoPlay = () => {
-    stopFeaturedAutoPlay();
+const startBestSellerAutoPlay = () => {
+    stopBestSellerAutoPlay();
 
-    if (!hasFeaturedCarousel.value) return;
+    if (!hasBestSellerCarousel.value) return;
 
-    featuredCarouselTimer = window.setInterval(() => {
-        nextFeatured();
-    }, 4800);
+    bestSellerCarouselTimer = window.setInterval(() => {
+        nextBestSeller();
+    }, 4200);
 };
 
-const resetFeaturedAutoPlay = () => {
-    startFeaturedAutoPlay();
+const resetBestSellerAutoPlay = () => {
+    startBestSellerAutoPlay();
 };
 
-watch(featuredCarouselWatches, () => {
-    if (activeFeaturedIndex.value >= featuredCarouselWatches.value.length) {
-        activeFeaturedIndex.value = 0;
+watch(bestSellerCarouselWatches, () => {
+    if (activeBestSellerIndex.value >= bestSellerCarouselWatches.value.length) {
+        activeBestSellerIndex.value = 0;
     }
 
     if (typeof window !== "undefined") {
-        startFeaturedAutoPlay();
+        startBestSellerAutoPlay();
     }
 });
 
@@ -440,7 +485,7 @@ onMounted(() => {
 
     sections.forEach((section) => sectionObserver.observe(section));
 
-    startFeaturedAutoPlay();
+    startBestSellerAutoPlay();
 });
 
 onBeforeUnmount(() => {
@@ -448,7 +493,7 @@ onBeforeUnmount(() => {
         sectionObserver.disconnect();
     }
 
-    stopFeaturedAutoPlay();
+    stopBestSellerAutoPlay();
 });
 
 const paginationLinks = computed(() => {
@@ -993,7 +1038,7 @@ const productBadges = (watch) => {
                     </div>
                 </div>
 
-                <!-- FEATURED DROPS CAROUSEL -->
+                <!-- IMAGE-ONLY BEST SELLER PARALLAX CAROUSEL -->
                 <div
                     class="hero-feature-wrap animated-in relative flex h-full items-stretch lg:pl-4 lg:[animation-delay:120ms]"
                 >
@@ -1002,206 +1047,142 @@ const productBadges = (watch) => {
                     ></div>
 
                     <div
-                        class="featured-lux-card lux-card relative flex w-full flex-col gap-3 overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0A0A0B]/95 p-3 shadow-2xl shadow-black/45 ring-1 ring-white/[0.04] sm:p-4"
-                        @mouseenter="stopFeaturedAutoPlay"
-                        @mouseleave="startFeaturedAutoPlay"
-                        @focusin="stopFeaturedAutoPlay"
-                        @focusout="startFeaturedAutoPlay"
+                        class="featured-lux-card best-seller-lux-card lux-card relative flex w-full flex-col gap-3 overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0A0A0B]/95 p-3 shadow-2xl shadow-black/45 ring-1 ring-white/[0.04] sm:p-4"
+                        @mouseenter="stopBestSellerAutoPlay"
+                        @mouseleave="startBestSellerAutoPlay"
+                        @focusin="stopBestSellerAutoPlay"
+                        @focusout="startBestSellerAutoPlay"
                     >
                         <div class="shine-line"></div>
 
                         <div
-                            v-if="activeFeaturedWatch"
-                            class="featured-carousel-stage relative flex min-h-[510px] flex-1 overflow-hidden rounded-[1.25rem] border border-white/10 bg-black focus-within:ring-2 focus-within:ring-white/50 sm:min-h-[620px] lg:min-h-0"
+                            v-if="activeBestSellerWatch"
+                            class="featured-carousel-stage best-seller-stage relative flex min-h-[510px] flex-1 cursor-pointer overflow-hidden rounded-[1.25rem] border border-white/10 bg-black focus-within:ring-2 focus-within:ring-white/50 sm:min-h-[620px] lg:min-h-0"
                         >
-                            <Link
-                                :href="
-                                    route(
-                                        'public.watches.show',
-                                        activeFeaturedWatch.id,
-                                    )
-                                "
-                                class="group absolute inset-0 z-10 block focus:outline-none"
-                                :aria-label="`View details for ${watchFullName(activeFeaturedWatch)}${watchReference(activeFeaturedWatch)}`"
-                                @click="preparePageOpen"
-                            >
-                                <img
-                                    v-if="watchImage(activeFeaturedWatch)"
-                                    :src="watchImage(activeFeaturedWatch)"
-                                    :alt="`${activeFeaturedWatch.brand} ${activeFeaturedWatch.model_name}`"
-                                    class="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.045]"
-                                    @error="handleImageError"
-                                />
-
+                            <Transition name="hero-slide" mode="out-in">
                                 <div
-                                    v-else
-                                    class="absolute inset-0 flex h-full items-center justify-center bg-[#050505]"
+                                    :key="
+                                        activeBestSellerWatch.id ||
+                                        activeBestSellerWatch.reference_number ||
+                                        activeBestSellerIndex
+                                    "
+                                    class="absolute inset-0"
                                 >
-                                    <div class="text-center">
+                                    <img
+                                        v-if="watchImage(activeBestSellerWatch)"
+                                        :src="watchImage(activeBestSellerWatch)"
+                                        :alt="`${activeBestSellerWatch.brand} ${activeBestSellerWatch.model_name}`"
+                                        class="best-seller-backdrop absolute inset-0 h-full w-full object-cover opacity-55 blur-2xl saturate-150 transition duration-[1400ms]"
+                                        :style="heroParallaxBackdropStyle"
+                                        @error="handleImageError"
+                                    />
+
+                                    <img
+                                        v-if="watchImage(activeBestSellerWatch)"
+                                        :src="watchImage(activeBestSellerWatch)"
+                                        :alt="`${activeBestSellerWatch.brand} ${activeBestSellerWatch.model_name}`"
+                                        class="best-seller-main-image absolute inset-0 h-full w-full object-cover transition duration-[1400ms] ease-out"
+                                        :style="heroParallaxImageStyle"
+                                        @error="handleImageError"
+                                    />
+
+                                    <div
+                                        v-else
+                                        class="absolute inset-0 flex h-full items-center justify-center bg-[#050505]"
+                                    >
                                         <div class="placeholder-logo">
                                             <span>MN</span>
                                         </div>
-
-                                        <p class="mt-5 brand-kicker">
-                                            Montre Nova
-                                        </p>
                                     </div>
                                 </div>
+                            </Transition>
 
-                                <div
-                                    class="absolute inset-0 bg-gradient-to-t from-black/92 via-black/28 to-black/18"
-                                ></div>
+                            <div
+                                class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/38 via-transparent to-black/10"
+                            ></div>
 
-                                <div
-                                    class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.04)_48%,rgba(0,0,0,0.48)_100%)]"
-                                ></div>
+                            <div
+                                class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,transparent_0%,rgba(0,0,0,0.02)_48%,rgba(0,0,0,0.42)_100%)]"
+                            ></div>
 
-                                <div
-                                    class="absolute inset-x-0 bottom-0 z-20 p-5 sm:p-6"
-                                >
-                                    <div
-                                        class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 py-1.5 backdrop-blur"
-                                    >
-                                        <span
-                                            class="h-1.5 w-1.5 rounded-full bg-white"
-                                        ></span>
+                            <div
+                                class="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-40 bg-gradient-to-t from-black/42 to-transparent"
+                            ></div>
 
-                                        <span class="brand-kicker">
-                                            This Week's Drop
-                                        </span>
-                                    </div>
-
-                                    <div
-                                        class="mt-3 flex items-end justify-between gap-4"
-                                    >
-                                        <div class="min-w-0">
-                                            <h2
-                                                class="line-clamp-2 text-2xl font-black tracking-[-0.04em] text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.85)] sm:text-3xl"
-                                            >
-                                                {{ activeFeaturedWatch.brand }}
-                                                {{
-                                                    activeFeaturedWatch.model_name
-                                                }}
-                                            </h2>
-
-                                            <p
-                                                class="mt-1 truncate text-sm font-medium text-zinc-300"
-                                            >
-                                                Ref.
-                                                {{
-                                                    activeFeaturedWatch.reference_number ||
-                                                    "No reference"
-                                                }}
-                                                ·
-                                                {{
-                                                    activeFeaturedWatch.condition ||
-                                                    "Condition upon request"
-                                                }}
-                                            </p>
-                                        </div>
-
-                                        <div
-                                            class="hidden shrink-0 text-right sm:block"
-                                        >
-                                            <p
-                                                class="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500"
-                                            >
-                                                Price
-                                            </p>
-
-                                            <p
-                                                class="mt-1 text-xl font-black text-white sm:text-2xl"
-                                            >
-                                                {{
-                                                    peso(
-                                                        finalPrice(
-                                                            activeFeaturedWatch,
-                                                        ),
-                                                    )
-                                                }}
-                                            </p>
-
-                                            <p
-                                                v-if="
-                                                    isBelowSrp(
-                                                        activeFeaturedWatch,
-                                                    )
-                                                "
-                                                class="text-xs text-zinc-500 line-through"
-                                            >
-                                                {{
-                                                    peso(
-                                                        originalPrice(
-                                                            activeFeaturedWatch,
-                                                        ),
-                                                    )
-                                                }}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div
-                                        class="mt-5 flex items-center justify-between gap-4 border-t border-white/10 pt-4"
-                                    >
-                                        <p
-                                            class="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500"
-                                        >
-                                            Featured-tagged selection
-                                        </p>
-
-                                        <span class="view-detail-pill">
-                                            View Details
-                                            <span aria-hidden="true">→</span>
-                                        </span>
-                                    </div>
-                                </div>
+                            <Link
+                                v-if="isAvailableWatch(activeBestSellerWatch)"
+                                :href="
+                                    route(
+                                        'public.watches.show',
+                                        activeBestSellerWatch.id,
+                                    )
+                                "
+                                class="absolute inset-0 z-30 rounded-[1.25rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                                :aria-label="`View ${watchFullName(activeBestSellerWatch)}${watchReference(activeBestSellerWatch)}`"
+                                @click="preparePageOpen"
+                            >
+                                <span class="sr-only">View watch details</span>
                             </Link>
 
-                            <div
-                                class="absolute left-4 top-4 z-30 flex max-w-[88%] flex-wrap gap-2 sm:left-5 sm:top-5"
+                            <button
+                                v-else
+                                type="button"
+                                class="absolute inset-0 z-30 rounded-[1.25rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                                :aria-label="`Source a similar watch to ${watchFullName(activeBestSellerWatch)}${watchReference(activeBestSellerWatch)}`"
+                                @click="
+                                    openSimilarInquiry(activeBestSellerWatch)
+                                "
                             >
-                                <span
-                                    v-for="badge in productBadges(
-                                        activeFeaturedWatch,
-                                    ).slice(0, 3)"
-                                    :key="badge.label"
-                                    class="rounded-md border px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.14em] shadow-lg shadow-black/30 backdrop-blur"
-                                    :class="badge.className"
+                                <span class="sr-only"
+                                    >Source similar watch</span
                                 >
-                                    {{ badge.label }}
-                                </span>
-                            </div>
+                            </button>
 
-                            <div
-                                class="featured-count-pill absolute right-4 top-4 z-30 hidden rounded-full border border-white/10 bg-black/45 px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-300 shadow-lg shadow-black/35 backdrop-blur sm:block"
-                            >
-                                {{ activeFeaturedIndex + 1 }} /
-                                {{ featuredCarouselWatches.length }}
-                            </div>
-
-                            <template v-if="hasFeaturedCarousel">
+                            <template v-if="hasBestSellerCarousel">
                                 <button
                                     type="button"
                                     class="featured-arrow left-4"
-                                    aria-label="Previous featured watch"
+                                    aria-label="Previous best seller watch"
                                     @click.stop="
-                                        previousFeatured();
-                                        resetFeaturedAutoPlay();
+                                        previousBestSeller();
+                                        resetBestSellerAutoPlay();
                                     "
                                 >
-                                    ‹
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        class="h-6 w-6"
+                                        aria-hidden="true"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2.4"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path d="M15 18l-6-6 6-6" />
+                                    </svg>
                                 </button>
 
                                 <button
                                     type="button"
                                     class="featured-arrow right-4"
-                                    aria-label="Next featured watch"
+                                    aria-label="Next best seller watch"
                                     @click.stop="
-                                        nextFeatured();
-                                        resetFeaturedAutoPlay();
+                                        nextBestSeller();
+                                        resetBestSellerAutoPlay();
                                     "
                                 >
-                                    ›
+                                    <svg
+                                        viewBox="0 0 24 24"
+                                        class="h-6 w-6"
+                                        aria-hidden="true"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2.4"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <path d="M9 6l6 6-6 6" />
+                                    </svg>
                                 </button>
                             </template>
                         </div>
@@ -1215,57 +1196,38 @@ const productBadges = (watch) => {
                             <div
                                 class="absolute inset-0 flex h-full items-center justify-center bg-[#050505]"
                             >
-                                <div class="text-center">
-                                    <div class="placeholder-logo">
-                                        <span>MN</span>
-                                    </div>
-
-                                    <p class="mt-5 brand-kicker">Montre Nova</p>
+                                <div class="placeholder-logo">
+                                    <span>MN</span>
                                 </div>
                             </div>
 
                             <div
                                 class="absolute inset-0 bg-gradient-to-t from-black/88 via-black/30 to-transparent"
                             ></div>
-
-                            <div
-                                class="absolute inset-x-0 bottom-0 z-20 p-5 sm:p-6"
-                            >
-                                <p class="brand-kicker">Featured Drops</p>
-
-                                <h2
-                                    class="mt-2 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
-                                >
-                                    Premium Timepieces
-                                </h2>
-
-                                <p class="mt-1 text-sm text-zinc-400">
-                                    Featured selections will appear here once
-                                    tagged in the admin dashboard.
-                                </p>
-                            </div>
                         </a>
 
                         <div
-                            v-if="hasFeaturedCarousel"
-                            class="featured-dock grid grid-cols-3 gap-2 rounded-[1rem] border border-white/10 bg-white/[0.035] p-2 backdrop-blur sm:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4"
+                            v-if="hasBestSellerCarousel"
+                            class="featured-dock image-only-dock grid grid-cols-6 gap-2 rounded-[1rem] border border-white/10 bg-white/[0.035] p-2 backdrop-blur"
                         >
                             <button
-                                v-for="(watch, index) in featuredPreviewWatches"
+                                v-for="(
+                                    watch, index
+                                ) in bestSellerPreviewWatches"
                                 :key="
                                     watch.id || watch.reference_number || index
                                 "
                                 type="button"
                                 class="featured-thumb-button group/thumb"
                                 :class="
-                                    activeFeaturedIndex === index
+                                    activeBestSellerIndex === index
                                         ? 'is-active'
                                         : ''
                                 "
-                                :aria-label="`Show ${watchFullName(watch)}${watchReference(watch)} in featured carousel`"
+                                :aria-label="`Show ${watchFullName(watch)}${watchReference(watch)} in best seller carousel`"
                                 @click="
-                                    setActiveFeatured(index);
-                                    resetFeaturedAutoPlay();
+                                    setActiveBestSeller(index);
+                                    resetBestSellerAutoPlay();
                                 "
                             >
                                 <span
@@ -1275,7 +1237,7 @@ const productBadges = (watch) => {
                                         v-if="watchImage(watch)"
                                         :src="watchImage(watch)"
                                         :alt="`${watch.brand} ${watch.model_name}`"
-                                        class="h-full w-full object-cover transition duration-500 group-hover/thumb:scale-105"
+                                        class="h-full w-full object-cover transition duration-500 group-hover/thumb:scale-110"
                                         loading="lazy"
                                         @error="handleImageError"
                                     />
@@ -1286,12 +1248,6 @@ const productBadges = (watch) => {
                                     >
                                         MN
                                     </span>
-                                </span>
-
-                                <span
-                                    class="mt-2 block truncate px-1 text-left text-[10px] font-black uppercase tracking-[0.12em] text-zinc-500"
-                                >
-                                    {{ watch.model_name || "Featured" }}
                                 </span>
                             </button>
                         </div>
@@ -2353,7 +2309,7 @@ main > section {
 .featured-arrow {
     position: absolute;
     top: 50%;
-    z-index: 40;
+    z-index: 50;
     display: none;
     height: 2.75rem;
     width: 2.75rem;
@@ -2422,8 +2378,8 @@ main > section {
     background: rgb(255 255 255 / 0.085);
 }
 
-.featured-thumb-button.is-active span:last-child {
-    color: white;
+.image-only-dock {
+    overflow: hidden;
 }
 
 .primary-button,
@@ -3282,6 +3238,59 @@ main > section {
 @media (min-width: 1024px) {
     .messenger-float-button {
         display: none !important;
+    }
+}
+
+.best-seller-lux-card {
+    background:
+        radial-gradient(
+            circle at 72% 18%,
+            rgb(253 230 138 / 0.1),
+            transparent 32%
+        ),
+        linear-gradient(180deg, rgb(12 12 13 / 0.98), rgb(5 5 5 / 0.97));
+}
+
+.best-seller-stage {
+    isolation: isolate;
+}
+
+.best-seller-backdrop {
+    filter: blur(26px) saturate(1.45) brightness(0.88);
+}
+
+.best-seller-main-image {
+    will-change: transform;
+    animation: heroParallaxDrift 5.2s ease-in-out infinite alternate;
+}
+
+.hero-slide-enter-active,
+.hero-slide-leave-active {
+    transition:
+        opacity 420ms ease,
+        transform 520ms cubic-bezier(0.2, 0.8, 0.2, 1),
+        filter 520ms ease;
+}
+
+.hero-slide-enter-from {
+    opacity: 0;
+    transform: scale(1.035) translateX(1.5rem);
+    filter: blur(10px);
+}
+
+.hero-slide-leave-to {
+    opacity: 0;
+    transform: scale(0.985) translateX(-1.5rem);
+    filter: blur(8px);
+}
+
+@keyframes heroParallaxDrift {
+    from {
+        object-position: 48% 50%;
+    }
+
+    to {
+        object-position: 54% 50%;
     }
 }
 </style>
