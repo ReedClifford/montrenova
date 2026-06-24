@@ -83,9 +83,17 @@ class PublicWatchController extends Controller
         | Hero Best Seller Carousel
         |--------------------------------------------------------------------------
         | Top 5 best-selling models by number of sold records.
-        | Groups sold watches by reference number when available, otherwise by
-        | brand + model name. The carousel uses the latest sold watch photo as
-        | the representative image for each best-selling model.
+        |
+        | Grouping priority:
+        | 1. reference_number when available
+        | 2. brand + model_name if reference_number is blank
+        |
+        | Hero images are manually assigned by ranking:
+        | #1 => public/images/rank1.jpg
+        | #2 => public/images/rank2.jpg
+        | #3 => public/images/rank3.jpg
+        | #4 => public/images/rank4.jpg
+        | #5 => public/images/rank5.jpg
         */
         $bestSellerWatches = $soldWatchPool
             ->groupBy(fn ($watch) => $this->bestSellerModelKey($watch))
@@ -107,13 +115,14 @@ class PublicWatchController extends Controller
             ->take(5)
             ->values()
             ->map(function ($item, $index) {
+                $rank = $index + 1;
                 $card = $this->publicWatchCard($item['watch']);
-                $wristShotUrl = $this->bestSellerWristShotUrl($item['watch']);
+                $rankWristShotUrl = $this->bestSellerRankWristShotUrl($rank);
 
                 $card['sold_count'] = $item['sold_count'];
-                $card['best_seller_rank'] = $index + 1;
-                $card['wristshot_image_url'] = $wristShotUrl;
-                $card['hero_image_url'] = $wristShotUrl
+                $card['best_seller_rank'] = $rank;
+                $card['wristshot_image_url'] = $rankWristShotUrl;
+                $card['hero_image_url'] = $rankWristShotUrl
                     ?: ($card['primary_hd_url'] ?? $card['primary_image_url'] ?? $card['image_url'] ?? null);
 
                 return $card;
@@ -124,13 +133,14 @@ class PublicWatchController extends Controller
             $bestSellerWatches = $featuredWatches
                 ->take(5)
                 ->map(function ($watch, $index) {
+                    $rank = $index + 1;
                     $card = $this->publicWatchCard($watch);
-                    $wristShotUrl = $this->bestSellerWristShotUrl($watch);
+                    $rankWristShotUrl = $this->bestSellerRankWristShotUrl($rank);
 
                     $card['sold_count'] = 0;
-                    $card['best_seller_rank'] = $index + 1;
-                    $card['wristshot_image_url'] = $wristShotUrl;
-                    $card['hero_image_url'] = $wristShotUrl
+                    $card['best_seller_rank'] = $rank;
+                    $card['wristshot_image_url'] = $rankWristShotUrl;
+                    $card['hero_image_url'] = $rankWristShotUrl
                         ?: ($card['primary_hd_url'] ?? $card['primary_image_url'] ?? $card['image_url'] ?? null);
 
                     return $card;
@@ -360,53 +370,17 @@ class PublicWatchController extends Controller
         return collect($watches)->take(8)->values();
     }
 
-    private function bestSellerWristShotUrl(Watch $watch): ?string
+    private function bestSellerRankWristShotUrl(int $rank): ?string
     {
-        $modelKey = $this->bestSellerModelKey($watch);
-        $reference = trim((string) ($watch->reference_number ?? ''));
-        $brand = trim((string) ($watch->brand ?? ''));
-        $model = trim((string) ($watch->model_name ?? ''));
-
-        /*
-        |--------------------------------------------------------------------------
-        | Manual Best-Seller Wrist Shots
-        |--------------------------------------------------------------------------
-        | Put your images inside: public/images/best-sellers/
-        |
-        | Easiest naming option:
-        | - If the watch has reference SSC813, upload:
-        |   public/images/best-sellers/ssc813.jpg
-        |
-        | Or manually map a specific best-seller key below:
-        | - Reference key format: ref:ssc813
-        | - Fallback model key format: model:seiko|speedtimer panda
-        */
-        $manualWristShots = [
-            // 'ref:ssc813' => 'images/best-sellers/ssc813.jpg',
-            // 'model:seiko|speedtimer panda' => 'images/best-sellers/seiko-speedtimer-panda.jpg',
+        $rankWristShots = [
+            1 => 'images/rank1.jpg',
+            2 => 'images/rank2.jpg',
+            3 => 'images/rank3.jpg',
+            4 => 'images/rank4.jpg',
+            5 => 'images/rank5.jpg',
         ];
 
-        if (isset($manualWristShots[$modelKey])) {
-            return $this->publicAssetUrlIfExists($manualWristShots[$modelKey]);
-        }
-
-        $baseNames = collect([
-            $reference !== '' ? Str::slug($reference) : null,
-            trim($brand . ' ' . $model) !== '' ? Str::slug(trim($brand . ' ' . $model)) : null,
-            $model !== '' ? Str::slug($model) : null,
-        ])->filter()->unique()->values();
-
-        foreach ($baseNames as $baseName) {
-            foreach (['jpg', 'jpeg', 'png', 'webp', 'gif'] as $extension) {
-                $assetUrl = $this->publicAssetUrlIfExists("images/best-sellers/{$baseName}.{$extension}");
-
-                if ($assetUrl) {
-                    return $assetUrl;
-                }
-            }
-        }
-
-        return null;
+        return $this->publicAssetUrlIfExists($rankWristShots[$rank] ?? null);
     }
 
     private function publicAssetUrlIfExists(?string $path): ?string
@@ -453,13 +427,9 @@ class PublicWatchController extends Controller
             return 0;
         }
 
-        try {
-            return $value instanceof Carbon
-                ? $value->getTimestamp()
-                : Carbon::parse($value)->getTimestamp();
-        } catch (\Throwable) {
-            return 0;
-        }
+        return $value instanceof Carbon
+            ? $value->getTimestamp()
+            : Carbon::parse($value)->getTimestamp();
     }
 
     private function publicCatalogWatchCard(CatalogWatch $watch): array
