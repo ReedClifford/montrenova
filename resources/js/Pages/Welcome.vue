@@ -166,25 +166,30 @@ const bestSellerCarouselWatches = computed(() => {
     const featuredFromProp = toCollectionArray(props.featuredWatches);
     const featuredFromCollection = watches.value.filter(hasFeaturedFlag);
 
-    const candidates = (
-        bestSellersFromProp.length
-            ? bestSellersFromProp
-            : [
-                  ...soldBestSellers,
-                  ...featuredFromProp,
-                  ...(featuredWatch.value ? [featuredWatch.value] : []),
-                  ...featuredFromCollection,
-                  ...watches.value,
-              ]
-    ).filter(Boolean);
+    const fallbackCandidates = [
+        ...soldBestSellers,
+        ...featuredFromProp,
+        ...(featuredWatch.value ? [featuredWatch.value] : []),
+        ...featuredFromCollection,
+        ...watches.value,
+    ];
+
+    /*
+     * Keep the backend best-seller order first, but still fill the hero
+     * carousel up to 5 items when the prop only returns 4 or fewer.
+     */
+    const candidates = [
+        ...bestSellersFromProp,
+        ...(bestSellersFromProp.length < 5 ? fallbackCandidates : []),
+    ].filter(Boolean);
 
     const uniqueWatches = new Map();
 
     candidates.forEach((watch, index) => {
         const key =
-            watch?.best_seller_rank ||
             watch?.id ||
             watch?.reference_number ||
+            watch?.model_name ||
             `best-seller-${index}`;
 
         if (!uniqueWatches.has(key) && isHeroEligibleWatch(watch)) {
@@ -334,18 +339,6 @@ const vlogs = [
         thumbnail: "/images/011.jpg",
         preview: "/videos/vlogs/vlog-011.mp4",
     },
-    // Add more Facebook Reel or video links here.
-    // Upload thumbnails inside: public/images/vlogs/
-    // Upload short muted hover preview clips inside: public/videos/vlogs/
-    // Example:
-    // {
-    //     id: 4,
-    //     title: "Montre Nova Vlog 004",
-    //     description: "Short description for your next vlog.",
-    //     url: "PASTE_FACEBOOK_REEL_OR_VIDEO_LINK_HERE",
-    //     thumbnail: "/images/vlogs/vlog-004.jpg",
-    //     preview: "/videos/vlogs/vlog-004.mp4",
-    // },
 ];
 
 const hasVlogs = computed(() => vlogs.length > 0);
@@ -382,6 +375,7 @@ const navSections = computed(() => {
             href: "#collection",
         },
     ];
+
     if (hasCatalogPreview.value) {
         sections.push({
             id: "catalog",
@@ -677,7 +671,7 @@ const orderSteps = [
         number: "03",
         title: "Delivery",
         description:
-            "Metro Manila orders may be delivered via Lalamove, while nationwide orders are shipped through LBC after payment confirmation.Scheduled meetups around Metro Manila are also available every Friday, Saturday, and Sunday.",
+            "Metro Manila orders may be delivered via Lalamove, while nationwide orders are shipped through LBC after payment confirmation. Scheduled meetups around Metro Manila are also available every Friday, Saturday, and Sunday.",
     },
 ];
 
@@ -1002,292 +996,215 @@ const productBadges = (watch) => {
         >
             <!-- HERO -->
             <section
-                class="mx-auto grid max-w-7xl items-stretch gap-9 px-4 pt-8 sm:gap-11 sm:px-6 sm:pt-12 lg:grid-cols-[0.94fr_0.86fr] lg:gap-14 lg:px-8 lg:pt-16"
+                class="hero-full-carousel-section animated-in"
+                @mouseenter="stopBestSellerAutoPlay"
+                @mouseleave="startBestSellerAutoPlay"
+                @focusin="stopBestSellerAutoPlay"
+                @focusout="startBestSellerAutoPlay"
             >
-                <div
-                    class="hero-copy animated-in relative flex h-full flex-col justify-center"
-                >
-                    <div class="premium-eyebrow mb-6">
-                        <span class="pulse-dot"></span>
-                        Curated brand-new & pre-owned timepieces
+                <!-- Full Background Carousel -->
+                <div class="hero-full-bg">
+                    <template v-if="activeBestSellerWatch">
+                        <Transition name="hero-slide" mode="out-in">
+                            <div
+                                :key="
+                                    activeBestSellerWatch.id ||
+                                    activeBestSellerWatch.reference_number ||
+                                    activeBestSellerIndex
+                                "
+                                class="hero-full-slide"
+                            >
+                                <img
+                                    v-if="watchImage(activeBestSellerWatch)"
+                                    :src="watchImage(activeBestSellerWatch)"
+                                    :alt="`${activeBestSellerWatch.brand} ${activeBestSellerWatch.model_name}`"
+                                    class="hero-full-backdrop-image"
+                                    :style="heroParallaxBackdropStyle"
+                                    @error="handleImageError"
+                                />
+
+                                <img
+                                    v-if="watchImage(activeBestSellerWatch)"
+                                    :src="watchImage(activeBestSellerWatch)"
+                                    :alt="`${activeBestSellerWatch.brand} ${activeBestSellerWatch.model_name}`"
+                                    class="hero-full-main-image"
+                                    :style="heroParallaxImageStyle"
+                                    @error="handleImageError"
+                                />
+
+                                <div
+                                    v-else
+                                    class="absolute inset-0 flex h-full items-center justify-center bg-[#050505]"
+                                >
+                                    <div class="placeholder-logo">
+                                        <span>MN</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </Transition>
+                    </template>
+
+                    <div
+                        v-else
+                        class="absolute inset-0 flex h-full items-center justify-center bg-[#050505]"
+                    >
+                        <div class="placeholder-logo">
+                            <span>MN</span>
+                        </div>
                     </div>
 
-                    <h1
-                        class="max-w-4xl text-[3.35rem] font-black leading-[0.9] tracking-[-0.075em] text-white sm:text-7xl lg:text-[5.2rem]"
-                    >
-                        Your next signature watch, curated with confidence.
-                    </h1>
+                    <!-- Overlays keep text readable but still emphasize photo -->
+                    <div class="hero-full-left-gradient"></div>
+                    <div class="hero-full-vignette"></div>
+                    <div class="hero-full-bottom-gradient"></div>
+                    <div class="hero-full-top-glass"></div>
+                </div>
 
-                    <p
-                        class="mt-7 max-w-2xl text-[15px] leading-8 text-zinc-400 sm:text-lg"
-                    >
-                        Browse available watches with actual HD photos, clear
-                        pricing, and trusted after-sales support.
-                    </p>
+                <!-- Best Seller Badge -->
+                <div v-if="activeBestSellerWatch" class="hero-full-rank-badge">
+                    #{{
+                        bestSellerRank(
+                            activeBestSellerWatch,
+                            activeBestSellerIndex,
+                        )
+                    }}
+                    Best Seller
+                </div>
 
-                    <div class="mt-9 w-full">
-                        <a
-                            href="#collection"
-                            class="primary-button group w-full !justify-between px-8 py-4 text-sm"
-                            @click="activateSection('collection')"
+                <!-- Carousel Arrows -->
+                <template v-if="hasBestSellerCarousel">
+                    <button
+                        type="button"
+                        class="hero-full-arrow hero-full-arrow-left"
+                        aria-label="Previous best seller watch"
+                        @click.stop="
+                            previousBestSeller();
+                            resetBestSellerAutoPlay();
+                        "
+                    >
+                        <svg
+                            viewBox="0 0 24 24"
+                            class="h-6 w-6"
+                            aria-hidden="true"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2.4"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
                         >
-                            <span>View Available Watches</span>
+                            <path d="M15 18l-6-6 6-6" />
+                        </svg>
+                    </button>
 
-                            <span class="transition group-hover:translate-x-1">
-                                →
-                            </span>
-                        </a>
-                    </div>
+                    <button
+                        type="button"
+                        class="hero-full-arrow hero-full-arrow-right"
+                        aria-label="Next best seller watch"
+                        @click.stop="
+                            nextBestSeller();
+                            resetBestSellerAutoPlay();
+                        "
+                    >
+                        <svg
+                            viewBox="0 0 24 24"
+                            class="h-6 w-6"
+                            aria-hidden="true"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2.4"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path d="M9 6l6 6-6 6" />
+                        </svg>
+                    </button>
+                </template>
 
-                    <div class="mt-9 grid grid-cols-2 gap-3">
-                        <div class="stat-card">
-                            <p class="stat-value">1Y</p>
-                            <p class="stat-label">Warranty</p>
+                <!-- Overlay Text Content -->
+                <div class="hero-full-content">
+                    <div class="hero-full-copy">
+                        <div class="premium-eyebrow hero-full-eyebrow mb-6">
+                            <span class="pulse-dot"></span>
+                            Curated brand-new & pre-owned timepieces
                         </div>
 
-                        <div class="stat-card">
-                            <p class="stat-value">{{ soldTotal }}+</p>
-                            <p class="stat-label">Sold Deals</p>
+                        <h1 class="hero-full-title">
+                            Your next signature watch, curated with confidence.
+                        </h1>
+
+                        <p class="hero-full-description">
+                            Browse available watches with actual HD photos,
+                            clear pricing, and trusted after-sales support.
+                        </p>
+
+                        <div class="hero-full-actions">
+                            <a
+                                href="#collection"
+                                class="primary-button hero-full-cta group"
+                                @click="activateSection('collection')"
+                            >
+                                <span>View Available Watches</span>
+
+                                <span
+                                    class="transition group-hover:translate-x-1"
+                                >
+                                    →
+                                </span>
+                            </a>
+                        </div>
+
+                        <div class="hero-full-stats">
+                            <div class="stat-card hero-full-stat-card">
+                                <p class="stat-value">1Y</p>
+                                <p class="stat-label">Warranty</p>
+                            </div>
+
+                            <div class="stat-card hero-full-stat-card">
+                                <p class="stat-value">{{ soldTotal }}+</p>
+                                <p class="stat-label">Sold Deals</p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- IMAGE-ONLY BEST SELLER PARALLAX CAROUSEL -->
-                <div
-                    class="hero-feature-wrap animated-in relative flex h-full items-stretch lg:pl-4 lg:[animation-delay:120ms]"
-                >
-                    <div
-                        class="absolute -inset-4 rounded-[2rem] bg-white/[0.035] blur-2xl sm:-inset-6"
-                    ></div>
-
-                    <div
-                        class="featured-lux-card best-seller-lux-card lux-card relative flex w-full flex-col gap-3 overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0A0A0B]/95 p-3 shadow-2xl shadow-black/45 ring-1 ring-white/[0.04] sm:p-4"
-                        @mouseenter="stopBestSellerAutoPlay"
-                        @mouseleave="startBestSellerAutoPlay"
-                        @focusin="stopBestSellerAutoPlay"
-                        @focusout="startBestSellerAutoPlay"
+                <!-- Thumbnail Dock -->
+                <div v-if="hasBestSellerCarousel" class="hero-full-dock">
+                    <button
+                        v-for="(watch, index) in bestSellerPreviewWatches"
+                        :key="watch.id || watch.reference_number || index"
+                        type="button"
+                        class="hero-full-thumb-button group/thumb"
+                        :class="
+                            activeBestSellerIndex === index ? 'is-active' : ''
+                        "
+                        :aria-label="`Show ${watchFullName(watch)}${watchReference(watch)} in best seller carousel`"
+                        @click="
+                            setActiveBestSeller(index);
+                            resetBestSellerAutoPlay();
+                        "
                     >
-                        <div class="shine-line"></div>
+                        <span class="hero-full-thumb-media">
+                            <span class="hero-full-thumb-rank">
+                                #{{ bestSellerRank(watch, index) }}
+                            </span>
 
-                        <div
-                            v-if="activeBestSellerWatch"
-                            class="featured-carousel-stage best-seller-stage relative flex min-h-[510px] flex-1 cursor-pointer overflow-hidden rounded-[1.25rem] border border-white/10 bg-black focus-within:ring-2 focus-within:ring-white/50 sm:min-h-[620px] lg:min-h-0"
-                        >
-                            <Transition name="hero-slide" mode="out-in">
-                                <div
-                                    :key="
-                                        activeBestSellerWatch.id ||
-                                        activeBestSellerWatch.reference_number ||
-                                        activeBestSellerIndex
-                                    "
-                                    class="absolute inset-0"
-                                >
-                                    <img
-                                        v-if="watchImage(activeBestSellerWatch)"
-                                        :src="watchImage(activeBestSellerWatch)"
-                                        :alt="`${activeBestSellerWatch.brand} ${activeBestSellerWatch.model_name}`"
-                                        class="best-seller-backdrop absolute inset-0 h-full w-full object-cover opacity-55 blur-2xl saturate-150 transition duration-[1400ms]"
-                                        :style="heroParallaxBackdropStyle"
-                                        @error="handleImageError"
-                                    />
+                            <img
+                                v-if="watchImage(watch)"
+                                :src="watchImage(watch)"
+                                :alt="`${watch.brand} ${watch.model_name}`"
+                                class="h-full w-full object-cover transition duration-500 group-hover/thumb:scale-110"
+                                loading="lazy"
+                                @error="handleImageError"
+                            />
 
-                                    <img
-                                        v-if="watchImage(activeBestSellerWatch)"
-                                        :src="watchImage(activeBestSellerWatch)"
-                                        :alt="`${activeBestSellerWatch.brand} ${activeBestSellerWatch.model_name}`"
-                                        class="best-seller-main-image absolute inset-0 h-full w-full object-cover transition duration-[1400ms] ease-out"
-                                        :style="heroParallaxImageStyle"
-                                        @error="handleImageError"
-                                    />
-
-                                    <div
-                                        v-else
-                                        class="absolute inset-0 flex h-full items-center justify-center bg-[#050505]"
-                                    >
-                                        <div class="placeholder-logo">
-                                            <span>MN</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </Transition>
-
-                            <div
-                                class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/38 via-transparent to-black/10"
-                            ></div>
-
-                            <div
-                                class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,transparent_0%,rgba(0,0,0,0.02)_48%,rgba(0,0,0,0.42)_100%)]"
-                            ></div>
-
-                            <div
-                                class="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-40 bg-gradient-to-t from-black/42 to-transparent"
-                            ></div>
-
-                            <div
-                                class="pointer-events-none absolute left-4 top-4 z-40 flex items-center gap-2 sm:left-5 sm:top-5"
-                            >
-                                <span
-                                    class="rounded-full border border-white/20 bg-black/55 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-white shadow-xl shadow-black/35 backdrop-blur-xl"
-                                >
-                                    #{{
-                                        bestSellerRank(
-                                            activeBestSellerWatch,
-                                            activeBestSellerIndex,
-                                        )
-                                    }}
-                                    Best Seller
-                                </span>
-                            </div>
-
-                            <Link
-                                v-if="isAvailableWatch(activeBestSellerWatch)"
-                                :href="
-                                    route(
-                                        'public.watches.show',
-                                        activeBestSellerWatch.id,
-                                    )
-                                "
-                                class="absolute inset-0 z-30 rounded-[1.25rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-                                :aria-label="`View ${watchFullName(activeBestSellerWatch)}${watchReference(activeBestSellerWatch)}`"
-                                @click="preparePageOpen"
-                            >
-                                <span class="sr-only">View watch details</span>
-                            </Link>
-
-                            <button
+                            <span
                                 v-else
-                                type="button"
-                                class="absolute inset-0 z-30 rounded-[1.25rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
-                                :aria-label="`Source a similar watch to ${watchFullName(activeBestSellerWatch)}${watchReference(activeBestSellerWatch)}`"
-                                @click="
-                                    openSimilarInquiry(activeBestSellerWatch)
-                                "
+                                class="flex h-full w-full items-center justify-center text-xs font-black text-zinc-500"
                             >
-                                <span class="sr-only"
-                                    >Source similar watch</span
-                                >
-                            </button>
-
-                            <template v-if="hasBestSellerCarousel">
-                                <button
-                                    type="button"
-                                    class="featured-arrow left-4"
-                                    aria-label="Previous best seller watch"
-                                    @click.stop="
-                                        previousBestSeller();
-                                        resetBestSellerAutoPlay();
-                                    "
-                                >
-                                    <svg
-                                        viewBox="0 0 24 24"
-                                        class="h-6 w-6"
-                                        aria-hidden="true"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="2.4"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    >
-                                        <path d="M15 18l-6-6 6-6" />
-                                    </svg>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    class="featured-arrow right-4"
-                                    aria-label="Next best seller watch"
-                                    @click.stop="
-                                        nextBestSeller();
-                                        resetBestSellerAutoPlay();
-                                    "
-                                >
-                                    <svg
-                                        viewBox="0 0 24 24"
-                                        class="h-6 w-6"
-                                        aria-hidden="true"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        stroke-width="2.4"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    >
-                                        <path d="M9 6l6 6-6 6" />
-                                    </svg>
-                                </button>
-                            </template>
-                        </div>
-
-                        <a
-                            v-else
-                            href="#collection"
-                            class="featured-media group relative flex min-h-[510px] flex-1 overflow-hidden rounded-[1.25rem] border border-white/10 bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:min-h-[620px] lg:min-h-0"
-                            @click="activateSection('collection')"
-                        >
-                            <div
-                                class="absolute inset-0 flex h-full items-center justify-center bg-[#050505]"
-                            >
-                                <div class="placeholder-logo">
-                                    <span>MN</span>
-                                </div>
-                            </div>
-
-                            <div
-                                class="absolute inset-0 bg-gradient-to-t from-black/88 via-black/30 to-transparent"
-                            ></div>
-                        </a>
-
-                        <div
-                            v-if="hasBestSellerCarousel"
-                            class="featured-dock image-only-dock grid grid-cols-5 gap-2 rounded-[1rem] border border-white/10 bg-white/[0.035] p-2 backdrop-blur"
-                        >
-                            <button
-                                v-for="(
-                                    watch, index
-                                ) in bestSellerPreviewWatches"
-                                :key="
-                                    watch.id || watch.reference_number || index
-                                "
-                                type="button"
-                                class="featured-thumb-button group/thumb"
-                                :class="
-                                    activeBestSellerIndex === index
-                                        ? 'is-active'
-                                        : ''
-                                "
-                                :aria-label="`Show ${watchFullName(watch)}${watchReference(watch)} in best seller carousel`"
-                                @click="
-                                    setActiveBestSeller(index);
-                                    resetBestSellerAutoPlay();
-                                "
-                            >
-                                <span
-                                    class="relative block aspect-square overflow-hidden rounded-[0.75rem] bg-black"
-                                >
-                                    <span
-                                        class="pointer-events-none absolute left-1.5 top-1.5 z-10 flex h-6 min-w-6 items-center justify-center rounded-full border border-white/20 bg-black/60 px-1.5 text-[9px] font-black text-white shadow-lg shadow-black/30 backdrop-blur"
-                                    >
-                                        #{{ bestSellerRank(watch, index) }}
-                                    </span>
-
-                                    <img
-                                        v-if="watchImage(watch)"
-                                        :src="watchImage(watch)"
-                                        :alt="`${watch.brand} ${watch.model_name}`"
-                                        class="h-full w-full object-cover transition duration-500 group-hover/thumb:scale-110"
-                                        loading="lazy"
-                                        @error="handleImageError"
-                                    />
-
-                                    <span
-                                        v-else
-                                        class="flex h-full w-full items-center justify-center text-xs font-black text-zinc-500"
-                                    >
-                                        MN
-                                    </span>
-                                </span>
-                            </button>
-                        </div>
-                    </div>
+                                MN
+                            </span>
+                        </span>
+                    </button>
                 </div>
             </section>
 
@@ -3105,7 +3022,7 @@ main > section {
     display: inline-flex;
     align-items: center;
     gap: 0.65rem;
-    mimessengen-height: 3.6rem;
+    min-height: 3.6rem;
     border-radius: 9999px;
     border: 1px solid rgb(255 255 255 / 0.2);
     background: white;
@@ -3327,6 +3244,1288 @@ main > section {
 
     to {
         object-position: 54% 50%;
+    }
+}
+
+/* =========================================================
+   FINAL UI/UX POLISH OVERRIDES
+========================================================= */
+
+main {
+    overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+    main > section:first-of-type {
+        min-height: calc(100vh - 5.25rem);
+        align-items: center;
+    }
+
+    .hero-copy,
+    .hero-feature-wrap {
+        min-height: clamp(560px, 68vh, 720px);
+    }
+}
+
+.hero-copy h1 {
+    text-wrap: balance;
+}
+
+@media (max-width: 639px) {
+    .hero-copy h1 {
+        font-size: clamp(2.75rem, 16vw, 4.1rem);
+        line-height: 0.88;
+        letter-spacing: -0.085em;
+    }
+
+    .hero-copy p {
+        margin-top: 1.25rem;
+        font-size: 0.92rem;
+        line-height: 1.85;
+    }
+
+    .premium-eyebrow {
+        max-width: 100%;
+        padding: 0.48rem 0.75rem;
+        font-size: 0.52rem;
+        letter-spacing: 0.2em;
+    }
+}
+
+.primary-button {
+    border: 1px solid rgb(255 255 255 / 0.16);
+}
+
+.primary-button span:first-child {
+    white-space: nowrap;
+}
+
+@media (max-width: 639px) {
+    .primary-button {
+        min-height: 3.45rem;
+        border-radius: 1rem;
+        padding-inline: 1.15rem !important;
+        font-size: 0.72rem;
+        letter-spacing: 0.11em;
+    }
+}
+
+.stat-card {
+    display: flex;
+    min-height: 5.25rem;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.stat-value {
+    font-size: clamp(1.55rem, 5vw, 2rem);
+}
+
+.stat-label {
+    color: rgb(161 161 170 / 0.72);
+}
+
+.best-seller-lux-card {
+    border-radius: 1.85rem;
+}
+
+.best-seller-stage {
+    border-radius: 1.45rem;
+}
+
+.best-seller-main-image {
+    object-position: center;
+}
+
+@media (max-width: 767px) {
+    .best-seller-lux-card {
+        padding: 0.65rem;
+        border-radius: 1.35rem;
+    }
+
+    .best-seller-stage {
+        min-height: 430px !important;
+        border-radius: 1.05rem;
+    }
+
+    .featured-arrow {
+        display: inline-flex;
+        height: 2.45rem;
+        width: 2.45rem;
+        background: rgb(0 0 0 / 0.35);
+    }
+
+    .featured-arrow.left-4 {
+        left: 0.75rem;
+    }
+
+    .featured-arrow.right-4 {
+        right: 0.75rem;
+    }
+
+    .image-only-dock {
+        gap: 0.4rem;
+        overflow-x: auto;
+        grid-template-columns: repeat(5, minmax(58px, 1fr));
+        padding: 0.45rem;
+        border-radius: 0.95rem;
+    }
+
+    .featured-thumb-button {
+        padding: 0.22rem;
+        border-radius: 0.75rem;
+    }
+
+    .featured-thumb-button span.relative {
+        border-radius: 0.62rem;
+    }
+}
+
+.section-kicker {
+    color: rgb(161 161 170 / 0.7);
+}
+
+.section-title {
+    text-wrap: balance;
+}
+
+@media (max-width: 639px) {
+    .section-title {
+        font-size: 2.35rem;
+        line-height: 0.95;
+    }
+
+    .section-kicker {
+        font-size: 0.58rem;
+        letter-spacing: 0.28em;
+    }
+}
+
+@media (max-width: 767px) {
+    .watch-card,
+    .sold-card,
+    .vlog-card {
+        min-width: 78vw;
+        max-width: 78vw;
+        border-radius: 1.15rem;
+    }
+
+    .watch-card > div,
+    .sold-card > div {
+        min-height: 390px;
+    }
+
+    .watch-card h3,
+    .sold-card h3,
+    .catalog-preview-card h3 {
+        font-size: 1.55rem;
+        line-height: 1.05;
+        letter-spacing: -0.025em;
+    }
+
+    .detail-chip {
+        padding: 0.28rem 0.58rem;
+        font-size: 0.54rem;
+        letter-spacing: 0.1em;
+    }
+
+    .view-detail-pill {
+        padding: 0.55rem 0.7rem;
+        font-size: 0.56rem;
+        letter-spacing: 0.09em;
+    }
+}
+
+@media (min-width: 1024px) {
+    .watch-card > div {
+        min-height: 470px;
+    }
+
+    .watch-card h3 {
+        font-size: 1.65rem;
+    }
+}
+
+.catalog-preview-card {
+    border-radius: 1.3rem;
+}
+
+@media (max-width: 639px) {
+    .catalog-preview-card > div {
+        min-height: 390px;
+    }
+}
+
+.process-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.process-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(
+        circle at 20% 0%,
+        rgb(255 255 255 / 0.055),
+        transparent 34%
+    );
+    opacity: 0;
+    transition: opacity 280ms ease;
+}
+
+.process-card:hover::before {
+    opacity: 1;
+}
+
+@media (max-width: 639px) {
+    .process-card {
+        padding: 1.35rem;
+        border-radius: 1rem;
+    }
+}
+
+.contact-card {
+    min-height: 5.3rem;
+}
+
+@media (max-width: 639px) {
+    #contact .animated-in {
+        border-radius: 1.25rem;
+        padding: 1.35rem;
+    }
+
+    #contact h2 {
+        font-size: 2.35rem;
+        line-height: 0.95;
+    }
+
+    .contact-card {
+        padding: 1rem;
+        border-radius: 0.95rem;
+    }
+}
+
+@media (max-width: 767px) {
+    header .mx-auto {
+        padding-top: 0.7rem;
+        padding-bottom: 0.6rem;
+    }
+
+    header nav.mt-3 {
+        padding-bottom: 0.25rem;
+    }
+
+    header nav.mt-3 a {
+        font-size: 0.68rem;
+        white-space: nowrap;
+    }
+}
+
+.messenger-float-button {
+    background: linear-gradient(135deg, #00a6ff 0%, #0084ff 45%, #006aff 100%);
+}
+
+.messenger-float-button:hover {
+    filter: brightness(1.08);
+    box-shadow:
+        0 28px 78px rgb(0 0 0 / 0.7),
+        0 0 0 1px rgb(255 255 255 / 0.16),
+        0 0 54px rgb(0 132 255 / 0.42),
+        inset 0 1px 0 rgb(255 255 255 / 0.28);
+}
+
+.watch-card,
+.sold-card,
+.vlog-card,
+.catalog-preview-card {
+    will-change: transform;
+}
+
+@media (max-width: 639px) {
+    main {
+        padding-top: 7.25rem !important;
+    }
+
+    main > section {
+        margin-bottom: 0;
+    }
+}
+
+/* =========================================================
+   FULL BACKGROUND HERO CAROUSEL
+========================================================= */
+
+.hero-full-carousel-section {
+    position: relative;
+    isolation: isolate;
+    min-height: calc(100dvh - 5.25rem);
+    overflow: hidden;
+    border-bottom: 1px solid rgb(255 255 255 / 0.08);
+    background: #050505;
+}
+
+.hero-full-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    background: #050505;
+}
+
+.hero-full-slide {
+    position: absolute;
+    inset: 0;
+}
+
+.hero-full-backdrop-image {
+    position: absolute;
+    inset: -2rem;
+    height: calc(100% + 4rem);
+    width: calc(100% + 4rem);
+    object-fit: cover;
+    opacity: 0.36;
+    filter: blur(30px) saturate(1.5) brightness(0.72);
+    transition:
+        transform 1400ms ease,
+        opacity 500ms ease;
+}
+
+.hero-full-main-image {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+    object-position: center;
+    opacity: 0.92;
+    filter: saturate(1.08) contrast(1.06) brightness(0.95);
+    transition:
+        transform 1400ms ease,
+        opacity 500ms ease,
+        filter 500ms ease;
+    will-change: transform;
+    animation: heroParallaxDrift 5.2s ease-in-out infinite alternate;
+}
+
+.hero-full-left-gradient {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background: linear-gradient(
+        90deg,
+        rgb(0 0 0 / 0.92) 0%,
+        rgb(0 0 0 / 0.78) 31%,
+        rgb(0 0 0 / 0.36) 58%,
+        rgb(0 0 0 / 0.16) 100%
+    );
+}
+
+.hero-full-vignette {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    background: radial-gradient(
+        circle at 72% 45%,
+        transparent 0%,
+        rgb(0 0 0 / 0.08) 38%,
+        rgb(0 0 0 / 0.56) 100%
+    );
+}
+
+.hero-full-bottom-gradient {
+    position: absolute;
+    inset-x: 0;
+    bottom: 0;
+    z-index: 4;
+    height: 38%;
+    pointer-events: none;
+    background: linear-gradient(
+        to top,
+        rgb(0 0 0 / 0.78),
+        rgb(0 0 0 / 0.34),
+        transparent
+    );
+}
+
+.hero-full-top-glass {
+    position: absolute;
+    inset-x: 0;
+    top: 0;
+    z-index: 5;
+    height: 32%;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgb(0 0 0 / 0.42), transparent);
+}
+
+.hero-full-content {
+    position: relative;
+    z-index: 20;
+    display: flex;
+    min-height: calc(100dvh - 5.25rem);
+    align-items: center;
+    margin-inline: auto;
+    max-width: 80rem;
+    padding: 5.5rem 1rem 7rem;
+}
+
+.hero-full-copy {
+    max-width: 46rem;
+}
+
+.hero-full-eyebrow {
+    background: rgb(0 0 0 / 0.36);
+    backdrop-filter: blur(18px);
+    box-shadow:
+        0 18px 55px rgb(0 0 0 / 0.35),
+        inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+
+.hero-full-title {
+    max-width: 46rem;
+    text-wrap: balance;
+    font-size: clamp(3.15rem, 7.1vw, 6.7rem);
+    font-weight: 950;
+    line-height: 0.86;
+    letter-spacing: -0.085em;
+    color: white;
+    text-shadow: 0 12px 40px rgb(0 0 0 / 0.62);
+}
+
+.hero-full-description {
+    margin-top: 1.75rem;
+    max-width: 38rem;
+    font-size: 1.08rem;
+    line-height: 1.9;
+    color: rgb(228 228 231 / 0.78);
+    text-shadow: 0 8px 26px rgb(0 0 0 / 0.7);
+}
+
+.hero-full-actions {
+    margin-top: 2.35rem;
+    width: min(100%, 31rem);
+}
+
+.hero-full-cta {
+    width: 100%;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    font-size: 0.83rem;
+    box-shadow:
+        0 22px 65px rgb(255 255 255 / 0.12),
+        0 0 0 1px rgb(255 255 255 / 0.12);
+}
+
+.hero-full-stats {
+    margin-top: 2.35rem;
+    display: grid;
+    width: min(100%, 31rem);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.hero-full-stat-card {
+    min-height: 5.5rem;
+    border-color: rgb(255 255 255 / 0.12);
+    background: rgb(0 0 0 / 0.34);
+    box-shadow:
+        0 18px 55px rgb(0 0 0 / 0.35),
+        inset 0 1px 0 rgb(255 255 255 / 0.08);
+    backdrop-filter: blur(18px);
+}
+
+.hero-full-rank-badge {
+    position: absolute;
+    top: 2rem;
+    right: clamp(1rem, 4vw, 4.5rem);
+    z-index: 30;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.18);
+    background: rgb(0 0 0 / 0.45);
+    padding: 0.7rem 1rem;
+    color: white;
+    font-size: 0.68rem;
+    font-weight: 950;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    box-shadow: 0 18px 48px rgb(0 0 0 / 0.42);
+    backdrop-filter: blur(20px);
+}
+
+.hero-full-arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 35;
+    display: inline-flex;
+    height: 3rem;
+    width: 3rem;
+    transform: translateY(-50%);
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.16);
+    background: rgb(0 0 0 / 0.35);
+    color: white;
+    box-shadow: 0 18px 48px rgb(0 0 0 / 0.38);
+    backdrop-filter: blur(18px);
+    transition:
+        transform 260ms ease,
+        background-color 260ms ease,
+        border-color 260ms ease,
+        color 260ms ease;
+}
+
+.hero-full-arrow:hover {
+    transform: translateY(-50%) scale(1.04);
+    border-color: rgb(255 255 255 / 0.28);
+    background: white;
+    color: black;
+}
+
+.hero-full-arrow:active {
+    transform: translateY(-50%) scale(0.96);
+}
+
+.hero-full-arrow-left {
+    left: clamp(1rem, 4vw, 4.5rem);
+}
+
+.hero-full-arrow-right {
+    right: clamp(1rem, 4vw, 4.5rem);
+}
+
+.hero-full-dock {
+    position: absolute;
+    right: clamp(1rem, 4vw, 4.5rem);
+    bottom: 2rem;
+    z-index: 32;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(4.5rem, 5.4rem));
+    gap: 0.6rem;
+    max-width: calc(100% - 2rem);
+    overflow: hidden;
+    border-radius: 1.25rem;
+    border: 1px solid rgb(255 255 255 / 0.12);
+    background: rgb(0 0 0 / 0.38);
+    padding: 0.65rem;
+    box-shadow:
+        0 22px 65px rgb(0 0 0 / 0.42),
+        inset 0 1px 0 rgb(255 255 255 / 0.08);
+    backdrop-filter: blur(22px);
+}
+
+.hero-full-thumb-button {
+    min-width: 0;
+    border-radius: 0.95rem;
+    border: 1px solid transparent;
+    padding: 0.32rem;
+    transition:
+        transform 260ms ease,
+        border-color 260ms ease,
+        background-color 260ms ease,
+        opacity 260ms ease;
+}
+
+.hero-full-thumb-button:hover {
+    transform: translateY(-1px);
+    border-color: rgb(255 255 255 / 0.18);
+    background: rgb(255 255 255 / 0.06);
+}
+
+.hero-full-thumb-button.is-active {
+    border-color: rgb(255 255 255 / 0.52);
+    background: rgb(255 255 255 / 0.1);
+}
+
+.hero-full-thumb-media {
+    position: relative;
+    display: block;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    background: #050505;
+}
+
+.hero-full-thumb-rank {
+    position: absolute;
+    left: 0.4rem;
+    top: 0.4rem;
+    z-index: 10;
+    display: flex;
+    min-width: 1.45rem;
+    height: 1.45rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.18);
+    background: rgb(0 0 0 / 0.62);
+    padding-inline: 0.35rem;
+    color: white;
+    font-size: 0.56rem;
+    font-weight: 950;
+    box-shadow: 0 10px 24px rgb(0 0 0 / 0.38);
+    backdrop-filter: blur(14px);
+}
+
+/* Tablet */
+@media (max-width: 1023px) {
+    .hero-full-carousel-section {
+        min-height: calc(100dvh - 7.25rem);
+    }
+
+    .hero-full-content {
+        min-height: calc(100dvh - 7.25rem);
+        align-items: flex-end;
+        padding: 5rem 1rem 9.25rem;
+    }
+
+    .hero-full-copy {
+        max-width: 42rem;
+    }
+
+    .hero-full-left-gradient {
+        background: linear-gradient(
+            to top,
+            rgb(0 0 0 / 0.9) 0%,
+            rgb(0 0 0 / 0.72) 36%,
+            rgb(0 0 0 / 0.24) 72%,
+            rgb(0 0 0 / 0.14) 100%
+        );
+    }
+
+    .hero-full-rank-badge {
+        top: 1rem;
+        right: 1rem;
+    }
+
+    .hero-full-dock {
+        right: 1rem;
+        bottom: 1rem;
+        left: 1rem;
+        grid-template-columns: repeat(5, minmax(3.4rem, 1fr));
+        gap: 0.45rem;
+        padding: 0.5rem;
+        border-radius: 1rem;
+    }
+
+    .hero-full-arrow {
+        height: 2.65rem;
+        width: 2.65rem;
+    }
+
+    .hero-full-arrow-left {
+        left: 0.85rem;
+    }
+
+    .hero-full-arrow-right {
+        right: 0.85rem;
+    }
+}
+
+/* Mobile */
+@media (max-width: 639px) {
+    .hero-full-carousel-section {
+        min-height: calc(100dvh - 7.25rem);
+    }
+
+    .hero-full-main-image {
+        opacity: 0.88;
+        object-position: center;
+    }
+
+    .hero-full-vignette {
+        background: radial-gradient(
+            circle at 50% 34%,
+            transparent 0%,
+            rgb(0 0 0 / 0.12) 42%,
+            rgb(0 0 0 / 0.72) 100%
+        );
+    }
+
+    .hero-full-content {
+        padding: 4.5rem 1rem 8.25rem;
+    }
+
+    .hero-full-eyebrow {
+        margin-bottom: 1rem;
+        max-width: 100%;
+        padding: 0.48rem 0.72rem;
+        font-size: 0.5rem;
+        letter-spacing: 0.18em;
+    }
+
+    .hero-full-title {
+        font-size: clamp(2.7rem, 15vw, 4rem);
+        line-height: 0.86;
+        letter-spacing: -0.086em;
+    }
+
+    .hero-full-description {
+        margin-top: 1.15rem;
+        max-width: 22rem;
+        font-size: 0.9rem;
+        line-height: 1.75;
+    }
+
+    .hero-full-actions {
+        margin-top: 1.45rem;
+        width: 100%;
+    }
+
+    .hero-full-cta {
+        min-height: 3.35rem;
+        padding-inline: 1rem;
+        font-size: 0.68rem;
+        letter-spacing: 0.1em;
+    }
+
+    .hero-full-stats {
+        margin-top: 1rem;
+        width: 100%;
+        gap: 0.55rem;
+    }
+
+    .hero-full-stat-card {
+        min-height: 4.65rem;
+        padding: 0.85rem;
+        border-radius: 0.9rem;
+    }
+
+    .hero-full-rank-badge {
+        top: 0.85rem;
+        right: 0.85rem;
+        padding: 0.55rem 0.78rem;
+        font-size: 0.56rem;
+        letter-spacing: 0.13em;
+    }
+
+    .hero-full-arrow {
+        top: 43%;
+        height: 2.35rem;
+        width: 2.35rem;
+        background: rgb(0 0 0 / 0.32);
+    }
+
+    .hero-full-arrow-left {
+        left: 0.7rem;
+    }
+
+    .hero-full-arrow-right {
+        right: 0.7rem;
+    }
+
+    .hero-full-dock {
+        right: 0.75rem;
+        bottom: 0.75rem;
+        left: 0.75rem;
+        grid-template-columns: repeat(5, minmax(2.9rem, 1fr));
+        gap: 0.35rem;
+        padding: 0.42rem;
+        border-radius: 0.9rem;
+    }
+
+    .hero-full-thumb-button {
+        padding: 0.2rem;
+        border-radius: 0.65rem;
+    }
+
+    .hero-full-thumb-media {
+        border-radius: 0.55rem;
+    }
+
+    .hero-full-thumb-rank {
+        left: 0.28rem;
+        top: 0.28rem;
+        min-width: 1.15rem;
+        height: 1.15rem;
+        padding-inline: 0.25rem;
+        font-size: 0.46rem;
+    }
+}
+
+/* =========================================================
+   MOBILE HERO RESTORE + BACKGROUND VISIBILITY TUNE
+   Desktop remains unchanged. This only improves phone view.
+========================================================= */
+
+@media (max-width: 639px) {
+    .hero-full-carousel-section {
+        min-height: calc(100dvh - 7.25rem);
+    }
+
+    .hero-full-main-image {
+        opacity: 1;
+        object-position: center center;
+        filter: saturate(1.14) contrast(1.04) brightness(1.06);
+        transform: scale(1.025) !important;
+    }
+
+    .hero-full-backdrop-image {
+        opacity: 0.24;
+        object-position: center center;
+        filter: blur(20px) saturate(1.35) brightness(0.92);
+    }
+
+    .hero-full-left-gradient {
+        background: linear-gradient(
+            to top,
+            rgb(0 0 0 / 0.88) 0%,
+            rgb(0 0 0 / 0.68) 28%,
+            rgb(0 0 0 / 0.34) 48%,
+            rgb(0 0 0 / 0.1) 72%,
+            rgb(0 0 0 / 0.18) 100%
+        );
+    }
+
+    .hero-full-vignette {
+        background: radial-gradient(
+            circle at 50% 30%,
+            transparent 0%,
+            transparent 30%,
+            rgb(0 0 0 / 0.12) 56%,
+            rgb(0 0 0 / 0.5) 100%
+        );
+    }
+
+    .hero-full-bottom-gradient {
+        height: 38%;
+        background: linear-gradient(
+            to top,
+            rgb(0 0 0 / 0.82),
+            rgb(0 0 0 / 0.34),
+            transparent
+        );
+    }
+
+    .hero-full-top-glass {
+        height: 17%;
+        background: linear-gradient(to bottom, rgb(0 0 0 / 0.26), transparent);
+    }
+
+    .hero-full-content {
+        align-items: flex-end;
+        padding: 4.6rem 1rem 7.95rem;
+    }
+
+    .hero-full-copy {
+        max-width: 21.75rem;
+        border-radius: 1.05rem;
+        background: linear-gradient(
+            180deg,
+            rgb(0 0 0 / 0.14),
+            rgb(0 0 0 / 0.08)
+        );
+        padding: 0.68rem 0.55rem 0;
+        box-shadow: none;
+        backdrop-filter: none;
+    }
+
+    .hero-full-eyebrow {
+        margin-bottom: 0.82rem;
+        max-width: 100%;
+        padding: 0.42rem 0.64rem;
+        font-size: 0.45rem;
+        letter-spacing: 0.15em;
+        background: rgb(0 0 0 / 0.38);
+        backdrop-filter: blur(12px);
+    }
+
+    .hero-full-title {
+        max-width: 21rem;
+        font-size: clamp(2.15rem, 10.5vw, 2.95rem);
+        line-height: 0.92;
+        letter-spacing: -0.074em;
+        text-shadow:
+            0 6px 20px rgb(0 0 0 / 0.9),
+            0 18px 52px rgb(0 0 0 / 0.75);
+    }
+
+    .hero-full-description {
+        margin-top: 1rem;
+        max-width: 20.25rem;
+        font-size: 0.84rem;
+        line-height: 1.65;
+        color: rgb(244 244 245 / 0.84);
+        text-shadow: 0 5px 18px rgb(0 0 0 / 0.82);
+    }
+
+    .hero-full-actions {
+        margin-top: 1.2rem;
+        width: 100%;
+    }
+
+    .hero-full-cta {
+        min-height: 3.15rem;
+        padding-inline: 0.95rem;
+        border-radius: 0.95rem;
+        font-size: 0.64rem;
+        letter-spacing: 0.1em;
+    }
+
+    .hero-full-stats {
+        margin-top: 0.85rem;
+        width: 100%;
+        gap: 0.55rem;
+    }
+
+    .hero-full-stat-card {
+        min-height: 4.25rem;
+        padding: 0.75rem;
+        border-radius: 0.9rem;
+        background: rgb(0 0 0 / 0.34);
+        backdrop-filter: blur(12px);
+    }
+
+    .hero-full-stat-card .stat-value {
+        font-size: 1.35rem;
+    }
+
+    .hero-full-stat-card .stat-label {
+        font-size: 0.52rem;
+        letter-spacing: 0.15em;
+    }
+
+    .hero-full-rank-badge {
+        top: 0.85rem;
+        right: 0.85rem;
+        padding: 0.55rem 0.78rem;
+        font-size: 0.56rem;
+        letter-spacing: 0.13em;
+        background: rgb(0 0 0 / 0.42);
+    }
+
+    .hero-full-arrow {
+        top: 36%;
+        height: 2.2rem;
+        width: 2.2rem;
+        background: rgb(0 0 0 / 0.26);
+        backdrop-filter: blur(10px);
+    }
+
+    .hero-full-arrow-left {
+        left: 0.7rem;
+    }
+
+    .hero-full-arrow-right {
+        right: 0.7rem;
+    }
+
+    .hero-full-dock {
+        right: 0.65rem;
+        bottom: 0.65rem;
+        left: 0.65rem;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.28rem;
+        padding: 0.36rem;
+        border-radius: 0.85rem;
+        background: rgb(0 0 0 / 0.3);
+        backdrop-filter: blur(12px);
+    }
+
+    .hero-full-thumb-button {
+        min-width: 0;
+        padding: 0.15rem;
+        border-radius: 0.58rem;
+    }
+
+    .hero-full-thumb-media {
+        border-radius: 0.48rem;
+    }
+
+    .hero-full-thumb-rank {
+        left: 0.22rem;
+        top: 0.22rem;
+        min-width: 1.05rem;
+        height: 1.05rem;
+        padding-inline: 0.2rem;
+        font-size: 0.42rem;
+    }
+
+    .messenger-float-button {
+        bottom: calc(env(safe-area-inset-bottom) + 5.35rem) !important;
+    }
+}
+
+/* =========================================================
+   FINAL MOBILE HERO CENTER CROP OVERRIDE
+   Desktop unchanged. Mobile carousel image stays centered.
+========================================================= */
+
+@media (max-width: 639px) {
+    .hero-full-main-image {
+        object-position: center center !important;
+        opacity: 1;
+        filter: saturate(1.12) contrast(1.04) brightness(1.04);
+    }
+
+    .hero-full-backdrop-image {
+        object-position: center center !important;
+    }
+
+    .hero-full-vignette {
+        background: radial-gradient(
+            circle at 50% 30%,
+            transparent 0%,
+            transparent 34%,
+            rgb(0 0 0 / 0.14) 58%,
+            rgb(0 0 0 / 0.48) 100%
+        );
+    }
+
+    .hero-full-title {
+        font-size: clamp(2.05rem, 10.2vw, 2.85rem);
+        line-height: 0.94;
+        letter-spacing: -0.072em;
+        max-width: 20rem;
+    }
+
+    .hero-full-description {
+        max-width: 20rem;
+        font-size: 0.82rem;
+        line-height: 1.6;
+    }
+
+    .hero-full-copy {
+        max-width: 22rem;
+    }
+}
+
+/* =========================================================
+   FINAL MOBILE HERO CENTERED LAYOUT
+   Text/Button upper-middle + centered carousel image
+========================================================= */
+
+@media (max-width: 639px) {
+    .hero-full-carousel-section {
+        min-height: calc(100dvh - 7.25rem);
+    }
+
+    /* Keep the watch image centered and visible */
+    .hero-full-main-image {
+        object-position: center center !important;
+        opacity: 1 !important;
+        transform: scale(1.03) !important;
+        filter: saturate(1.12) contrast(1.04) brightness(1.02) !important;
+    }
+
+    .hero-full-backdrop-image {
+        object-position: center center !important;
+        opacity: 0.18 !important;
+        filter: blur(22px) saturate(1.25) brightness(0.88) !important;
+    }
+
+    /* Lighter overlay so the background carousel is more visible */
+    .hero-full-left-gradient {
+        background: linear-gradient(
+            to bottom,
+            rgb(0 0 0 / 0.28) 0%,
+            rgb(0 0 0 / 0.12) 22%,
+            rgb(0 0 0 / 0.22) 48%,
+            rgb(0 0 0 / 0.74) 100%
+        ) !important;
+    }
+
+    .hero-full-vignette {
+        background: radial-gradient(
+            circle at 50% 45%,
+            transparent 0%,
+            rgb(0 0 0 / 0.08) 42%,
+            rgb(0 0 0 / 0.42) 100%
+        ) !important;
+    }
+
+    .hero-full-bottom-gradient {
+        height: 30% !important;
+        background: linear-gradient(
+            to top,
+            rgb(0 0 0 / 0.76),
+            rgb(0 0 0 / 0.26),
+            transparent
+        ) !important;
+    }
+
+    .hero-full-top-glass {
+        height: 18% !important;
+        background: linear-gradient(
+            to bottom,
+            rgb(0 0 0 / 0.22),
+            transparent
+        ) !important;
+    }
+
+    /* Put text/button at upper-middle */
+    .hero-full-content {
+        min-height: calc(100dvh - 7.25rem) !important;
+        align-items: flex-start !important;
+        justify-content: center !important;
+        padding: 4.45rem 1rem 8.45rem !important;
+    }
+
+    .hero-full-copy {
+        width: 100%;
+        max-width: 22.5rem !important;
+        margin-inline: auto !important;
+        padding: 0 !important;
+        text-align: center !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
+    .hero-full-eyebrow {
+        width: fit-content;
+        max-width: 100%;
+        margin-inline: auto !important;
+        margin-bottom: 0.8rem !important;
+        padding: 0.42rem 0.68rem !important;
+        border-color: rgb(255 255 255 / 0.14) !important;
+        background: rgb(0 0 0 / 0.38) !important;
+        font-size: 0.45rem !important;
+        letter-spacing: 0.15em !important;
+        box-shadow:
+            0 10px 28px rgb(0 0 0 / 0.34),
+            inset 0 1px 0 rgb(255 255 255 / 0.1) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+    }
+
+    .hero-full-title {
+        max-width: 21rem !important;
+        margin-inline: auto !important;
+        font-size: clamp(2.05rem, 10.3vw, 2.9rem) !important;
+        line-height: 0.94 !important;
+        letter-spacing: -0.072em !important;
+        text-align: center !important;
+        text-shadow:
+            0 5px 18px rgb(0 0 0 / 0.82),
+            0 16px 45px rgb(0 0 0 / 0.76) !important;
+    }
+
+    .hero-full-description {
+        max-width: 20rem !important;
+        margin: 0.9rem auto 0 !important;
+        font-size: 0.82rem !important;
+        line-height: 1.6 !important;
+        text-align: center !important;
+        color: rgb(244 244 245 / 0.82) !important;
+        text-shadow: 0 5px 18px rgb(0 0 0 / 0.82) !important;
+    }
+
+    .hero-full-actions {
+        width: 100% !important;
+        margin-top: 1.15rem !important;
+    }
+
+    .hero-full-cta {
+        min-height: 3.15rem !important;
+        width: 100% !important;
+        justify-content: space-between !important;
+        border-radius: 1rem !important;
+        padding-inline: 1rem !important;
+        font-size: 0.64rem !important;
+        letter-spacing: 0.1em !important;
+        box-shadow:
+            0 18px 48px rgb(0 0 0 / 0.34),
+            0 0 0 1px rgb(255 255 255 / 0.18) !important;
+    }
+
+    .hero-full-stats {
+        width: 100% !important;
+        margin-top: 0.85rem !important;
+        gap: 0.55rem !important;
+    }
+
+    .hero-full-stat-card {
+        min-height: 4.1rem !important;
+        padding: 0.72rem !important;
+        border-radius: 0.9rem !important;
+        background: rgb(0 0 0 / 0.34) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+    }
+
+    .hero-full-stat-card .stat-value {
+        font-size: 1.25rem !important;
+    }
+
+    .hero-full-stat-card .stat-label {
+        margin-top: 0.32rem !important;
+        font-size: 0.5rem !important;
+        letter-spacing: 0.14em !important;
+    }
+
+    /* Move arrows away from the text */
+    .hero-full-arrow {
+        top: 53% !important;
+        height: 2.35rem !important;
+        width: 2.35rem !important;
+        background: rgb(0 0 0 / 0.34) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
+    }
+
+    .hero-full-arrow-left {
+        left: 0.7rem !important;
+    }
+
+    .hero-full-arrow-right {
+        right: 0.7rem !important;
+    }
+
+    .hero-full-rank-badge {
+        top: 0.8rem !important;
+        right: 0.8rem !important;
+        padding: 0.52rem 0.75rem !important;
+        font-size: 0.55rem !important;
+        letter-spacing: 0.13em !important;
+        background: rgb(0 0 0 / 0.38) !important;
+    }
+
+    /* Keep all 5 thumbnails visible */
+    .hero-full-dock {
+        right: 0.65rem !important;
+        bottom: 0.65rem !important;
+        left: 0.65rem !important;
+        display: grid !important;
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+        gap: 0.3rem !important;
+        padding: 0.36rem !important;
+        border-radius: 0.9rem !important;
+        background: rgb(0 0 0 / 0.32) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+    }
+
+    .hero-full-thumb-button {
+        min-width: 0 !important;
+        padding: 0.16rem !important;
+        border-radius: 0.58rem !important;
+    }
+
+    .hero-full-thumb-media {
+        border-radius: 0.5rem !important;
+    }
+
+    .hero-full-thumb-rank {
+        left: 0.22rem !important;
+        top: 0.22rem !important;
+        min-width: 1.05rem !important;
+        height: 1.05rem !important;
+        padding-inline: 0.2rem !important;
+        font-size: 0.42rem !important;
+    }
+
+    /* Prevent Messenger button from covering the thumbnail dock */
+    .messenger-float-button {
+        bottom: calc(env(safe-area-inset-bottom) + 5.35rem) !important;
+        right: 0.85rem !important;
+        height: 3.35rem !important;
+        width: 3.35rem !important;
     }
 }
 </style>
