@@ -80,125 +80,374 @@ class WatchController extends Controller
 
 
     public function index(Request $request)
-{
-    $search = trim((string) $request->input('search', ''));
-    $status = $request->input('status', '');
+    {
+        $search = trim((string) $request->input('search', ''));
+        $status = trim((string) $request->input('status', ''));
+        $brand = trim((string) $request->input('brand', ''));
+        $condition = trim((string) $request->input('condition', ''));
 
-    $watches = Watch::query()
-        ->with(['primaryImage', 'images', 'sections'])
-        ->withCount('images')
-        ->when($search, function ($query) use ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('brand', 'like', "%{$search}%")
-                    ->orWhere('model_name', 'like', "%{$search}%")
-                    ->orWhere('reference_number', 'like', "%{$search}%")
-                    ->orWhere('condition', 'like', "%{$search}%")
-                    ->orWhere('category', 'like', "%{$search}%")
-                    ->orWhere('buyer_name', 'like', "%{$search}%")
-                    ->orWhere('serial_number', 'like', "%{$search}%");
+        /*
+        |--------------------------------------------------------------------------
+        | Allowed inventory filters
+        |--------------------------------------------------------------------------
+        |
+        | Query-string values are whitelisted before being used. This keeps the
+        | inventory filters predictable and prevents unsupported values from
+        | remaining active in the frontend.
+        |
+        */
+
+        $allowedStatuses = [
+            '',
+            'available',
+            'reserved',
+            'sold',
+            'draft',
+            'hidden',
+        ];
+
+        $allowedBrands = [
+            '',
+            'Seiko',
+            'Tissot',
+            'Casio',
+        ];
+
+        $allowedConditions = [
+            '',
+            'Brand New',
+            'Pre-owned',
+        ];
+
+        if (! in_array($status, $allowedStatuses, true)) {
+            $status = '';
+        }
+
+        if (! in_array($brand, $allowedBrands, true)) {
+            $brand = '';
+        }
+
+        if (! in_array($condition, $allowedConditions, true)) {
+            $condition = '';
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Normalize the condition filter
+        |--------------------------------------------------------------------------
+        |
+        | Existing records may contain values such as Pre-owned, Pre-Owned, or
+        | Pre Owned. The normalized comparison lets all of those match the same
+        | frontend filter without changing the saved records.
+        |
+        */
+
+        $normalizedCondition = match ($condition) {
+            'Brand New' => 'brandnew',
+            'Pre-owned' => 'preowned',
+            default => '',
+        };
+
+        $watches = Watch::query()
+            ->with([
+                'primaryImage',
+                'images',
+                'sections',
+            ])
+            ->withCount('images')
+            ->when(
+                $search,
+                function ($query) use ($search) {
+                    $query->where(function ($query) use ($search) {
+                        $query
+                            ->where('brand', 'like', "%{$search}%")
+                            ->orWhere(
+                                'model_name',
+                                'like',
+                                "%{$search}%"
+                            )
+                            ->orWhere(
+                                'reference_number',
+                                'like',
+                                "%{$search}%"
+                            )
+                            ->orWhere(
+                                'condition',
+                                'like',
+                                "%{$search}%"
+                            )
+                            ->orWhere(
+                                'category',
+                                'like',
+                                "%{$search}%"
+                            )
+                            ->orWhere(
+                                'buyer_name',
+                                'like',
+                                "%{$search}%"
+                            )
+                            ->orWhere(
+                                'serial_number',
+                                'like',
+                                "%{$search}%"
+                            );
+                    });
+                }
+            )
+            ->when(
+                $status,
+                fn ($query) =>
+                    $query->where('status', $status)
+            )
+            ->when(
+                $brand,
+                fn ($query) =>
+                    $query->whereRaw(
+                        'LOWER(TRIM(brand)) = ?',
+                        [strtolower($brand)]
+                    )
+            )
+            ->when(
+                $normalizedCondition,
+                fn ($query) =>
+                    $query->whereRaw(
+                        "LOWER(
+                            REPLACE(
+                                REPLACE(
+                                    TRIM(`condition`),
+                                    '-',
+                                    ''
+                                ),
+                                ' ',
+                                ''
+                            )
+                        ) = ?",
+                        [$normalizedCondition]
+                    )
+            )
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Warranty records
+        |--------------------------------------------------------------------------
+        |
+        | Brand and condition filters are inventory filters. Warranty records
+        | retain their own search and warranty-status controls.
+        |
+        */
+
+        $warrantyWatches = Watch::query()
+            ->select([
+                'id',
+                'brand',
+                'model_name',
+                'reference_number',
+                'serial_number',
+                'buyer_name',
+                'sold_price',
+                'date_sold',
+                'status',
+            ])
+            ->where('status', 'sold')
+            ->whereNotNull('date_sold')
+            ->when(
+                $search,
+                function ($query) use ($search) {
+                    $query->where(function ($query) use ($search) {
+                        $query
+                            ->where('brand', 'like', "%{$search}%")
+                            ->orWhere(
+                                'model_name',
+                                'like',
+                                "%{$search}%"
+                            )
+                            ->orWhere(
+                                'reference_number',
+                                'like',
+                                "%{$search}%"
+                            )
+                            ->orWhere(
+                                'buyer_name',
+                                'like',
+                                "%{$search}%"
+                            )
+                            ->orWhere(
+                                'serial_number',
+                                'like',
+                                "%{$search}%"
+                            );
+                    });
+                }
+            )
+            ->latest('date_sold')
+            ->paginate(
+                10,
+                ['*'],
+                'warranty_page'
+            )
+            ->withQueryString()
+            ->through(function (Watch $watch): array {
+                $dateSold = Carbon::parse(
+                    $watch->date_sold
+                );
+
+                $warrantyEndDate = $dateSold
+                    ->copy()
+                    ->addYear();
+
+                $daysLeft = now()
+                    ->startOfDay()
+                    ->diffInDays(
+                        $warrantyEndDate
+                            ->copy()
+                            ->startOfDay(),
+                        false
+                    );
+
+                if ($daysLeft < 0) {
+                    $warrantyStatus = 'expired';
+                } elseif ($daysLeft <= 30) {
+                    $warrantyStatus = 'expiring_soon';
+                } else {
+                    $warrantyStatus = 'active';
+                }
+
+                return [
+                    'id' =>
+                        $watch->id,
+
+                    'brand' =>
+                        $watch->brand,
+
+                    'model_name' =>
+                        $watch->model_name,
+
+                    'reference_number' =>
+                        $watch->reference_number,
+
+                    'serial_number' =>
+                        $watch->serial_number,
+
+                    'buyer_name' =>
+                        $watch->buyer_name,
+
+                    'sold_price' =>
+                        $watch->sold_price,
+
+                    'date_sold' =>
+                        $dateSold->format('Y-m-d'),
+
+                    'warranty_start_date' =>
+                        $dateSold->format('Y-m-d'),
+
+                    'warranty_end_date' =>
+                        $warrantyEndDate->format('Y-m-d'),
+
+                    'warranty_days_left' =>
+                        $daysLeft,
+
+                    'warranty_status' =>
+                        $warrantyStatus,
+                ];
             });
-        })
-        ->when($status, fn ($query) => $query->where('status', $status))
-        ->latest()
-        ->paginate(10)
-        ->withQueryString();
 
-    $warrantyWatches = Watch::query()
-        ->select([
-            'id',
-            'brand',
-            'model_name',
-            'reference_number',
-            'serial_number',
-            'buyer_name',
-            'sold_price',
-            'date_sold',
-            'status',
-        ])
-        ->where('status', 'sold')
-        ->whereNotNull('date_sold')
-        ->when($search, function ($query) use ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('brand', 'like', "%{$search}%")
-                    ->orWhere('model_name', 'like', "%{$search}%")
-                    ->orWhere('reference_number', 'like', "%{$search}%")
-                    ->orWhere('buyer_name', 'like', "%{$search}%")
-                    ->orWhere('serial_number', 'like', "%{$search}%");
-            });
-        })
-        ->latest('date_sold')
-        ->paginate(10, ['*'], 'warranty_page')
-        ->withQueryString()
-        ->through(function ($watch) {
-            $dateSold = Carbon::parse($watch->date_sold);
-            $warrantyEndDate = $dateSold->copy()->addYear();
-            $daysLeft = now()->startOfDay()->diffInDays($warrantyEndDate->copy()->startOfDay(), false);
+        $activeInventoryQuery = Watch::query()
+            ->where('status', '!=', 'sold');
 
-            if ($daysLeft < 0) {
-                $warrantyStatus = 'expired';
-            } elseif ($daysLeft <= 30) {
-                $warrantyStatus = 'expiring_soon';
-            } else {
-                $warrantyStatus = 'active';
-            }
+        $inventoryCapital = (float) (
+            clone $activeInventoryQuery
+        )->sum('capital_price');
 
-            return [
-                'id' => $watch->id,
-                'brand' => $watch->brand,
-                'model_name' => $watch->model_name,
-                'reference_number' => $watch->reference_number,
-                'serial_number' => $watch->serial_number,
-                'buyer_name' => $watch->buyer_name,
-                'sold_price' => $watch->sold_price,
-                'date_sold' => $dateSold->format('Y-m-d'),
-                'warranty_start_date' => $dateSold->format('Y-m-d'),
-                'warranty_end_date' => $warrantyEndDate->format('Y-m-d'),
-                'warranty_days_left' => $daysLeft,
-                'warranty_status' => $warrantyStatus,
-            ];
-        });
+        $expectedSalesValue = (float) (
+            clone $activeInventoryQuery
+        )
+            ->selectRaw('
+                COALESCE(
+                    SUM(
+                        CASE
+                            WHEN discounted_price IS NOT NULL
+                                AND discounted_price > 0
+                            THEN discounted_price
+                            ELSE selling_price
+                        END
+                    ),
+                    0
+                ) AS total
+            ')
+            ->value('total');
 
-    $activeInventoryQuery = Watch::query()
-        ->where('status', '!=', 'sold');
+        $expectedProfit =
+            $expectedSalesValue - $inventoryCapital;
 
-    $inventoryCapital = (float) (clone $activeInventoryQuery)
-        ->sum('capital_price');
+        return Inertia::render(
+            'Admin/Watches/Index',
+            [
+                'watches' =>
+                    $watches,
 
-    $expectedSalesValue = (float) (clone $activeInventoryQuery)
-        ->selectRaw('
-            COALESCE(
-                SUM(
-                    CASE
-                        WHEN discounted_price IS NOT NULL AND discounted_price > 0
-                        THEN discounted_price
-                        ELSE selling_price
-                    END
-                ),
-            0) as total
-        ')
-        ->value('total');
+                'warrantyWatches' =>
+                    $warrantyWatches,
 
-    $expectedProfit = $expectedSalesValue - $inventoryCapital;
+                'filters' => [
+                    'search' =>
+                        $search,
 
-    return Inertia::render('Admin/Watches/Index', [
-        'watches' => $watches,
-        'warrantyWatches' => $warrantyWatches,
-        'filters' => [
-            'search' => $search,
-            'status' => $status,
-        ],
-        'summary' => [
-            'total_watches' => Watch::count(),
-            'available_watches' => Watch::where('status', 'available')->count(),
-            'reserved_watches' => Watch::where('status', 'reserved')->count(),
-            'sold_watches' => Watch::where('status', 'sold')->count(),
-            'draft_hidden_watches' => Watch::whereIn('status', ['draft', 'hidden'])->count(),
-            'inventory_capital' => $inventoryCapital,
-            'expected_sales_value' => $expectedSalesValue,
-            'expected_profit' => $expectedProfit,
-        ],
-    ]);
-}
+                    'status' =>
+                        $status,
+
+                    'brand' =>
+                        $brand,
+
+                    'condition' =>
+                        $condition,
+                ],
+
+                'summary' => [
+                    'total_watches' =>
+                        Watch::count(),
+
+                    'available_watches' =>
+                        Watch::where(
+                            'status',
+                            'available'
+                        )->count(),
+
+                    'reserved_watches' =>
+                        Watch::where(
+                            'status',
+                            'reserved'
+                        )->count(),
+
+                    'sold_watches' =>
+                        Watch::where(
+                            'status',
+                            'sold'
+                        )->count(),
+
+                    'draft_hidden_watches' =>
+                        Watch::whereIn(
+                            'status',
+                            [
+                                'draft',
+                                'hidden',
+                            ]
+                        )->count(),
+
+                    'inventory_capital' =>
+                        $inventoryCapital,
+
+                    'expected_sales_value' =>
+                        $expectedSalesValue,
+
+                    'expected_profit' =>
+                        $expectedProfit,
+                ],
+            ]
+        );
+    }
 
     public function create()
     {

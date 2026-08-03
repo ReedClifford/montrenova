@@ -10,7 +10,8 @@ use App\Http\Controllers\PublicWatchController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\CatalogWatchController;
 use App\Http\Controllers\PublicCatalogController;
-
+use App\Http\Controllers\InvestorDashboardController;
+use App\Http\Controllers\Investor2DashboardController;
 /*
 |--------------------------------------------------------------------------
 | Public Routes
@@ -48,10 +49,12 @@ Route::get('/watches/{watch}', [PublicWatchController::class, 'show'])
 |--------------------------------------------------------------------------
 */
 
+// Route::get('/dashboard', [DashboardController::class, 'index'])
+//     ->middleware(['auth', 'verified'])
+//     ->name('dashboard');
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth', 'verified', 'role:admin'])
     ->name('dashboard');
-
 /*
 |--------------------------------------------------------------------------
 | Profile
@@ -75,7 +78,7 @@ Route::middleware('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified','role:admin'])->group(function () {
     /*
     |--------------------------------------------------------------------------
     | Watch Redirect Routes
@@ -192,5 +195,88 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->except(['show', 'create', 'edit'])
         ->names('admin.catalog');
 });
+Route::middleware(['auth', 'verified'])
+    ->prefix('investor')
+    ->name('investor.')
+    ->group(function () {
+        /*
+        |--------------------------------------------------------------------------
+        | Owner and Investor: View Dashboard
+        |--------------------------------------------------------------------------
+        */
 
+        Route::get('/dashboard', [
+            InvestorDashboardController::class,
+            'index',
+        ])
+            ->middleware('role:owner,investor')
+            ->name('dashboard');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Owner Only
+        |--------------------------------------------------------------------------
+        */
+
+        Route::middleware('role:owner')->group(function () {
+            Route::put('/settings', [
+                InvestorDashboardController::class,
+                'updateSettings',
+            ])->name('settings.update');
+
+            Route::post('/participants', [
+                InvestorDashboardController::class,
+                'storeInvestor',
+            ])->name('participants.store');
+
+            Route::patch('/participants/{investor}', [
+                InvestorDashboardController::class,
+                'updateInvestor',
+            ])->name('participants.update');
+
+            Route::delete('/participants/{investor}', [
+                InvestorDashboardController::class,
+                'destroyInvestor',
+            ])->name('participants.destroy');
+        });
+    });
+
+
+
+
+
+    Route::middleware(['auth', 'verified'])
+    ->prefix('investor2')
+    ->name('investor2.')
+    ->group(function () {
+        Route::get('/dashboard', [
+            Investor2DashboardController::class,
+            'index',
+        ])
+            ->middleware('role:owner2,investor2')
+            ->name('dashboard');
+
+        Route::middleware('role:owner2')
+            ->group(function () {
+                Route::put('/settings', [
+                    Investor2DashboardController::class,
+                    'updateSettings',
+                ])->name('settings.update');
+
+                Route::post('/participants', [
+                    Investor2DashboardController::class,
+                    'storeInvestor',
+                ])->name('participants.store');
+
+                Route::patch('/participants/{investor2}', [
+                    Investor2DashboardController::class,
+                    'updateInvestor',
+                ])->name('participants.update');
+
+                Route::delete('/participants/{investor2}', [
+                    Investor2DashboardController::class,
+                    'destroyInvestor',
+                ])->name('participants.destroy');
+            });
+    });
 require __DIR__ . '/auth.php';

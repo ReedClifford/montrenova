@@ -84,7 +84,7 @@ const closeMobileSidebar = () => {
         >
             <div class="flex h-full flex-col">
                 <div class="border-b border-white/10 px-6 py-6">
-                    <MontreLogo />
+                    <!-- <MontreLogo /> -->
                 </div>
 
                 <nav class="flex-1 space-y-1 overflow-y-auto px-4 py-6">

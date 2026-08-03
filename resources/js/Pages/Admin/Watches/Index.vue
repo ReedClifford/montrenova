@@ -39,6 +39,8 @@ const props = defineProps({
         default: () => ({
             search: "",
             status: "",
+            brand: "",
+            condition: "",
         }),
     },
     summary: {
@@ -66,7 +68,10 @@ const warrantyFilter = ref("all");
 
 const search = ref(props.filters.search || "");
 const status = ref(props.filters.status || "");
+const brand = ref(props.filters.brand || "");
+const condition = ref(props.filters.condition || "");
 const actionFilter = ref("all");
+const suppressSearchWatcher = ref(false);
 
 const viewMode = ref(
     typeof window !== "undefined"
@@ -132,6 +137,8 @@ const applyServerFilters = ({
             {
                 search: String(search.value || "").trim(),
                 status: status.value,
+                brand: brand.value,
+                condition: condition.value,
             },
             {
                 preserveState: true,
@@ -1393,6 +1400,19 @@ const priorityFilterLabels = computed(() => [
     { label: "Ready", value: "ready_to_post" },
 ]);
 
+const brandOptions = [
+    { label: "All Brands", value: "" },
+    { label: "Seiko", value: "Seiko" },
+    { label: "Tissot", value: "Tissot" },
+    { label: "Casio", value: "Casio" },
+];
+
+const conditionOptions = [
+    { label: "All Conditions", value: "" },
+    { label: "Brand New", value: "Brand New" },
+    { label: "Pre-owned", value: "Pre-owned" },
+];
+
 const statusTabs = computed(() => [
     { label: "All", value: "", count: props.summary.total_watches },
     {
@@ -1406,8 +1426,6 @@ const statusTabs = computed(() => [
         count: props.summary.reserved_watches,
     },
     { label: "Sold", value: "sold", count: props.summary.sold_watches },
-    { label: "Draft", value: "draft", count: null },
-    { label: "Hidden", value: "hidden", count: null },
 ]);
 
 const selectedStatusLabel = computed(() => {
@@ -1425,10 +1443,26 @@ const selectedActionFilterLabel = computed(() => {
     );
 });
 
+const selectedBrandLabel = computed(() => {
+    return (
+        brandOptions.find((option) => option.value === brand.value)?.label ||
+        "All Brands"
+    );
+});
+
+const selectedConditionLabel = computed(() => {
+    return (
+        conditionOptions.find((option) => option.value === condition.value)
+            ?.label || "All Conditions"
+    );
+});
+
 const hasActiveFilters = computed(() => {
     return (
         String(search.value || "").trim() !== "" ||
         status.value !== "" ||
+        brand.value !== "" ||
+        condition.value !== "" ||
         actionFilter.value !== "all"
     );
 });
@@ -1442,6 +1476,14 @@ const filterStateLabel = computed(() => {
 
     if (String(search.value || "").trim()) {
         parts.push(`Search: ${String(search.value).trim()}`);
+    }
+
+    if (selectedBrandLabel.value !== "All Brands") {
+        parts.push(`Brand: ${selectedBrandLabel.value}`);
+    }
+
+    if (selectedConditionLabel.value !== "All Conditions") {
+        parts.push(`Condition: ${selectedConditionLabel.value}`);
     }
 
     if (selectedStatusLabel.value !== "All") {
@@ -1464,6 +1506,8 @@ onMounted(() => {
 });
 
 watch(search, () => {
+    if (suppressSearchWatcher.value) return;
+
     applyServerFilters({
         debounce: 500,
         nextActionFilter: "all",
@@ -1481,6 +1525,37 @@ const setStatusFilter = (value) => {
 
     applyServerFilters({
         nextActionFilter: "all",
+    });
+};
+
+const setBrandFilter = (value) => {
+    if (brand.value === value) return;
+
+    brand.value = value;
+    applyServerFilters();
+};
+
+const setConditionFilter = (value) => {
+    if (condition.value === value) return;
+
+    condition.value = value;
+    applyServerFilters();
+};
+
+const clearAllFilters = () => {
+    clearSearchDebounce();
+    suppressSearchWatcher.value = true;
+
+    search.value = "";
+    status.value = "";
+    brand.value = "";
+    condition.value = "";
+    actionFilter.value = "all";
+
+    applyServerFilters();
+
+    nextTick(() => {
+        suppressSearchWatcher.value = false;
     });
 };
 
@@ -2272,68 +2347,6 @@ const clearReservation = (watch) => {
                     </div>
                 </section>
 
-                <!-- ACTION NEEDED -->
-                <section
-                    v-if="!isArrangeMode"
-                    class="rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 sm:p-6"
-                >
-                    <div
-                        class="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end"
-                    >
-                        <div>
-                            <p
-                                class="text-xs uppercase tracking-[0.24em] text-zinc-600"
-                            >
-                                Action Needed
-                            </p>
-
-                            <h3 class="mt-2 text-xl font-semibold text-white">
-                                Inventory priorities
-                            </h3>
-                        </div>
-
-                        <p class="text-xs text-zinc-500">
-                            Based on the current loaded page.
-                        </p>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
-                        <button
-                            v-for="card in actionCards"
-                            :key="card.label"
-                            type="button"
-                            class="rounded-[1.3rem] border p-4 text-left transition hover:-translate-y-0.5 sm:p-5"
-                            :class="[
-                                card.className,
-                                actionFilter === card.filter
-                                    ? 'ring-2 ring-white/30'
-                                    : '',
-                            ]"
-                            @click="setActionFilter(card.filter)"
-                        >
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <p
-                                        class="text-[10px] font-bold uppercase tracking-[0.18em] opacity-80 sm:text-xs"
-                                    >
-                                        {{ card.label }}
-                                    </p>
-
-                                    <p class="mt-3 text-3xl font-semibold">
-                                        {{ card.value }}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <p
-                                class="mt-3 text-xs leading-5 opacity-80 sm:text-sm"
-                            >
-                                {{ card.helper }}
-                            </p>
-                        </button>
-                    </div>
-                </section>
-
                 <!-- FILTERS -->
                 <section
                     v-if="!isArrangeMode"
@@ -2419,6 +2432,60 @@ const clearReservation = (watch) => {
                             </div>
                         </div>
 
+                        <div class="grid gap-4 lg:grid-cols-2">
+                            <div>
+                                <p
+                                    class="mb-3 text-xs uppercase tracking-[0.24em] text-zinc-600"
+                                >
+                                    Brand
+                                </p>
+
+                                <div class="flex flex-wrap gap-2">
+                                    <button
+                                        v-for="option in brandOptions"
+                                        :key="option.value || 'all-brands'"
+                                        type="button"
+                                        class="rounded-2xl border px-4 py-2 text-sm font-medium transition"
+                                        :class="
+                                            brand === option.value
+                                                ? 'border-white bg-white text-black'
+                                                : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/30 hover:text-white'
+                                        "
+                                        @click="setBrandFilter(option.value)"
+                                    >
+                                        {{ option.label }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p
+                                    class="mb-3 text-xs uppercase tracking-[0.24em] text-zinc-600"
+                                >
+                                    Condition
+                                </p>
+
+                                <div class="flex flex-wrap gap-2">
+                                    <button
+                                        v-for="option in conditionOptions"
+                                        :key="option.value || 'all-conditions'"
+                                        type="button"
+                                        class="rounded-2xl border px-4 py-2 text-sm font-medium transition"
+                                        :class="
+                                            condition === option.value
+                                                ? 'border-white bg-white text-black'
+                                                : 'border-white/10 bg-white/[0.03] text-zinc-400 hover:border-white/30 hover:text-white'
+                                        "
+                                        @click="
+                                            setConditionFilter(option.value)
+                                        "
+                                    >
+                                        {{ option.label }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div>
                             <p
                                 class="mb-3 text-xs uppercase tracking-[0.24em] text-zinc-600"
@@ -2490,10 +2557,7 @@ const clearReservation = (watch) => {
                                     v-if="hasActiveFilters"
                                     type="button"
                                     class="text-xs font-semibold text-white underline underline-offset-4"
-                                    @click="
-                                        search = '';
-                                        setStatusFilter('');
-                                    "
+                                    @click="clearAllFilters"
                                 >
                                     Clear filters
                                 </button>
@@ -4621,6 +4685,48 @@ const clearReservation = (watch) => {
                         </div>
 
                         <div class="mt-4">
+                            <p class="mn-mobile-panel-label">Brand</p>
+
+                            <div class="mt-2 grid grid-cols-2 gap-2">
+                                <button
+                                    v-for="option in brandOptions"
+                                    :key="`${option.value || 'all'}-brand-mobile`"
+                                    type="button"
+                                    class="rounded-xl border px-3 py-2.5 text-xs font-black transition active:scale-[0.98]"
+                                    :class="
+                                        brand === option.value
+                                            ? 'border-white bg-white text-black shadow-lg shadow-white/10'
+                                            : 'border-white/10 bg-white/[0.04] text-zinc-400'
+                                    "
+                                    @click="setBrandFilter(option.value)"
+                                >
+                                    {{ option.label }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <p class="mn-mobile-panel-label">Condition</p>
+
+                            <div class="mt-2 grid grid-cols-2 gap-2">
+                                <button
+                                    v-for="option in conditionOptions"
+                                    :key="`${option.value || 'all'}-condition-mobile`"
+                                    type="button"
+                                    class="rounded-xl border px-3 py-2.5 text-xs font-black transition active:scale-[0.98]"
+                                    :class="
+                                        condition === option.value
+                                            ? 'border-white bg-white text-black shadow-lg shadow-white/10'
+                                            : 'border-white/10 bg-white/[0.04] text-zinc-400'
+                                    "
+                                    @click="setConditionFilter(option.value)"
+                                >
+                                    {{ option.label }}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
                             <p class="mn-mobile-panel-label">Status</p>
 
                             <div class="mt-2 grid grid-cols-2 gap-2">
@@ -4651,10 +4757,7 @@ const clearReservation = (watch) => {
                             v-if="hasActiveFilters"
                             type="button"
                             class="mt-4 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black text-white transition active:scale-[0.98]"
-                            @click="
-                                search = '';
-                                setStatusFilter('');
-                            "
+                            @click="clearAllFilters"
                         >
                             Clear All Filters
                         </button>
