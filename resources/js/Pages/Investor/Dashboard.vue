@@ -235,7 +235,7 @@ const submitSettings = async () => {
         return;
     }
 
-    settingsForm.put(route("investor.settings.update"), {
+    settingsForm.put(route("investor2.settings.update"), {
         preserveScroll: true,
 
         onSuccess: () => {
@@ -253,7 +253,7 @@ const addInvestor = () => {
         return;
     }
 
-    investorForm.post(route("investor.participants.store"), {
+    investorForm.post(route("investor2.participants.store"), {
         preserveScroll: true,
 
         onSuccess: () => {
@@ -289,17 +289,20 @@ const updateInvestor = (investor) => {
         return;
     }
 
-    editInvestorForm.patch(route("investor.participants.update", investor.id), {
-        preserveScroll: true,
+    editInvestorForm.patch(
+        route("investor2.participants.update", investor.id),
+        {
+            preserveScroll: true,
 
-        onSuccess: () => {
-            cancelEditInvestor();
-        },
+            onSuccess: () => {
+                cancelEditInvestor();
+            },
 
-        onError: (errors) => {
-            showRequestError(errors, "Unable to update the investor.");
+            onError: (errors) => {
+                showRequestError(errors, "Unable to update the investor.");
+            },
         },
-    });
+    );
 };
 
 const escapeHtml = (value) => {
@@ -345,7 +348,7 @@ const deleteInvestor = async (investor) => {
         return;
     }
 
-    router.delete(route("investor.participants.destroy", investor.id), {
+    router.delete(route("investor2.participants.destroy", investor.id), {
         preserveScroll: true,
 
         onError: () => {
@@ -356,7 +359,7 @@ const deleteInvestor = async (investor) => {
 
 const changeAnalyticsYear = () => {
     router.get(
-        route("investor.dashboard"),
+        route("investor2.dashboard"),
         {
             year: selectedAnalyticsYear.value,
         },
@@ -650,6 +653,53 @@ const monthlyChartOptions = computed(() => ({
         },
     },
 
+    responsive: [
+        {
+            breakpoint: 640,
+            options: {
+                chart: {
+                    height: 300,
+                },
+                legend: {
+                    position: "bottom",
+                    horizontalAlign: "center",
+                    fontSize: "11px",
+                    itemMargin: {
+                        horizontal: 6,
+                        vertical: 3,
+                    },
+                },
+                markers: {
+                    size: 2,
+                },
+                stroke: {
+                    width: [2, 2, 3],
+                },
+                grid: {
+                    padding: {
+                        left: 0,
+                        right: 0,
+                    },
+                },
+                xaxis: {
+                    labels: {
+                        rotate: -45,
+                        style: {
+                            fontSize: "10px",
+                        },
+                    },
+                },
+                yaxis: {
+                    labels: {
+                        style: {
+                            fontSize: "10px",
+                        },
+                    },
+                },
+            },
+        },
+    ],
+
     noData: {
         text: "No monthly financial data available.",
     },
@@ -757,6 +807,48 @@ const yearlyChartOptions = computed(() => ({
         },
     },
 
+    responsive: [
+        {
+            breakpoint: 640,
+            options: {
+                chart: {
+                    height: 290,
+                },
+                legend: {
+                    position: "bottom",
+                    horizontalAlign: "center",
+                    fontSize: "11px",
+                },
+                plotOptions: {
+                    bar: {
+                        borderRadius: 4,
+                        columnWidth: "62%",
+                    },
+                },
+                grid: {
+                    padding: {
+                        left: 0,
+                        right: 0,
+                    },
+                },
+                xaxis: {
+                    labels: {
+                        style: {
+                            fontSize: "10px",
+                        },
+                    },
+                },
+                yaxis: {
+                    labels: {
+                        style: {
+                            fontSize: "10px",
+                        },
+                    },
+                },
+            },
+        },
+    ],
+
     noData: {
         text: "No yearly financial data available.",
     },
@@ -764,15 +856,17 @@ const yearlyChartOptions = computed(() => ({
 </script>
 
 <template>
-    <Head title="Investor Dashboard" />
+    <Head title="Second Term Investment Dashboard" />
 
-    <div class="mn-dashboard min-h-screen bg-[#f5f7fb] text-slate-900">
+    <div
+        class="mn-dashboard min-h-screen overflow-x-hidden bg-[#f5f7fb] text-slate-900"
+    >
         <!-- HEADER -->
         <header
             class="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 text-slate-900 backdrop-blur-xl"
         >
             <div
-                class="mx-auto flex max-w-none items-center justify-between gap-4 px-4 py-5 sm:px-6 lg:pl-[284px] lg:pr-8"
+                class="mx-auto flex max-w-none items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-6 sm:py-5 lg:pl-[284px] lg:pr-8"
             >
                 <div class="min-w-0">
                     <p
@@ -781,12 +875,13 @@ const yearlyChartOptions = computed(() => ({
                         Montre Nova
                     </p>
 
-                    <h1 class="mt-1 truncate text-xl font-bold sm:text-2xl">
-                        Investor Dashboard
+                    <h1 class="mt-1 truncate text-lg font-bold sm:text-2xl">
+                        Investment 2 Dashboard
                     </h1>
 
                     <p class="mt-1 hidden text-sm text-slate-500 sm:block">
-                        Capital, profitability and investor performance overview
+                        Second investment capital, profitability and investor
+                        performance overview
                     </p>
                 </div>
 
@@ -817,7 +912,7 @@ const yearlyChartOptions = computed(() => ({
 
                     <button
                         type="button"
-                        class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700"
+                        class="shrink-0 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 sm:px-3 sm:text-sm"
                         @click="logout"
                     >
                         Logout
@@ -827,7 +922,7 @@ const yearlyChartOptions = computed(() => ({
         </header>
 
         <main
-            class="mx-auto max-w-none px-4 py-6 sm:px-6 lg:pl-[284px] lg:pr-8"
+            class="mx-auto max-w-none px-3 py-4 pb-28 sm:px-6 sm:py-6 sm:pb-28 lg:pb-6 lg:pl-[284px] lg:pr-8"
         >
             <div
                 v-if="!permissions.can_edit"
@@ -845,7 +940,7 @@ const yearlyChartOptions = computed(() => ({
 
             <!-- NAVIGATION -->
             <div
-                class="mn-sidebar-nav mb-6 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:mb-0 lg:w-[252px] lg:rounded-none lg:border-y-0 lg:border-l-0"
+                class="mn-sidebar-nav fixed inset-x-0 bottom-0 z-50 mb-0 overflow-hidden border-t border-slate-200 bg-white/95 shadow-[0_-12px_35px_rgba(15,23,42,0.10)] backdrop-blur-xl lg:inset-y-0 lg:left-0 lg:right-auto lg:w-[252px] lg:rounded-none lg:border-y-0 lg:border-l-0 lg:bg-white lg:shadow-sm"
             >
                 <!-- DESKTOP SIDEBAR -->
                 <div class="hidden h-full flex-col lg:flex">
@@ -1097,13 +1192,13 @@ const yearlyChartOptions = computed(() => ({
                 </div>
 
                 <!-- MOBILE NAVIGATION -->
-                <div class="p-1.5 lg:hidden">
-                    <nav class="flex min-w-max gap-1.5 overflow-x-auto">
+                <div class="mn-mobile-navigation p-1.5 lg:hidden">
+                    <nav class="grid grid-cols-5 gap-1">
                         <button
                             v-for="tab in tabs"
                             :key="tab.key"
                             type="button"
-                            class="flex items-center gap-2 rounded-2xl border px-3.5 py-2.5 text-sm font-semibold transition"
+                            class="min-w-0 flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[10px] font-semibold transition sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-3.5 sm:py-2.5 sm:text-sm"
                             :class="
                                 activeTab === tab.key
                                     ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm shadow-indigo-200'
@@ -1112,7 +1207,7 @@ const yearlyChartOptions = computed(() => ({
                             @click="activeTab = tab.key"
                         >
                             <span
-                                class="h-2 w-2 rounded-full"
+                                class="h-1.5 w-1.5 shrink-0 rounded-full sm:h-2 sm:w-2"
                                 :class="
                                     activeTab === tab.key
                                         ? 'bg-white'
@@ -1124,7 +1219,7 @@ const yearlyChartOptions = computed(() => ({
 
                             <span
                                 v-if="tab.count !== undefined"
-                                class="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                                class="hidden rounded-full px-1.5 py-0.5 text-[10px] font-bold sm:inline-flex"
                                 :class="
                                     activeTab === tab.key
                                         ? 'bg-white/20 text-white'
@@ -1139,7 +1234,7 @@ const yearlyChartOptions = computed(() => ({
             </div>
 
             <!-- OVERVIEW -->
-            <div v-if="activeTab === 'overview'" class="space-y-6">
+            <div v-if="activeTab === 'overview'" class="space-y-4 sm:space-y-6">
                 <!-- MAIN SUMMARY -->
                 <section
                     class="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-white to-indigo-50 text-slate-900 shadow-sm"
@@ -1155,7 +1250,7 @@ const yearlyChartOptions = computed(() => ({
                             </p>
 
                             <h2
-                                class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl"
+                                class="mt-3 break-words text-2xl font-bold tracking-tight sm:text-4xl"
                             >
                                 {{ formatCurrency(summary.current_fund_value) }}
                             </h2>
@@ -1638,7 +1733,7 @@ const yearlyChartOptions = computed(() => ({
                         </div>
 
                         <div
-                            class="mt-2 flex justify-between text-xs text-slate-500"
+                            class="mt-2 flex flex-col gap-1 text-xs text-slate-500 sm:flex-row sm:justify-between"
                         >
                             <span>
                                 Montre Nova:
@@ -1778,7 +1873,7 @@ const yearlyChartOptions = computed(() => ({
                                 </p>
 
                                 <div
-                                    class="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3"
+                                    class="mt-4 flex flex-col items-start gap-1 border-t border-slate-100 pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
                                 >
                                     <span class="text-xs text-slate-500">
                                         Capital + Profit
@@ -1938,7 +2033,10 @@ const yearlyChartOptions = computed(() => ({
             </div>
 
             <!-- ANALYTICS -->
-            <section v-else-if="activeTab === 'analytics'" class="space-y-6">
+            <section
+                v-else-if="activeTab === 'analytics'"
+                class="space-y-4 sm:space-y-6"
+            >
                 <!-- ANALYTICS HEADER -->
                 <div
                     class="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-white to-indigo-50 text-slate-900 shadow-sm"
@@ -2122,7 +2220,7 @@ const yearlyChartOptions = computed(() => ({
 
                         <template v-if="analytics.best_month">
                             <div
-                                class="mt-3 flex items-end justify-between gap-4"
+                                class="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4"
                             >
                                 <div>
                                     <p
@@ -2162,7 +2260,7 @@ const yearlyChartOptions = computed(() => ({
 
                         <template v-if="analytics.worst_month">
                             <div
-                                class="mt-3 flex items-end justify-between gap-4"
+                                class="mt-3 flex flex-col items-start gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4"
                             >
                                 <div>
                                     <p class="text-xl font-bold text-red-950">
@@ -2231,8 +2329,10 @@ const yearlyChartOptions = computed(() => ({
                         </p>
                     </div>
 
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-slate-200">
+                    <div class="mn-table-scroll overflow-x-auto">
+                        <table
+                            class="mn-responsive-table min-w-full divide-y divide-slate-200"
+                        >
                             <thead class="bg-slate-50">
                                 <tr>
                                     <th
@@ -2454,8 +2554,10 @@ const yearlyChartOptions = computed(() => ({
                         </p>
                     </div>
 
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-slate-200">
+                    <div class="mn-table-scroll overflow-x-auto">
+                        <table
+                            class="mn-responsive-table min-w-full divide-y divide-slate-200"
+                        >
                             <thead class="bg-slate-50">
                                 <tr>
                                     <th
@@ -2560,7 +2662,10 @@ const yearlyChartOptions = computed(() => ({
             </section>
 
             <!-- INVESTORS -->
-            <section v-else-if="activeTab === 'investors'" class="space-y-5">
+            <section
+                v-else-if="activeTab === 'investors'"
+                class="space-y-4 sm:space-y-5"
+            >
                 <form
                     v-if="permissions.can_manage_investors"
                     class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"
@@ -2669,8 +2774,10 @@ const yearlyChartOptions = computed(() => ({
                         No investors have been added.
                     </div>
 
-                    <div v-else class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-slate-200">
+                    <div v-else class="mn-table-scroll overflow-x-auto">
+                        <table
+                            class="mn-responsive-table min-w-full divide-y divide-slate-200"
+                        >
                             <thead class="bg-slate-50">
                                 <tr>
                                     <th
@@ -2966,8 +3073,10 @@ const yearlyChartOptions = computed(() => ({
                     No watch records found.
                 </div>
 
-                <div v-else class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-slate-200">
+                <div v-else class="mn-table-scroll overflow-x-auto">
+                    <table
+                        class="mn-responsive-table min-w-full divide-y divide-slate-200"
+                    >
                         <thead class="bg-slate-50">
                             <tr>
                                 <th
@@ -3166,8 +3275,10 @@ const yearlyChartOptions = computed(() => ({
                     No expense records found.
                 </div>
 
-                <div v-else class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-slate-200">
+                <div v-else class="mn-table-scroll overflow-x-auto">
+                    <table
+                        class="mn-responsive-table min-w-full divide-y divide-slate-200"
+                    >
                         <thead class="bg-slate-50">
                             <tr>
                                 <th
@@ -3385,6 +3496,106 @@ const yearlyChartOptions = computed(() => ({
 
 .mn-dashboard article:hover {
     transform: translateY(-1px);
+}
+
+@media (max-width: 1023px) {
+    .mn-sidebar-nav {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+@media (max-width: 639px) {
+    .mn-dashboard {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .mn-dashboard header {
+        padding-top: env(safe-area-inset-top);
+    }
+
+    .mn-dashboard section,
+    .mn-dashboard form,
+    .mn-dashboard article {
+        scroll-margin-top: 5rem;
+    }
+
+    .mn-dashboard section > div[class*="border-b"],
+    .mn-dashboard form {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .mn-dashboard h2 {
+        line-height: 1.2;
+    }
+
+    .mn-dashboard article:hover {
+        transform: none;
+    }
+
+    .mn-dashboard .apexcharts-canvas,
+    .mn-dashboard .apexcharts-svg {
+        max-width: 100% !important;
+    }
+
+    .mn-dashboard .apexcharts-legend {
+        padding-inline: 0.25rem !important;
+    }
+
+    .mn-table-scroll {
+        position: relative;
+        width: 100%;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+
+    .mn-responsive-table {
+        min-width: 760px;
+    }
+
+    .mn-responsive-table th,
+    .mn-responsive-table td {
+        padding: 0.75rem 0.875rem !important;
+    }
+
+    .mn-responsive-table th:first-child,
+    .mn-responsive-table td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        box-shadow: 1px 0 0 #e2e8f0;
+    }
+
+    .mn-responsive-table thead th:first-child,
+    .mn-responsive-table tfoot td:first-child {
+        background: #f8fafc;
+    }
+
+    .mn-responsive-table tbody td:first-child {
+        background: #ffffff;
+    }
+
+    .mn-responsive-table tbody tr:hover td:first-child {
+        background: #fafbff;
+    }
+
+    .mn-swal-popup {
+        width: calc(100vw - 1.5rem) !important;
+        border-radius: 18px !important;
+        padding: 1rem !important;
+    }
+
+    .mn-swal-confirm,
+    .mn-swal-cancel {
+        width: 100%;
+        margin: 0.35rem 0 0 !important;
+    }
+
+    .swal2-actions {
+        width: 100% !important;
+        flex-direction: column-reverse !important;
+    }
 }
 
 @media (min-width: 1024px) {
