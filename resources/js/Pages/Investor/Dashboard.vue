@@ -235,7 +235,7 @@ const submitSettings = async () => {
         return;
     }
 
-    settingsForm.put(route("investor2.settings.update"), {
+    settingsForm.put(route("investor.settings.update"), {
         preserveScroll: true,
 
         onSuccess: () => {
@@ -253,7 +253,7 @@ const addInvestor = () => {
         return;
     }
 
-    investorForm.post(route("investor2.participants.store"), {
+    investorForm.post(route("investor.participants.store"), {
         preserveScroll: true,
 
         onSuccess: () => {
@@ -289,20 +289,17 @@ const updateInvestor = (investor) => {
         return;
     }
 
-    editInvestorForm.patch(
-        route("investor2.participants.update", investor.id),
-        {
-            preserveScroll: true,
+    editInvestorForm.patch(route("investor.participants.update", investor.id), {
+        preserveScroll: true,
 
-            onSuccess: () => {
-                cancelEditInvestor();
-            },
-
-            onError: (errors) => {
-                showRequestError(errors, "Unable to update the investor.");
-            },
+        onSuccess: () => {
+            cancelEditInvestor();
         },
-    );
+
+        onError: (errors) => {
+            showRequestError(errors, "Unable to update the investor.");
+        },
+    });
 };
 
 const escapeHtml = (value) => {
@@ -348,7 +345,7 @@ const deleteInvestor = async (investor) => {
         return;
     }
 
-    router.delete(route("investor2.participants.destroy", investor.id), {
+    router.delete(route("investor.participants.destroy", investor.id), {
         preserveScroll: true,
 
         onError: () => {
@@ -359,7 +356,7 @@ const deleteInvestor = async (investor) => {
 
 const changeAnalyticsYear = () => {
     router.get(
-        route("investor2.dashboard"),
+        route("investor.dashboard"),
         {
             year: selectedAnalyticsYear.value,
         },
