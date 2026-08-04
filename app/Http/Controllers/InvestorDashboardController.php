@@ -225,29 +225,31 @@ class InvestorDashboardController extends Controller
         |
         */
 
-        $soldActivityYears = $soldWatches
-            ->map(
-                fn (Watch $watch): ?int =>
-                    $this->soldActivityDate($watch)?->year
-            )
-            ->filter()
-            ->map(fn ($year): int => (int) $year)
-            ->values();
+   $soldActivityYears = $soldWatches
+    ->toBase()
+    ->map(
+        fn (Watch $watch): ?int =>
+            $this->soldActivityDate($watch)?->year
+    )
+    ->filter()
+    ->map(fn ($year): int => (int) $year)
+    ->values();
 
-        $expenseActivityYears = $expenses
-            ->map(
-                fn (Expense $expense): ?int =>
-                    $this->expenseActivityDate($expense)?->year
-            )
-            ->filter()
-            ->map(fn ($year): int => (int) $year)
-            ->values();
+$expenseActivityYears = $expenses
+    ->toBase()
+    ->map(
+        fn (Expense $expense): ?int =>
+            $this->expenseActivityDate($expense)?->year
+    )
+    ->filter()
+    ->map(fn ($year): int => (int) $year)
+    ->values();
 
-        $activityYears = $soldActivityYears
-            ->merge($expenseActivityYears)
-            ->unique()
-            ->sort()
-            ->values();
+$activityYears = $soldActivityYears
+    ->merge($expenseActivityYears)
+    ->unique()
+    ->sort()
+    ->values();
 
         $latestYear = max(
             now()->year,
