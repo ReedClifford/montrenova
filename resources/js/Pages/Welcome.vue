@@ -1211,7 +1211,6 @@ const productBadges = (watch) => {
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="mn-collection-head animated-in">
                         <div>
-                            <p class="mn-showroom-kicker">AVAILABLE NOW</p>
                             <div class="mn-collection-title-row">
                                 <h2>Available Watches</h2>
                                 <span>{{ availableCount }} watches</span>
@@ -1460,9 +1459,6 @@ const productBadges = (watch) => {
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="mn-compact-head animated-in">
                         <div>
-                            <p class="mn-showroom-kicker">
-                                BROWSE THE SHOWROOM
-                            </p>
                             <h2>Explore by Style</h2>
                             <p>
                                 Start with a category, then open the full
@@ -1531,7 +1527,6 @@ const productBadges = (watch) => {
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="mn-compact-head is-dark animated-in">
                         <div>
-                            <p class="mn-showroom-kicker">RECENTLY DELIVERED</p>
                             <h2>Real watches. Real Montre Nova deals.</h2>
                             <p>
                                 Pieces recently claimed by Montre Nova clients.
@@ -1618,9 +1613,6 @@ const productBadges = (watch) => {
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="mn-compact-head animated-in">
                         <div>
-                            <p class="mn-showroom-kicker">
-                                MONTRE NOVA STORIES
-                            </p>
                             <h2>Stories from the Wrist</h2>
                             <p>
                                 Quick handoffs, client moments, and watch
@@ -1688,7 +1680,6 @@ const productBadges = (watch) => {
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="mn-compact-head animated-in">
                         <div>
-                            <p class="mn-showroom-kicker">HOW TO BUY</p>
                             <h2>From selection to wrist</h2>
                             <p>
                                 A clear three-step process whether you’re buying
@@ -1728,7 +1719,6 @@ const productBadges = (watch) => {
 
                         <div class="mn-contact-main">
                             <div class="mn-contact-copy">
-                                <p class="mn-contact-kicker">STILL DECIDING?</p>
                                 <h2>Tell us what you’re looking for.</h2>
                                 <p class="mn-contact-intro">
                                     Budget, model, reference, or preferred style
