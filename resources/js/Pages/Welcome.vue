@@ -1211,6 +1211,7 @@ const productBadges = (watch) => {
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="mn-collection-head animated-in">
                         <div>
+                            <p class="mn-showroom-kicker">AVAILABLE NOW</p>
                             <div class="mn-collection-title-row">
                                 <h2>Available Watches</h2>
                                 <span>{{ availableCount }} watches</span>
@@ -1459,6 +1460,9 @@ const productBadges = (watch) => {
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="mn-compact-head animated-in">
                         <div>
+                            <p class="mn-showroom-kicker">
+                                BROWSE THE SHOWROOM
+                            </p>
                             <h2>Explore by Style</h2>
                             <p>
                                 Start with a category, then open the full
@@ -1527,6 +1531,7 @@ const productBadges = (watch) => {
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="mn-compact-head is-dark animated-in">
                         <div>
+                            <p class="mn-showroom-kicker">RECENTLY DELIVERED</p>
                             <h2>Real watches. Real Montre Nova deals.</h2>
                             <p>
                                 Pieces recently claimed by Montre Nova clients.
@@ -1613,6 +1618,9 @@ const productBadges = (watch) => {
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="mn-compact-head animated-in">
                         <div>
+                            <p class="mn-showroom-kicker">
+                                MONTRE NOVA STORIES
+                            </p>
                             <h2>Stories from the Wrist</h2>
                             <p>
                                 Quick handoffs, client moments, and watch
@@ -1680,6 +1688,7 @@ const productBadges = (watch) => {
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="mn-compact-head animated-in">
                         <div>
+                            <p class="mn-showroom-kicker">HOW TO BUY</p>
                             <h2>From selection to wrist</h2>
                             <p>
                                 A clear three-step process whether you’re buying
@@ -1719,6 +1728,7 @@ const productBadges = (watch) => {
 
                         <div class="mn-contact-main">
                             <div class="mn-contact-copy">
+                                <p class="mn-contact-kicker">STILL DECIDING?</p>
                                 <h2>Tell us what you’re looking for.</h2>
                                 <p class="mn-contact-intro">
                                     Budget, model, reference, or preferred style
@@ -11329,6 +11339,158 @@ a:visited {
         inset: 46% 12px auto auto !important;
         margin: 0 !important;
         transform: translateY(-50%) !important;
+    }
+}
+
+/* CATALOG PREVIEW — COMPACT, CONSISTENT CARD RHYTHM (DESKTOP + MOBILE)
+   Overrides legacy oversized grid-row / flex spacing rules. */
+.mn-reference-list {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+    align-items: start !important;
+    background: transparent !important;
+}
+.mn-reference-row {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    align-items: stretch !important;
+    align-self: start !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    grid-template-columns: none !important;
+    grid-template-rows: none !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    border-radius: 8px !important;
+    background: #18181b !important;
+    border: 1px solid rgba(255, 255, 255, 0.09) !important;
+    color: #f2f2f3 !important;
+    text-align: left !important;
+}
+.mn-reference-number {
+    display: none !important;
+}
+.mn-reference-thumb {
+    order: 0 !important;
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1 !important;
+    flex: none !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+}
+.mn-reference-thumb img {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    filter: none !important;
+}
+.mn-reference-name {
+    order: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    flex: none !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 14px 15px 0 !important;
+}
+.mn-reference-name > p {
+    margin: 0 !important;
+    font-size: 10px !important;
+    line-height: 1.5 !important;
+    color: #a7a7ae !important;
+    letter-spacing: 0.11em !important;
+}
+.mn-reference-name h3 {
+    margin: 5px 0 0 !important;
+    min-height: 0 !important;
+    font-size: clamp(14px, 1.5vw, 19px) !important;
+    font-weight: 600 !important;
+    line-height: 1.35 !important;
+    letter-spacing: -0.035em !important;
+    overflow-wrap: break-word !important;
+}
+.mn-reference-code {
+    order: 2 !important;
+    display: block !important;
+    flex: none !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 10px 15px 0 !important;
+    color: #a9a9af !important;
+    font-size: 10px !important;
+    line-height: 1.55 !important;
+    letter-spacing: 0.035em !important;
+    overflow-wrap: anywhere !important;
+}
+.mn-reference-action {
+    order: 3 !important;
+    display: inline-flex !important;
+    align-self: flex-start !important;
+    flex: none !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 14px 15px 15px !important;
+    padding: 9px 11px !important;
+    border: 1px solid #48484c !important;
+    border-radius: 4px !important;
+    background: #242427 !important;
+    color: #f1f1f2 !important;
+    font-size: 10px !important;
+    font-weight: 650 !important;
+    letter-spacing: 0.035em !important;
+    text-align: center !important;
+    white-space: normal !important;
+}
+@media (max-width: 1023px) {
+    .mn-reference-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 13px !important;
+    }
+}
+@media (max-width: 639px) {
+    .mn-reference-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 10px !important;
+    }
+    .mn-reference-row {
+        border-radius: 7px !important;
+    }
+    .mn-reference-thumb {
+        aspect-ratio: 1 / 1 !important;
+    }
+    .mn-reference-name {
+        padding: 12px 11px 0 !important;
+    }
+    .mn-reference-name > p {
+        font-size: 9px !important;
+    }
+    .mn-reference-name h3 {
+        font-size: clamp(13px, 3.6vw, 16px) !important;
+        line-height: 1.35 !important;
+    }
+    .mn-reference-code {
+        padding: 9px 11px 0 !important;
+        font-size: 9px !important;
+    }
+    .mn-reference-action {
+        margin: 12px 11px 13px !important;
+        padding: 8px 9px !important;
+        font-size: 9px !important;
     }
 }
 </style>

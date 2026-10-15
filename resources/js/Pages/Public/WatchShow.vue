@@ -34,6 +34,7 @@ const props = defineProps({
 const selectedImageIndex = ref(0);
 
 const copied = ref(false);
+
 let copyResetTimer = null;
 
 const showImagePreview = ref(false);
@@ -374,11 +375,23 @@ const defaultInquiryMessage = computed(() => {
 
 
 
+
+
+
+
 ${displayName.value}
+
+
 
 ${props.watch.reference_number ? `Ref. ${props.watch.reference_number}` : ""}
 
+
+
 Price: ${peso(finalPrice.value || props.watch.price)}
+
+
+
+
 
 
 
@@ -607,6 +620,7 @@ const copyLink = async () => {
 watch(images, (next) => {
     if (selectedImageIndex.value >= next.length) selectedImageIndex.value = 0;
 });
+
 onBeforeUnmount(() => {
     if (copyResetTimer) clearTimeout(copyResetTimer);
 });
@@ -639,6 +653,7 @@ onBeforeUnmount(() => {
         class="mn-product-page relative min-h-screen overflow-x-hidden pb-10 text-white antialiased"
     >
         <!-- Dark marble surface shared with the storefront. Fixed behind content. -->
+
         <div class="mn-product-marble" aria-hidden="true"></div>
 
         <!-- HEADER -->
@@ -982,8 +997,6 @@ onBeforeUnmount(() => {
                                     @click="openMessengerInquiry()"
                                 >
                                     Inquire on Messenger
-
-                                    <span aria-hidden="true">→</span>
                                 </button>
                             </div>
 
@@ -1073,138 +1086,77 @@ onBeforeUnmount(() => {
                             class="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-16 bg-gradient-to-l from-[#0A0A0B] to-transparent sm:block"
                         ></div>
 
-                        <div class="carousel-row thin-scrollbar">
+                        <div
+                            class="carousel-row thin-scrollbar"
+                            aria-label="More available watches, swipe to browse"
+                        >
                             <Link
                                 v-for="watchItem in carouselWatches"
                                 :key="watchItem.id"
                                 :href="
                                     route('public.watches.show', watchItem.id)
                                 "
-                                class="carousel-card group"
+                                class="carousel-card mn-more-card group"
                             >
-                                <div
-                                    class="relative aspect-[4/5] overflow-hidden"
-                                >
+                                <div class="mn-more-photo">
                                     <img
                                         v-if="watchCardImage(watchItem)"
                                         :src="watchCardImage(watchItem)"
                                         :alt="`${watchItem.brand} ${watchItem.model_name}`"
-                                        class="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.055]"
                                         loading="lazy"
+                                        class="mn-more-image"
                                     />
-
-                                    <div
-                                        v-else
-                                        class="absolute inset-0 flex items-center justify-center bg-[#050505]"
-                                    >
-                                        <div class="text-center">
-                                            <div
-                                                class="mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]"
-                                            >
-                                                <span
-                                                    class="text-2xl font-black tracking-[-0.1em] text-white"
-                                                >
-                                                    MN
-                                                </span>
-                                            </div>
-
-                                            <p class="mt-3 micro-label">
-                                                Montre Nova
-                                            </p>
-                                        </div>
+                                    <div v-else class="mn-more-placeholder">
+                                        MN
                                     </div>
-
-                                    <div
-                                        class="absolute inset-0 bg-gradient-to-t from-black/92 via-black/28 to-black/10"
-                                    ></div>
-
-                                    <div class="carousel-top-row">
-                                        <span class="carousel-meta-pill">
-                                            Available
-                                        </span>
-
-                                        <span
-                                            v-if="itemHasDiscount(watchItem)"
-                                            class="carousel-meta-pill border-white/25 bg-black/70 text-zinc-200"
-                                        >
-                                            Below SRP
-                                        </span>
-                                    </div>
-
-                                    <div
-                                        class="absolute inset-x-0 bottom-0 z-10 p-5"
+                                    <span class="mn-more-status"
+                                        >AVAILABLE</span
                                     >
-                                        <p
-                                            class="truncate text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400"
-                                        >
+                                </div>
+                                <div class="mn-more-content">
+                                    <div class="mn-more-heading">
+                                        <p class="mn-more-brand">
                                             {{
                                                 watchItem.brand || "Montre Nova"
                                             }}
                                         </p>
-
-                                        <h3
-                                            class="mt-2 line-clamp-2 text-xl font-semibold leading-tight tracking-[-0.025em] text-white"
-                                        >
+                                        <h3 class="mn-more-title">
                                             {{ watchItem.model_name }}
                                         </h3>
-
-                                        <p
-                                            class="mt-2 truncate text-xs text-zinc-400"
-                                        >
-                                            Ref.
-
+                                        <p class="mn-more-ref">
                                             {{
                                                 watchItem.reference_number ||
-                                                "No reference"
+                                                "Reference on request"
                                             }}
                                         </p>
-
-                                        <div class="carousel-footer">
-                                            <div class="min-w-0">
-                                                <p
-                                                    class="text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-400"
-                                                >
-                                                    Price
-                                                </p>
-
-                                                <p
-                                                    class="mt-1 truncate text-lg font-semibold text-white"
-                                                >
-                                                    {{
-                                                        peso(
-                                                            itemFinalPrice(
-                                                                watchItem,
-                                                            ),
-                                                        )
-                                                    }}
-                                                </p>
-
-                                                <p
-                                                    v-if="
-                                                        itemHasDiscount(
+                                    </div>
+                                    <div class="mn-more-price-row">
+                                        <div class="mn-more-price-block">
+                                            <p class="mn-more-price">
+                                                {{
+                                                    peso(
+                                                        itemFinalPrice(
                                                             watchItem,
-                                                        )
-                                                    "
-                                                    class="text-[11px] text-zinc-500 line-through"
-                                                >
-                                                    {{
-                                                        peso(
-                                                            itemOriginalPrice(
-                                                                watchItem,
-                                                            ),
-                                                        )
-                                                    }}
-                                                </p>
-                                            </div>
-
-                                            <span class="view-chip">
-                                                View
-
-                                                <span aria-hidden="true"
-                                                    >→</span
-                                                >
-                                            </span>
+                                                        ),
+                                                    )
+                                                }}
+                                            </p>
+                                            <p
+                                                v-if="
+                                                    itemHasDiscount(watchItem)
+                                                "
+                                                class="mn-more-original"
+                                            >
+                                                {{
+                                                    peso(
+                                                        itemOriginalPrice(
+                                                            watchItem,
+                                                        ),
+                                                    )
+                                                }}
+                                            </p>
                                         </div>
+                                        <span class="mn-more-view">VIEW</span>
                                     </div>
                                 </div>
                             </Link>
@@ -1269,53 +1221,83 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /* Montre Nova | Product detail design aligned with the dark marble storefront */
+
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+
 .mn-product-page {
     --mn-ink: #09090b;
+
     --mn-surface: #141416;
+
     --mn-stroke: rgba(255, 255, 255, 0.11);
+
     position: relative;
+
     isolation: isolate;
+
     background: #070708;
+
     color: #f3f3f4;
+
     font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
     font-weight: 500;
+
     -webkit-font-smoothing: antialiased;
 }
+
 .mn-product-marble {
     position: fixed;
+
     inset: 0;
+
     pointer-events: none;
+
     z-index: 0;
+
     background-color: #070708;
+
     background-image:
         radial-gradient(
             ellipse at 78% 4%,
+
             rgba(92, 93, 99, 0.15) 0%,
+
             transparent 43%
         ),
         radial-gradient(
             ellipse at 8% 70%,
+
             rgba(71, 72, 79, 0.14) 0%,
+
             transparent 49%
         ),
         linear-gradient(
             114deg,
             transparent 0 24.82%,
+
             rgba(176, 178, 184, 0.075) 24.93%,
+
             transparent 25.08% 55.7%,
+
             rgba(172, 173, 180, 0.045) 55.85%,
+
             transparent 55.98%
         ),
         linear-gradient(
             150deg,
             transparent 0 37.85%,
+
             rgba(208, 209, 212, 0.045) 37.98%,
+
             transparent 38.12% 72.1%,
+
             rgba(183, 185, 192, 0.055) 72.22%,
+
             transparent 72.35%
         ),
         linear-gradient(180deg, #09090b 0%, #111114 49%, #080809 100%);
+
     background-size:
         auto,
         auto,
@@ -1323,129 +1305,189 @@ onBeforeUnmount(() => {
         140% 150%,
         auto;
 }
+
 .mn-product-header {
     border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+
     background: rgba(9, 9, 11, 0.91);
+
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.22);
 }
+
 .mn-product-home {
     border-radius: 3px;
+
     font-size: 11px;
+
     letter-spacing: 0.13em;
 }
+
 .mn-product-page .premium-panel,
 .mn-product-page .carousel-shell {
     border: 1px solid var(--mn-stroke);
+
     border-radius: 7px;
+
     background: linear-gradient(
         145deg,
         rgba(28, 28, 31, 0.95),
         rgba(13, 13, 15, 0.98)
     );
+
     box-shadow: 0 16px 56px rgba(0, 0, 0, 0.28);
 }
+
 .mn-product-page .shine-line {
     opacity: 0.35;
 }
+
 .mn-product-page .micro-label {
     color: #a9a9af;
+
     font-size: 10px;
+
     font-weight: 700;
+
     letter-spacing: 0.17em;
 }
+
 .mn-product-page .soft-chip {
     border-radius: 3px;
+
     font-weight: 600;
+
     color: #d3d3d7;
 }
+
 .mn-product-page .inline-spec-row {
     border-radius: 4px;
+
     background: rgba(255, 255, 255, 0.025);
+
     box-shadow: none;
 }
+
 .mn-product-page .inline-spec-row span {
     color: #a7a7ad;
+
     font-weight: 650;
+
     letter-spacing: 0.1em;
 }
+
 .mn-product-page .inline-spec-row p {
     color: #f1f1f2;
+
     font-weight: 600;
 }
+
 .mn-product-page .primary-action,
 .mn-product-page .secondary-action {
     border-radius: 3px;
+
     font-weight: 700;
+
     letter-spacing: 0.1em;
+
     box-shadow: none;
 }
+
 .mn-product-page .primary-action {
     background: #f0f0f0;
+
     color: #111;
 }
+
 .mn-product-page .primary-action:hover {
     background: #d4d4d5;
+
     box-shadow: none;
 }
+
 .mn-product-page .gallery-arrow {
     border-radius: 50%;
 }
+
 .mn-product-page .gallery-stage {
     background: radial-gradient(
         ellipse at center,
+
         rgba(255, 255, 255, 0.055),
         transparent 66%
     );
 }
+
 .mn-product-page .gallery-panel img {
     color: white;
 }
+
 .mn-product-page .carousel-card {
     border-radius: 5px;
 }
+
 .mn-product-page .carousel-meta-pill,
 .mn-product-page .view-chip {
     border-radius: 3px;
 }
+
 .mn-product-page .mn-product-title {
     overflow-wrap: anywhere;
 }
+
 @media (max-width: 639px) {
     .mn-product-page .product-hero-grid {
         gap: 14px;
     }
+
     .mn-product-page .mn-product-title {
         font-size: clamp(1.65rem, 7.4vw, 2.25rem);
+
         line-height: 1.15;
+
         letter-spacing: -0.035em;
     }
+
     .mn-product-page .mn-product-price {
         font-size: clamp(1.65rem, 7.2vw, 2.25rem);
     }
+
     .mn-product-page .gallery-stage {
         height: min(87vw, 410px);
+
         min-height: 285px;
     }
+
     .mn-product-page .carousel-row {
         scroll-snap-type: x mandatory;
+
         -webkit-overflow-scrolling: touch;
+
         overscroll-behavior-x: contain;
     }
+
     .mn-product-page .carousel-card {
         scroll-snap-align: start;
+
         flex: 0 0 min(76vw, 280px);
+
         min-width: min(76vw, 280px);
+
         max-width: min(76vw, 280px);
     }
+
     .mn-product-page .inline-spec-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+
         grid-auto-rows: auto;
     }
+
     .mn-product-page .inline-spec-row {
         min-width: 0;
+
         overflow-wrap: anywhere;
     }
 }
+
 @media (max-width: 360px) {
     .mn-product-page .inline-spec-grid {
         grid-template-columns: 1fr;
@@ -2260,6 +2302,185 @@ onBeforeUnmount(() => {
 @media (min-width: 1024px) {
     .messenger-float-button {
         display: none !important;
+    }
+}
+
+/* Continue browsing — matches the refined catalog's product-card system. */
+.mn-product-page .carousel-shell {
+    overflow: hidden;
+}
+.mn-product-page .carousel-row {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 10px 18px 22px;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 18px;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    align-items: stretch;
+}
+.mn-product-page .carousel-card.mn-more-card {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 clamp(215px, 23vw, 282px);
+    width: clamp(215px, 23vw, 282px);
+    min-width: 0;
+    max-width: none;
+    height: auto;
+    overflow: hidden;
+    scroll-snap-align: start;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 7px;
+    background: #18181a;
+    box-shadow: none;
+    text-decoration: none;
+    transform: none;
+}
+.mn-product-page .carousel-card.mn-more-card::before {
+    display: none;
+}
+.mn-product-page .carousel-card.mn-more-card:hover {
+    transform: none;
+    border-color: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+}
+.mn-more-photo {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: #242427;
+}
+.mn-more-image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.35s ease;
+}
+.mn-more-card:hover .mn-more-image {
+    transform: scale(1.025);
+}
+.mn-more-placeholder {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    color: #a0a0a6;
+    letter-spacing: 0.18em;
+    font-weight: 700;
+}
+.mn-more-status {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 7px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    background: rgba(14, 14, 16, 0.86);
+    color: #f2f2f3;
+    font-size: 9px;
+    font-weight: 750;
+    letter-spacing: 0.1em;
+}
+.mn-more-content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 176px;
+    gap: 17px;
+    padding: 16px;
+}
+.mn-more-heading {
+    min-width: 0;
+}
+.mn-more-brand {
+    margin: 0 0 7px;
+    color: #bdbdc2;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+.mn-more-title {
+    margin: 0;
+    color: #f5f5f6;
+    font-size: 15px;
+    font-weight: 650;
+    line-height: 1.4;
+    letter-spacing: -0.02em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+}
+.mn-more-ref {
+    margin: 8px 0 0;
+    color: #a4a4ab;
+    font-size: 10px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+.mn-more-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    padding-top: 12px;
+}
+.mn-more-price-block {
+    min-width: 0;
+}
+.mn-more-price {
+    color: #f5f5f5;
+    font-size: 17px;
+    font-weight: 750;
+    line-height: 1.2;
+    margin: 0;
+    white-space: nowrap;
+}
+.mn-more-original {
+    color: #95959b;
+    font-size: 10px;
+    margin: 5px 0 0;
+    text-decoration: line-through;
+}
+.mn-more-view {
+    flex-shrink: 0;
+    color: #e4e4e6;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+@media (max-width: 639px) {
+    .mn-product-page .carousel-row {
+        gap: 12px;
+        padding: 8px 14px 18px;
+        scroll-padding-inline: 14px;
+    }
+    .mn-product-page .carousel-card.mn-more-card {
+        flex: 0 0 min(68vw, 255px);
+        width: min(68vw, 255px);
+    }
+    .mn-more-content {
+        min-height: 171px;
+        padding: 14px;
+        gap: 12px;
+    }
+    .mn-more-title {
+        font-size: 14px;
+    }
+    .mn-more-price {
+        font-size: 16px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mn-more-image {
+        transition: none;
     }
 }
 </style>
