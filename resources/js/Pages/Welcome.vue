@@ -965,13 +965,13 @@ const productBadges = (watch) => {
     >
         <!-- BACKGROUND -->
         <div
-            class="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#f2f3f3]"
+            class="pointer-events-none fixed inset-0 z-0 overflow-hidden bg-[#030304]"
         >
             <div
-                class="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.98),transparent_32%),linear-gradient(180deg,#f8f9f9_0%,#f1f2f2_46%,#f5f6f6_100%)]"
+                class="absolute inset-0 bg-[radial-gradient(circle_at_52%_8%,rgba(60,60,66,0.13),transparent_38%),linear-gradient(180deg,#050506_0%,#030304_55%,#08080a_100%)]"
             ></div>
             <div
-                class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-black/15 to-transparent"
+                class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"
             ></div>
         </div>
 
@@ -10695,7 +10695,7 @@ a:visited {
 
 /* MONTRE NOVA / MOBILE SWIPE + SORT + VISIBLE MARBLE CORRECTIONS */
 .mn-site-main {
-    background-color: #060607 !important;
+    background-color: #030304 !important;
 }
 .mn-journal-section,
 .mn-index-section,
@@ -10704,20 +10704,20 @@ a:visited {
 .mn-process-section,
 .mn-contact-section {
     /* Clear, finely veined marble beneath a translucent smoky glaze. */
-    background-color: #09090b !important;
+    background-color: #040405 !important;
     background-image:
         linear-gradient(
             160deg,
-            rgba(5, 5, 7, 0.54) 0%,
-            rgba(8, 8, 10, 0.43) 55%,
-            rgba(3, 3, 4, 0.6) 100%
+            rgba(2, 2, 3, 0.78) 0%,
+            rgba(4, 4, 5, 0.72) 55%,
+            rgba(2, 2, 3, 0.82) 100%
         ),
         url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1280 960'%3E%3Cg fill='none' stroke='%23d0d0d6' stroke-linecap='round'%3E%3Cpath d='M-120 440 C90 360 115 190 310 235 S545 525 755 382 S1060 155 1400 265' stroke-width='2' opacity='.48'/%3E%3Cpath d='M-115 452 C96 368 119 199 317 246 S551 538 770 392 S1076 166 1400 279' stroke-width='6' opacity='.13'/%3E%3Cpath d='M20 1020 C225 740 420 834 575 625 S780 550 960 310 S1170 295 1310 80' stroke-width='1.6' opacity='.36'/%3E%3Cpath d='M36 1030 C230 751 430 839 586 638 S796 550 970 313 S1179 299 1320 90' stroke-width='5' opacity='.10'/%3E%3Cpath d='M-110 830 C206 637 356 770 520 804 S955 710 1380 872' stroke-width='1.6' opacity='.24'/%3E%3Cpath d='M835 -90 C785 230 1050 305 975 535 S1030 765 1330 850' stroke-width='1.3' opacity='.3'/%3E%3C/g%3E%3C/svg%3E"),
         radial-gradient(
             ellipse at 72% 23%,
-            #242429 0%,
-            #101013 46%,
-            #040405 100%
+            #151518 0%,
+            #09090b 46%,
+            #020203 100%
         ) !important;
     background-size:
         auto,
@@ -10961,5 +10961,43 @@ a:visited {
         min-width: 0 !important;
         justify-self: stretch !important;
     }
+}
+
+/* MONTRE NOVA / DEEP NOIR MARBLE BODY FINISH */
+:global(html),
+:global(body) {
+    background-color: #030304 !important;
+}
+.mn-site-main {
+    background: #030304 !important;
+}
+.mn-journal-section,
+.mn-index-section,
+.mn-archive-section,
+.mn-film-section,
+.mn-process-section,
+.mn-contact-section {
+    border-top: 1px solid rgba(255, 255, 255, 0.045) !important;
+}
+/* Charcoal surfaces float above the darker marble without heavy gray blocks. */
+.mn-watch-card,
+.mn-reference-row,
+.mn-archive-piece,
+.mn-film-card,
+.mn-process-row {
+    border-color: rgba(255, 255, 255, 0.105) !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.21);
+}
+.mn-filter-bar,
+.mn-contact-shell {
+    border-color: rgba(255, 255, 255, 0.09) !important;
+}
+/* Preserve the full-color product imagery and editorial hero. */
+.mn-watch-media img,
+.mn-archive-media img,
+.mn-reference-thumb img,
+.hero-full-main-image,
+.hero-full-backdrop-image {
+    filter: none !important;
 }
 </style>
