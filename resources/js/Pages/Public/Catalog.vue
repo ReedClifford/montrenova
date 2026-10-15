@@ -1,36 +1,50 @@
 <script setup>
 import MontreLogo from "@/Components/MontreLogo.vue";
+
 import { Head, Link, router } from "@inertiajs/vue3";
+
 import { computed, ref } from "vue";
 
 const props = defineProps({
     watches: {
         type: [Array, Object, String],
+
         default: () => [],
     },
+
     categories: {
         type: Array,
+
         default: () => [],
     },
+
     activeCategory: {
         type: String,
+
         default: "all",
     },
+
     categoryCounts: {
         type: Object,
+
         default: () => ({}),
     },
+
     totalCatalogWatches: {
         type: Number,
+
         default: 0,
     },
+
     catalogDebug: {
         type: Object,
+
         default: () => ({}),
     },
 });
 
 const messengerUsername = "montrenova";
+
 const isCatalogLoading = ref(false);
 
 const parsePossibleJson = (value) => {
@@ -99,8 +113,11 @@ const toCollectionArray = (collection) => {
         }
 
         const nestedArrays = Object.values(parsed)
+
             .filter(Array.isArray)
+
             .flat()
+
             .filter(looksLikeWatch);
 
         if (nestedArrays.length) {
@@ -108,8 +125,11 @@ const toCollectionArray = (collection) => {
         }
 
         const nestedObjects = Object.values(parsed)
+
             .filter((item) => item && typeof item === "object")
+
             .flatMap((item) => Object.values(item))
+
             .filter(looksLikeWatch);
 
         if (nestedObjects.length) {
@@ -125,27 +145,35 @@ const catalogWatches = computed(() => toCollectionArray(props.watches));
 const normalizeCategory = (category) => {
     return String(category || "all")
         .trim()
+
         .toLowerCase();
 };
 
 const categoryFilters = computed(() => {
     const categoryItems = Array.isArray(props.categories)
         ? props.categories
+
               .map((category) => String(category || "").trim())
+
               .filter(Boolean)
         : [];
 
     return [
         {
             label: "All",
+
             value: "all",
+
             count:
                 Number(props.totalCatalogWatches || 0) ||
                 catalogWatches.value.length,
         },
+
         ...categoryItems.map((category) => ({
             label: category,
+
             value: category,
+
             count: props.categoryCounts?.[category] || 0,
         })),
     ];
@@ -172,11 +200,16 @@ const changeCategory = (category = "all") => {
 
     router.get(
         route("public.catalog"),
+
         normalizeCategory(category) === "all" ? {} : { category },
+
         {
             preserveScroll: true,
+
             preserveState: false,
+
             replace: true,
+
             onFinish: () => {
                 window.setTimeout(() => {
                     isCatalogLoading.value = false;
@@ -189,7 +222,9 @@ const changeCategory = (category = "all") => {
 const peso = (value) => {
     return new Intl.NumberFormat("en-PH", {
         style: "currency",
+
         currency: "PHP",
+
         minimumFractionDigits: 0,
     }).format(Number(value || 0));
 };
@@ -215,13 +250,15 @@ const inquiryMessage = (watch = null) => {
 };
 
 const messengerUrl = (message) => {
-    return `https://m.me/${messengerUsername}?text=${encodeURIComponent(message)}`;
+    return `https\://m.me/${messengerUsername}?text=${encodeURIComponent(message)}`;
 };
 
 const openInquiry = (watch = null) => {
     window.open(
         messengerUrl(inquiryMessage(watch)),
+
         "_blank",
+
         "noopener,noreferrer",
     );
 };
@@ -238,8 +275,8 @@ const normalizeImageUrl = (url) => {
     }
 
     if (
-        cleanUrl.startsWith("http://") ||
-        cleanUrl.startsWith("https://") ||
+        cleanUrl.startsWith("http\://") ||
+        cleanUrl.startsWith("https\://") ||
         cleanUrl.startsWith("data:") ||
         cleanUrl.startsWith("blob:") ||
         cleanUrl.startsWith("/")
@@ -306,7 +343,9 @@ const finalPrice = (watch) => {
     }
 
     const discounted = Number(watch.discounted_price || 0);
+
     const selling = Number(watch.selling_price || 0);
+
     const price = Number(watch.price || 0);
 
     if (discounted > 0 && selling > discounted) {
@@ -342,9 +381,13 @@ const statusLabel = (watch) => {
 
     const labels = {
         available: "Available",
+
         reserved: "Reserved",
+
         sold: "Sold",
+
         hidden: "Hidden",
+
         draft: "Draft",
     };
 
@@ -356,9 +399,13 @@ const statusClass = (watch) => {
 
     const classes = {
         available: "border-emerald-400/20 bg-emerald-400/10 text-emerald-200",
+
         reserved: "border-amber-400/20 bg-amber-400/10 text-amber-200",
+
         sold: "border-red-400/25 bg-red-500/10 text-red-200",
+
         hidden: "border-zinc-400/20 bg-zinc-400/10 text-zinc-300",
+
         draft: "border-zinc-400/20 bg-zinc-400/10 text-zinc-300",
     };
 
@@ -367,6 +414,7 @@ const statusClass = (watch) => {
 
 const resultSummary = computed(() => {
     const count = catalogWatches.value.length;
+
     const active = String(props.activeCategory || "all").trim();
 
     if (normalizeCategory(active) === "all") {
@@ -401,9 +449,12 @@ const rawWatchKeys = computed(() => {
     <Head title="Catalog | Montre Nova" />
 
     <div
-        class="min-h-screen overflow-x-hidden bg-[#030303] text-white selection:bg-white selection:text-black"
+        class="mn-subpage min-h-screen overflow-x-hidden bg-[#030303] text-white selection:bg-white selection:text-black"
     >
+        <div class="mn-marble-underlay" aria-hidden="true"></div>
+
         <!-- BACKGROUND -->
+
         <div class="pointer-events-none fixed inset-0 z-0 overflow-hidden">
             <div
                 class="absolute inset-0 bg-[linear-gradient(180deg,#020202_0%,#070707_42%,#030303_100%)]"
@@ -427,8 +478,9 @@ const rawWatchKeys = computed(() => {
         </div>
 
         <!-- HEADER -->
+
         <header
-            class="fixed inset-x-0 top-0 z-[90] border-b border-white/10 bg-black/82 shadow-xl shadow-black/30 backdrop-blur-2xl"
+            class="mn-unified-header fixed inset-x-0 top-0 z-[90] border-b border-white/10 bg-black/82 shadow-xl shadow-black/30 backdrop-blur-2xl"
         >
             <div
                 class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8"
@@ -456,7 +508,9 @@ const rawWatchKeys = computed(() => {
                         stroke-linejoin="round"
                     >
                         <path d="M3 10.5 12 3l9 7.5" />
+
                         <path d="M5 10v10h14V10" />
+
                         <path d="M9 20v-6h6v6" />
                     </svg>
 
@@ -470,6 +524,7 @@ const rawWatchKeys = computed(() => {
         </header>
 
         <!-- LOADING BAR -->
+
         <Transition name="catalog-loading">
             <div
                 v-if="isCatalogLoading"
@@ -484,6 +539,7 @@ const rawWatchKeys = computed(() => {
         >
             <section class="mx-auto max-w-7xl">
                 <!-- HERO -->
+
                 <div
                     class="catalog-hero mb-4 overflow-hidden rounded-[1.25rem] border border-white/10 bg-white/[0.035] p-4 shadow-2xl shadow-black/35 sm:mb-7 sm:rounded-[1.4rem] sm:p-7 lg:p-8"
                 >
@@ -495,6 +551,7 @@ const rawWatchKeys = computed(() => {
                         <div class="max-w-4xl">
                             <div class="premium-eyebrow">
                                 <span class="pulse-dot"></span>
+
                                 Montre Nova Catalog
                             </div>
 
@@ -518,11 +575,13 @@ const rawWatchKeys = computed(() => {
                         >
                             <div class="mini-stat">
                                 <p>Showing</p>
+
                                 <strong>{{ catalogWatches.length }}</strong>
                             </div>
 
                             <div class="mini-stat">
                                 <p>Category</p>
+
                                 <strong>{{ activeCategoryLabel }}</strong>
                             </div>
                         </div>
@@ -530,6 +589,7 @@ const rawWatchKeys = computed(() => {
                 </div>
 
                 <!-- CATEGORY FILTERS -->
+
                 <div
                     class="sticky top-[4.18rem] z-30 mb-4 -mx-3 border-y border-white/10 bg-black/82 px-3 py-3 shadow-xl shadow-black/30 backdrop-blur-2xl sm:-mx-6 sm:mb-7 sm:px-6 lg:-mx-8 lg:px-8"
                 >
@@ -585,12 +645,14 @@ const rawWatchKeys = computed(() => {
                 </div>
 
                 <!-- MOBILE LOADING NOTICE -->
+
                 <Transition name="catalog-mobile-loading">
                     <div
                         v-if="isCatalogLoading"
                         class="mb-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.045] p-3 text-xs font-bold text-zinc-300 shadow-xl shadow-black/25 sm:hidden"
                     >
                         <span class="catalog-spinner"></span>
+
                         Updating catalog...
                     </div>
                 </Transition>
@@ -613,6 +675,7 @@ const rawWatchKeys = computed(() => {
                 </div>
 
                 <!-- WATCH CAROUSEL / GRID -->
+
                 <template v-if="catalogWatches.length">
                     <div
                         class="catalog-carousel flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-5 pr-5 transition duration-300 overscroll-x-contain sm:gap-4 md:grid md:snap-none md:grid-cols-2 md:overflow-visible md:pb-0 md:pr-0 lg:grid-cols-3 xl:grid-cols-4 xl:gap-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -718,6 +781,7 @@ const rawWatchKeys = computed(() => {
                                         class="mt-2 truncate text-sm text-zinc-400"
                                     >
                                         Ref.
+
                                         {{
                                             watch.reference_number ||
                                             "No reference"
@@ -731,6 +795,7 @@ const rawWatchKeys = computed(() => {
 
                                         <span class="ask-pill">
                                             Inquire
+
                                             <span aria-hidden="true">→</span>
                                         </span>
                                     </div>
@@ -741,6 +806,7 @@ const rawWatchKeys = computed(() => {
                 </template>
 
                 <!-- EMPTY / DEBUG STATE -->
+
                 <div v-else class="empty-state">
                     <div class="placeholder-logo mx-auto">
                         <span>MN</span>
@@ -769,6 +835,7 @@ const rawWatchKeys = computed(() => {
                         <div class="mt-3 grid gap-2 sm:grid-cols-2">
                             <p>
                                 Raw prop type:
+
                                 <span class="text-white">
                                     {{ rawWatchType }}
                                 </span>
@@ -776,6 +843,7 @@ const rawWatchKeys = computed(() => {
 
                             <p>
                                 Parsed cards:
+
                                 <span class="text-white">
                                     {{ catalogWatches.length }}
                                 </span>
@@ -783,6 +851,7 @@ const rawWatchKeys = computed(() => {
 
                             <p>
                                 Total from controller:
+
                                 <span class="text-white">
                                     {{ totalCatalogWatches }}
                                 </span>
@@ -790,6 +859,7 @@ const rawWatchKeys = computed(() => {
 
                             <p>
                                 DB count:
+
                                 <span class="text-white">
                                     {{
                                         catalogDebug?.database_watch_count ??
@@ -801,6 +871,7 @@ const rawWatchKeys = computed(() => {
 
                         <p v-if="rawWatchKeys.length" class="mt-3">
                             Prop keys:
+
                             <span class="text-white">
                                 {{ rawWatchKeys.join(", ") }}
                             </span>
@@ -819,6 +890,7 @@ const rawWatchKeys = computed(() => {
         </main>
 
         <!-- MOBILE-ONLY MESSENGER FLOATING BUTTON -->
+
         <button
             type="button"
             class="messenger-float-button fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-4 z-[80] flex sm:hidden"
@@ -851,42 +923,65 @@ const rawWatchKeys = computed(() => {
 .section-kicker,
 .brand-kicker {
     font-size: 0.68rem;
+
     font-weight: 900;
+
     text-transform: uppercase;
+
     letter-spacing: 0.34em;
+
     color: rgb(113 113 122);
 }
 
 .premium-eyebrow {
     display: inline-flex;
+
     align-items: center;
+
     gap: 0.65rem;
+
     border-radius: 9999px;
+
     border: 1px solid rgb(255 255 255 / 0.07);
+
     background: rgb(255 255 255 / 0.04);
+
     padding: 0.55rem 0.85rem;
+
     font-size: 0.61rem;
+
     font-weight: 950;
+
     text-transform: uppercase;
+
     letter-spacing: 0.24em;
+
     color: rgb(161 161 170);
+
     box-shadow: 0 16px 45px rgb(0 0 0 / 0.24);
 }
 
 .pulse-dot {
     height: 0.38rem;
+
     width: 0.38rem;
+
     border-radius: 9999px;
+
     background: rgb(255 255 255 / 0.9);
+
     box-shadow: 0 0 0 0 rgb(255 255 255 / 0.26);
+
     animation: pulseDot 2.4s ease-out infinite;
 }
 
 .catalog-hero {
     position: relative;
+
     background:
         radial-gradient(
             circle at top right,
+
             rgb(255 255 255 / 0.09),
             transparent 32%
         ),
@@ -895,10 +990,15 @@ const rawWatchKeys = computed(() => {
 
 .shine-line {
     position: absolute;
+
     top: 0;
+
     right: 2rem;
+
     left: 2rem;
+
     height: 1px;
+
     background: linear-gradient(
         90deg,
         transparent,
@@ -909,52 +1009,78 @@ const rawWatchKeys = computed(() => {
 
 .mini-stat {
     min-width: 0;
+
     border-radius: 1rem;
+
     border: 1px solid rgb(255 255 255 / 0.08);
+
     background: rgb(0 0 0 / 0.28);
+
     padding: 0.9rem;
+
     box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
 }
 
 .mini-stat p {
     font-size: 0.58rem;
+
     font-weight: 950;
+
     text-transform: uppercase;
+
     letter-spacing: 0.18em;
+
     color: rgb(82 82 91);
 }
 
 .mini-stat strong {
     margin-top: 0.35rem;
+
     display: block;
+
     overflow: hidden;
+
     text-overflow: ellipsis;
+
     white-space: nowrap;
+
     font-size: 1.05rem;
+
     font-weight: 950;
+
     color: white;
 }
 
 .catalog-loading-bar {
     height: 100%;
+
     width: 45%;
+
     border-radius: 9999px;
+
     background: linear-gradient(
         90deg,
         transparent,
         rgb(255 255 255 / 0.95),
         transparent
     );
+
     animation: catalogLoadingSlide 900ms ease-in-out infinite;
 }
 
 .catalog-spinner {
     height: 1rem;
+
     width: 1rem;
+
     flex-shrink: 0;
+
     border-radius: 9999px;
+
     border: 2px solid rgb(255 255 255 / 0.18);
+
     border-top-color: white;
+
     animation: catalogSpin 700ms linear infinite;
 }
 
@@ -981,20 +1107,29 @@ const rawWatchKeys = computed(() => {
 
 .catalog-card {
     position: relative;
+
     display: block;
+
     overflow: hidden;
+
     border-radius: 1.25rem;
+
     border: 1px solid rgb(255 255 255 / 0.055);
+
     background: linear-gradient(
         180deg,
         rgb(255 255 255 / 0.032),
         rgb(0 0 0 / 0.96)
     );
+
     color: inherit;
+
     box-shadow:
         0 26px 82px rgb(0 0 0 / 0.42),
         inset 0 1px 0 rgb(255 255 255 / 0.055);
+
     animation: fadeLift 700ms both;
+
     transition:
         transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
         border-color 320ms ease,
@@ -1004,7 +1139,9 @@ const rawWatchKeys = computed(() => {
 
 .catalog-card:hover {
     transform: translateY(-0.25rem);
+
     border-color: rgb(255 255 255 / 0.15);
+
     box-shadow:
         0 36px 110px rgb(0 0 0 / 0.65),
         inset 0 1px 0 rgb(255 255 255 / 0.08);
@@ -1012,6 +1149,7 @@ const rawWatchKeys = computed(() => {
 
 .catalog-card:focus-visible {
     outline: 2px solid rgb(255 255 255 / 0.72);
+
     outline-offset: 4px;
 }
 
@@ -1021,37 +1159,60 @@ const rawWatchKeys = computed(() => {
 
 .image-shimmer {
     position: absolute;
+
     inset: 0;
+
     z-index: 0;
+
     background:
         linear-gradient(
             110deg,
             rgb(255 255 255 / 0.02) 8%,
+
             rgb(255 255 255 / 0.075) 18%,
+
             rgb(255 255 255 / 0.02) 33%
         ),
         #050505;
+
     background-size: 220% 100%;
+
     animation: imageShimmer 1.45s ease-in-out infinite;
 }
 
 .ask-pill {
     display: inline-flex;
+
     min-height: 2.65rem;
+
     flex-shrink: 0;
+
     align-items: center;
+
     justify-content: center;
+
     gap: 0.35rem;
+
     border-radius: 9999px;
+
     border: 1px solid rgb(255 255 255 / 0.12);
+
     background: rgb(255 255 255 / 0.92);
+
     padding: 0.72rem 0.95rem;
+
     color: black;
+
     font-size: 0.68rem;
+
     font-weight: 950;
+
     text-transform: uppercase;
+
     letter-spacing: 0.12em;
+
     box-shadow: 0 12px 30px rgb(255 255 255 / 0.1);
+
     transition:
         transform 260ms ease,
         background-color 260ms ease;
@@ -1059,21 +1220,33 @@ const rawWatchKeys = computed(() => {
 
 .catalog-card:hover .ask-pill {
     transform: translateX(3px);
+
     background: white;
 }
 
 .primary-button {
     display: inline-flex;
+
     align-items: center;
+
     justify-content: center;
+
     gap: 0.5rem;
+
     border-radius: 0.9rem;
+
     background: white;
+
     color: black;
+
     font-weight: 900;
+
     text-transform: uppercase;
+
     letter-spacing: 0.12em;
+
     box-shadow: 0 12px 35px rgb(255 255 255 / 0.08);
+
     transition:
         transform 260ms ease,
         background-color 260ms ease,
@@ -1082,63 +1255,93 @@ const rawWatchKeys = computed(() => {
 
 .primary-button:hover {
     transform: translateY(-1px);
+
     background: rgb(228 228 231);
+
     box-shadow: 0 18px 48px rgb(255 255 255 / 0.14);
 }
 
 .placeholder-logo {
     display: flex;
+
     height: 8rem;
+
     width: 8rem;
+
     align-items: center;
+
     justify-content: center;
+
     border-radius: 9999px;
+
     border: 1px solid rgb(255 255 255 / 0.1);
+
     background: rgb(255 255 255 / 0.045);
+
     box-shadow: 0 24px 60px rgb(0 0 0 / 0.5);
 }
 
 .placeholder-logo span {
     font-size: 2.5rem;
+
     font-weight: 900;
+
     letter-spacing: -0.12em;
+
     color: white;
 }
 
 .empty-state {
     border-radius: 1.35rem;
+
     border: 1px solid rgb(255 255 255 / 0.1);
+
     background:
         radial-gradient(
             circle at top,
+
             rgb(255 255 255 / 0.055),
             transparent 32%
         ),
         rgb(11 11 13);
+
     padding: 2.5rem;
+
     text-align: center;
+
     box-shadow: 0 25px 70px rgb(0 0 0 / 0.25);
 }
 
 .messenger-float-button {
     height: 3.65rem;
+
     width: 3.65rem;
+
     align-items: center;
+
     justify-content: center;
+
     border-radius: 9999px;
+
     border: 1px solid rgb(255 255 255 / 0.2);
+
     background: linear-gradient(135deg, #00a6ff, #006aff);
+
     color: white;
+
     box-shadow:
         0 24px 70px rgb(0 0 0 / 0.68),
         0 0 0 1px rgb(255 255 255 / 0.14),
         0 0 46px rgb(0 132 255 / 0.32),
         inset 0 1px 0 rgb(255 255 255 / 0.22);
+
     isolation: isolate;
+
     transition:
         transform 240ms ease,
         box-shadow 240ms ease,
         filter 240ms ease;
+
     animation: messengerFloatAttention 5.2s ease-in-out infinite;
 }
 
@@ -1148,23 +1351,37 @@ const rawWatchKeys = computed(() => {
 
 .messenger-online-dot {
     position: absolute;
+
     right: 0.32rem;
+
     bottom: 0.34rem;
+
     height: 0.78rem;
+
     width: 0.78rem;
+
     border-radius: 9999px;
+
     border: 2px solid white;
+
     background: #22c55e;
+
     box-shadow: 0 0 14px rgb(34 197 94 / 0.8);
 }
 
 .messenger-float-ring {
     position: absolute;
+
     inset: -0.45rem;
+
     z-index: -1;
+
     border-radius: 9999px;
+
     border: 1px solid rgb(0 132 255 / 0.45);
+
     opacity: 0;
+
     animation: messengerFloatRing 2.6s ease-out infinite;
 }
 
@@ -1217,16 +1434,19 @@ const rawWatchKeys = computed(() => {
 @keyframes messengerFloatRing {
     0% {
         opacity: 0.7;
+
         transform: scale(0.9);
     }
 
     70% {
         opacity: 0;
+
         transform: scale(1.22);
     }
 
     100% {
         opacity: 0;
+
         transform: scale(1.22);
     }
 }
@@ -1254,11 +1474,13 @@ const rawWatchKeys = computed(() => {
 @keyframes fadeLift {
     from {
         opacity: 0;
+
         transform: translateY(14px);
     }
 
     to {
         opacity: 1;
+
         transform: translateY(0);
     }
 }
@@ -1268,9 +1490,189 @@ const rawWatchKeys = computed(() => {
     *::before,
     *::after {
         animation-duration: 0.001ms !important;
+
         animation-iteration-count: 1 !important;
+
         scroll-behavior: auto !important;
+
         transition-duration: 0.001ms !important;
     }
+}
+
+/* Montre Nova design system — dark marble, Manrope and restrained monochrome. */
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+.mn-subpage {
+    --mn-bg: #080809;
+    --mn-surface: #111113;
+    --mn-muted: #a7a7ac;
+    min-height: 100vh;
+    color: #f2f2f3;
+    font-family:
+        "Manrope",
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    background: #080809;
+    isolation: isolate;
+}
+.mn-subpage,
+.mn-subpage button,
+.mn-subpage input,
+.mn-subpage select {
+    font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+}
+.mn-subpage :is(h1, h2, h3, h4) {
+    font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    overflow-wrap: break-word;
+}
+.mn-subpage h1 {
+    letter-spacing: -0.055em;
+    line-height: 1.09;
+    font-weight: 650;
+}
+.mn-subpage :is(h2, h3) {
+    letter-spacing: -0.035em;
+    line-height: 1.18;
+}
+.mn-marble-underlay {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+    background:
+        radial-gradient(
+            ellipse at 73% 12%,
+            rgba(64, 65, 70, 0.13),
+            transparent 45%
+        ),
+        linear-gradient(155deg, #0b0b0e 0%, #060607 52%, #0b0b0e 100%);
+}
+.mn-marble-underlay::before {
+    content: "";
+    position: absolute;
+    inset: -5%;
+    opacity: 0.32;
+    background-image:
+        linear-gradient(
+            154deg,
+            transparent 0 36%,
+            rgba(200, 201, 208, 0.1) 36.09%,
+            rgba(200, 201, 208, 0.025) 36.3%,
+            transparent 36.6%
+        ),
+        linear-gradient(
+            147deg,
+            transparent 0 66%,
+            rgba(195, 196, 202, 0.085) 66.08%,
+            rgba(195, 196, 202, 0.02) 66.28%,
+            transparent 66.55%
+        ),
+        linear-gradient(
+            27deg,
+            transparent 0 81%,
+            rgba(180, 182, 191, 0.07) 81.07%,
+            transparent 81.4%
+        );
+    filter: blur(0.45px);
+    transform: scale(1.08);
+}
+.mn-marble-underlay::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+        ellipse at 48% 38%,
+        transparent 0%,
+        rgba(0, 0, 0, 0.45) 80%
+    );
+}
+.mn-subpage .mn-unified-header {
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    background: rgba(12, 12, 14, 0.92) !important;
+    backdrop-filter: blur(22px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+.mn-subpage
+    :is(.premium-panel, .gallery-panel, .product-panel, .carousel-shell) {
+    border-radius: 12px;
+    border-color: rgba(255, 255, 255, 0.11);
+    background: linear-gradient(
+        160deg,
+        rgba(29, 29, 32, 0.96),
+        rgba(13, 13, 15, 0.98)
+    );
+    box-shadow: 0 20px 55px rgba(0, 0, 0, 0.25);
+}
+.mn-subpage
+    :is(
+        .primary-action,
+        .secondary-action,
+        .soft-chip,
+        .gallery-arrow,
+        .view-chip
+    ) {
+    border-radius: 5px;
+}
+.mn-subpage button,
+.mn-subpage a {
+    -webkit-tap-highlight-color: transparent;
+}
+.mn-subpage button:focus-visible,
+.mn-subpage a:focus-visible,
+.mn-subpage input:focus-visible {
+    outline: 2px solid #dedee1;
+    outline-offset: 3px;
+}
+.mn-subpage .micro-label {
+    color: #a2a2a8;
+    font-weight: 700;
+    letter-spacing: 0.17em;
+}
+.mn-subpage :is(.text-red-300, .text-violet-300, .text-red-400) {
+    color: #d6d6da !important;
+}
+.mn-subpage :is(.bg-red-400\/10, .bg-violet-400\/10) {
+    background-color: rgba(255, 255, 255, 0.065) !important;
+}
+.mn-subpage :is(.border-red-400\/20, .border-violet-400\/20) {
+    border-color: rgba(255, 255, 255, 0.14) !important;
+}
+.mn-subpage .mn-float-remove {
+    display: none !important;
+}
+@media (max-width: 639px) {
+    .mn-subpage h1 {
+        font-size: clamp(1.95rem, 8vw, 2.65rem) !important;
+        line-height: 1.14 !important;
+        letter-spacing: -0.048em !important;
+    }
+    .mn-subpage h2 {
+        line-height: 1.22;
+    }
+    .mn-subpage .product-hero-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+    .mn-subpage .gallery-stage {
+        height: min(88vw, 420px);
+    }
+    .mn-subpage .primary-action {
+        min-height: 48px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mn-subpage *,
+    .mn-subpage *::before,
+    .mn-subpage *::after {
+        scroll-behavior: auto !important;
+    }
+}
+
+.mn-subpage .sold-watch-grid,
+.mn-subpage .sold-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 </style>

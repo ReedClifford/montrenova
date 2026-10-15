@@ -1,35 +1,46 @@
 <script setup>
 import MontreLogo from "@/Components/MontreLogo.vue";
+
 import { Head, Link, router } from "@inertiajs/vue3";
+
 import { computed, ref, watch } from "vue";
 
 const props = defineProps({
     soldWatches: {
         type: Object,
+
         default: () => ({
             data: [],
+
             links: [],
         }),
     },
+
     filters: {
         type: Object,
+
         default: () => ({
             search: "",
         }),
     },
+
     soldCount: {
         type: Number,
+
         default: 0,
     },
 });
 
 const search = ref(props.filters.search || "");
+
 const messengerUsername = "montrenova";
 
 let searchTimeout = null;
 
 const watches = computed(() => props.soldWatches?.data || []);
+
 const paginationLinks = computed(() => props.soldWatches?.links || []);
+
 const hasPagination = computed(() => paginationLinks.value.length > 3);
 
 const paginationSummary = computed(() => {
@@ -44,8 +55,9 @@ const paginationSummary = computed(() => {
 
 const cleanPaginationLabel = (label) => {
     return String(label)
-        .replace("&laquo; Previous", "‹ Prev")
-        .replace("Next &raquo;", "Next ›");
+        .replace("« Previous", "‹ Prev")
+
+        .replace("Next »", "Next ›");
 };
 
 const watchFullName = (watch) => {
@@ -76,8 +88,10 @@ const openSimilarInquiry = async (watch = null) => {
     }
 
     window.open(
-        `https://m.me/${messengerUsername}`,
+        `https\://m.me/${messengerUsername}`,
+
         "_blank",
+
         "noopener,noreferrer",
     );
 };
@@ -116,7 +130,9 @@ const soldDateLabel = (watch) => {
 
     return date.toLocaleDateString("en-PH", {
         month: "short",
+
         day: "2-digit",
+
         year: "numeric",
     });
 };
@@ -131,12 +147,16 @@ watch(search, () => {
     searchTimeout = setTimeout(() => {
         router.get(
             route("public.sold-watches.index"),
+
             {
                 search: search.value,
             },
+
             {
                 preserveState: true,
+
                 preserveScroll: true,
+
                 replace: true,
             },
         );
@@ -153,8 +173,10 @@ watch(search, () => {
     </Head>
 
     <div
-        class="min-h-screen overflow-hidden bg-[#050505] pb-24 text-white md:pb-0"
+        class="mn-subpage min-h-screen overflow-hidden bg-[#050505] pb-24 text-white md:pb-0"
     >
+        <div class="mn-marble-underlay" aria-hidden="true"></div>
+
         <div class="pointer-events-none fixed inset-0">
             <div
                 class="absolute left-[-14rem] top-[-14rem] h-[36rem] w-[36rem] rounded-full bg-white/[0.04] blur-3xl"
@@ -166,8 +188,9 @@ watch(search, () => {
         </div>
 
         <!-- NAVBAR -->
+
         <header
-            class="sticky top-0 z-50 border-b border-white/10 bg-[#050505]/90 backdrop-blur-xl"
+            class="mn-unified-header sticky top-0 z-50 border-b border-white/10 bg-[#050505]/90 backdrop-blur-xl"
         >
             <div
                 class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8"
@@ -204,6 +227,7 @@ watch(search, () => {
 
         <main class="relative z-10">
             <!-- HERO -->
+
             <section
                 class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-14"
             >
@@ -215,10 +239,10 @@ watch(search, () => {
                     >
                         <div>
                             <div
-                                class="mb-5 inline-flex rounded-full border border-red-400/20 bg-red-400/10 px-4 py-2"
+                                class="mb-5 inline-flex rounded-full border border-white/15 bg-white/[0.055] px-4 py-2"
                             >
                                 <span
-                                    class="text-xs font-black uppercase tracking-[0.24em] text-red-300"
+                                    class="text-xs font-black uppercase tracking-[0.24em] text-zinc-300"
                                 >
                                     Sold Gallery
                                 </span>
@@ -257,7 +281,7 @@ watch(search, () => {
 
                             <button
                                 type="button"
-                                class="rounded-[1.5rem] border border-red-400/20 bg-red-400/10 p-5 text-left transition hover:border-red-400/40"
+                                class="rounded-[1.5rem] border border-white/15 bg-white/[0.055] p-5 text-left transition hover:border-red-400/40"
                                 @click="openSimilarInquiry()"
                             >
                                 <p class="text-lg font-black text-white">
@@ -276,6 +300,7 @@ watch(search, () => {
             </section>
 
             <!-- SEARCH -->
+
             <section class="mx-auto max-w-7xl px-4 pb-6 sm:px-6 lg:px-8">
                 <div
                     class="rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-4 sm:p-5"
@@ -313,6 +338,7 @@ watch(search, () => {
             </section>
 
             <!-- GALLERY -->
+
             <section class="mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8">
                 <template v-if="watches.length">
                     <div
@@ -328,7 +354,7 @@ watch(search, () => {
                             >
                                 <div class="absolute left-3 top-3 z-10">
                                     <span
-                                        class="rounded-full border border-red-400/20 bg-red-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-red-300 backdrop-blur"
+                                        class="rounded-full border border-white/15 bg-white/[0.055] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-zinc-300 backdrop-blur"
                                     >
                                         Sold
                                     </span>
@@ -394,6 +420,7 @@ watch(search, () => {
 
                                 <p class="mt-1 truncate text-sm text-zinc-500">
                                     Ref.
+
                                     {{
                                         watch.reference_number || "No reference"
                                     }}
@@ -419,7 +446,7 @@ watch(search, () => {
                                 >
                                     <button
                                         type="button"
-                                        class="inline-flex items-center justify-center rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm font-bold text-red-300 transition hover:border-red-400/40"
+                                        class="inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/[0.055] px-4 py-3 text-sm font-bold text-zinc-300 transition hover:border-red-400/40"
                                         @click="openSimilarInquiry(watch)"
                                     >
                                         Find Similar
@@ -437,6 +464,7 @@ watch(search, () => {
                     </div>
 
                     <!-- PAGINATION -->
+
                     <div
                         v-if="hasPagination"
                         class="mt-8 flex flex-col items-center justify-between gap-5 rounded-[1.5rem] border border-white/10 bg-[#0B0B0D]/80 p-4 sm:flex-row"
@@ -500,6 +528,7 @@ watch(search, () => {
         </main>
 
         <!-- MOBILE STICKY CTA -->
+
         <div
             class="fixed inset-x-0 bottom-0 z-[60] border-t border-white/10 bg-[#050505]/95 px-4 py-3 backdrop-blur-xl md:hidden"
         >
@@ -526,13 +555,21 @@ watch(search, () => {
 <style scoped>
 .mn-input {
     width: 100%;
+
     border-radius: 1rem;
+
     border: 1px solid rgb(255 255 255 / 0.1);
+
     background: #050505;
+
     padding: 0.95rem 1rem;
+
     font-size: 0.95rem;
+
     color: white;
+
     outline: none;
+
     transition:
         border-color 150ms ease,
         background-color 150ms ease,
@@ -545,7 +582,186 @@ watch(search, () => {
 
 .mn-input:focus {
     border-color: rgb(255 255 255 / 0.4);
+
     background: rgb(255 255 255 / 0.04);
+
     box-shadow: 0 0 0 2px rgb(255 255 255 / 0.08);
+}
+
+/* Montre Nova design system — dark marble, Manrope and restrained monochrome. */
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+.mn-subpage {
+    --mn-bg: #080809;
+    --mn-surface: #111113;
+    --mn-muted: #a7a7ac;
+    min-height: 100vh;
+    color: #f2f2f3;
+    font-family:
+        "Manrope",
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    background: #080809;
+    isolation: isolate;
+}
+.mn-subpage,
+.mn-subpage button,
+.mn-subpage input,
+.mn-subpage select {
+    font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+}
+.mn-subpage :is(h1, h2, h3, h4) {
+    font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    overflow-wrap: break-word;
+}
+.mn-subpage h1 {
+    letter-spacing: -0.055em;
+    line-height: 1.09;
+    font-weight: 650;
+}
+.mn-subpage :is(h2, h3) {
+    letter-spacing: -0.035em;
+    line-height: 1.18;
+}
+.mn-marble-underlay {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+    background:
+        radial-gradient(
+            ellipse at 73% 12%,
+            rgba(64, 65, 70, 0.13),
+            transparent 45%
+        ),
+        linear-gradient(155deg, #0b0b0e 0%, #060607 52%, #0b0b0e 100%);
+}
+.mn-marble-underlay::before {
+    content: "";
+    position: absolute;
+    inset: -5%;
+    opacity: 0.32;
+    background-image:
+        linear-gradient(
+            154deg,
+            transparent 0 36%,
+            rgba(200, 201, 208, 0.1) 36.09%,
+            rgba(200, 201, 208, 0.025) 36.3%,
+            transparent 36.6%
+        ),
+        linear-gradient(
+            147deg,
+            transparent 0 66%,
+            rgba(195, 196, 202, 0.085) 66.08%,
+            rgba(195, 196, 202, 0.02) 66.28%,
+            transparent 66.55%
+        ),
+        linear-gradient(
+            27deg,
+            transparent 0 81%,
+            rgba(180, 182, 191, 0.07) 81.07%,
+            transparent 81.4%
+        );
+    filter: blur(0.45px);
+    transform: scale(1.08);
+}
+.mn-marble-underlay::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+        ellipse at 48% 38%,
+        transparent 0%,
+        rgba(0, 0, 0, 0.45) 80%
+    );
+}
+.mn-subpage .mn-unified-header {
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    background: rgba(12, 12, 14, 0.92) !important;
+    backdrop-filter: blur(22px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+.mn-subpage
+    :is(.premium-panel, .gallery-panel, .product-panel, .carousel-shell) {
+    border-radius: 12px;
+    border-color: rgba(255, 255, 255, 0.11);
+    background: linear-gradient(
+        160deg,
+        rgba(29, 29, 32, 0.96),
+        rgba(13, 13, 15, 0.98)
+    );
+    box-shadow: 0 20px 55px rgba(0, 0, 0, 0.25);
+}
+.mn-subpage
+    :is(
+        .primary-action,
+        .secondary-action,
+        .soft-chip,
+        .gallery-arrow,
+        .view-chip
+    ) {
+    border-radius: 5px;
+}
+.mn-subpage button,
+.mn-subpage a {
+    -webkit-tap-highlight-color: transparent;
+}
+.mn-subpage button:focus-visible,
+.mn-subpage a:focus-visible,
+.mn-subpage input:focus-visible {
+    outline: 2px solid #dedee1;
+    outline-offset: 3px;
+}
+.mn-subpage .micro-label {
+    color: #a2a2a8;
+    font-weight: 700;
+    letter-spacing: 0.17em;
+}
+.mn-subpage :is(.text-red-300, .text-violet-300, .text-red-400) {
+    color: #d6d6da !important;
+}
+.mn-subpage :is(.bg-red-400\/10, .bg-violet-400\/10) {
+    background-color: rgba(255, 255, 255, 0.065) !important;
+}
+.mn-subpage :is(.border-red-400\/20, .border-violet-400\/20) {
+    border-color: rgba(255, 255, 255, 0.14) !important;
+}
+.mn-subpage .mn-float-remove {
+    display: none !important;
+}
+@media (max-width: 639px) {
+    .mn-subpage h1 {
+        font-size: clamp(1.95rem, 8vw, 2.65rem) !important;
+        line-height: 1.14 !important;
+        letter-spacing: -0.048em !important;
+    }
+    .mn-subpage h2 {
+        line-height: 1.22;
+    }
+    .mn-subpage .product-hero-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+    .mn-subpage .gallery-stage {
+        height: min(88vw, 420px);
+    }
+    .mn-subpage .primary-action {
+        min-height: 48px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mn-subpage *,
+    .mn-subpage *::before,
+    .mn-subpage *::after {
+        scroll-behavior: auto !important;
+    }
+}
+
+.mn-subpage .sold-watch-grid,
+.mn-subpage .sold-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 </style>

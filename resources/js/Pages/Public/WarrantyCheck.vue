@@ -1,21 +1,27 @@
 <script setup>
 import MontreLogo from "@/Components/MontreLogo.vue";
+
 import { Head, Link, useForm } from "@inertiajs/vue3";
+
 import { computed } from "vue";
 
 const props = defineProps({
     result: {
         type: Object,
+
         default: null,
     },
+
     searched: {
         type: Boolean,
+
         default: false,
     },
 });
 
 const form = useForm({
     buyer_name: "",
+
     serial_number: "",
 });
 
@@ -28,7 +34,9 @@ const formatDate = (value) => {
 
     return date.toLocaleDateString("en-PH", {
         year: "numeric",
+
         month: "long",
+
         day: "2-digit",
     });
 };
@@ -37,7 +45,9 @@ const statusLabel = computed(() => {
     if (!props.result) return "";
 
     if (props.result.status === "active") return "Active Warranty";
+
     if (props.result.status === "expiring_soon") return "Expiring Soon";
+
     if (props.result.status === "expired") return "Expired Warranty";
 
     return "Unknown";
@@ -61,6 +71,7 @@ const statusDotClass = computed(() => {
     if (!props.result) return "bg-zinc-500";
 
     if (props.result.status === "active") return "bg-emerald-300";
+
     if (props.result.status === "expiring_soon") return "bg-amber-300";
 
     return "bg-red-300";
@@ -72,7 +83,9 @@ const daysLeftLabel = computed(() => {
     const days = Number(props.result.days_left);
 
     if (days < 0) return "Warranty coverage has ended.";
+
     if (days === 0) return "Warranty expires today.";
+
     if (days === 1) return "1 day remaining.";
 
     return `${days} days remaining.`;
@@ -99,21 +112,28 @@ const resultTitle = computed(() => {
 const warrantyItems = [
     {
         title: "1 Year Coverage",
+
         description: "Coverage starts from the official purchase date.",
     },
+
     {
         title: "Movement Support",
+
         description: "Covers movement and internal mechanism concerns.",
     },
+
     {
         title: "After-Sales Service",
+
         description: "Message Montre Nova for verification and support.",
     },
 ];
 
 const checklistItems = [
     "Use the same buyer name from the Montre Card.",
+
     "Add the serial number when available for a more accurate match.",
+
     "For missing records, request manual verification from Montre Nova.",
 ];
 
@@ -128,19 +148,25 @@ const submit = () => {
     <Head title="Warranty Check | Montre Nova" />
 
     <div
-        class="relative min-h-screen overflow-hidden bg-[#050505] text-white antialiased"
+        class="mn-subpage relative min-h-screen overflow-hidden bg-[#050505] text-white antialiased"
     >
+        <div class="mn-marble-underlay" aria-hidden="true"></div>
+
         <!-- PREMIUM AMBIENT BACKGROUND -->
-        <div class="pointer-events-none fixed inset-0">
+
+        <div class="pointer-events-none fixed inset-0 opacity-40">
             <div
                 class="absolute inset-0 bg-[radial-gradient(circle_at_20%_8%,rgba(255,255,255,0.075),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(120,120,120,0.10),transparent_30%),linear-gradient(180deg,#050505_0%,#080808_46%,#030303_100%)]"
             ></div>
+
             <div
                 class="absolute left-[-10rem] top-24 h-80 w-80 rounded-full bg-white/[0.035] blur-3xl"
             ></div>
+
             <div
                 class="absolute bottom-[-12rem] right-[-8rem] h-96 w-96 rounded-full bg-zinc-500/[0.055] blur-3xl"
             ></div>
+
             <div
                 class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
             ></div>
@@ -150,8 +176,9 @@ const submit = () => {
             class="relative z-10 mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8"
         >
             <!-- HEADER -->
+
             <header
-                class="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3 backdrop-blur-xl sm:px-5"
+                class="mn-unified-header flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3 backdrop-blur-xl sm:px-5"
             >
                 <Link href="/" class="inline-flex min-w-0 items-center">
                     <MontreLogo />
@@ -164,6 +191,7 @@ const submit = () => {
                         class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-black transition hover:bg-zinc-200 sm:h-auto sm:w-auto sm:px-4 sm:py-2"
                     >
                         <!-- Mobile home icon -->
+
                         <svg
                             class="h-5 w-5 sm:hidden"
                             viewBox="0 0 24 24"
@@ -175,11 +203,14 @@ const submit = () => {
                             aria-hidden="true"
                         >
                             <path d="M3 10.5 12 3l9 7.5" />
+
                             <path d="M5 10v10h14V10" />
+
                             <path d="M9 20v-6h6v6" />
                         </svg>
 
                         <!-- Desktop text -->
+
                         <span
                             class="hidden text-xs font-black uppercase tracking-[0.12em] sm:inline"
                         >
@@ -193,6 +224,7 @@ const submit = () => {
                 class="grid flex-1 gap-5 py-7 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:py-10"
             >
                 <!-- LEFT CONTENT -->
+
                 <section class="space-y-5 lg:sticky lg:top-6">
                     <div
                         class="relative overflow-hidden rounded-xl border border-white/10 bg-[#0B0B0D]/90 p-6 shadow-2xl shadow-black/40 backdrop-blur sm:p-8"
@@ -200,6 +232,7 @@ const submit = () => {
                         <div
                             class="pointer-events-none absolute right-[-8rem] top-[-8rem] h-72 w-72 rounded-full bg-white/[0.06] blur-3xl"
                         ></div>
+
                         <div
                             class="pointer-events-none absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-white/25 to-transparent"
                         ></div>
@@ -211,6 +244,7 @@ const submit = () => {
                                 <span
                                     class="h-2 w-2 rounded-full bg-white"
                                 ></span>
+
                                 <span
                                     class="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500"
                                 >
@@ -284,6 +318,7 @@ const submit = () => {
                 </section>
 
                 <!-- RIGHT CONTENT -->
+
                 <section class="space-y-5">
                     <div
                         class="rounded-xl border border-white/10 bg-[#0B0B0D]/95 p-5 shadow-2xl shadow-black/40 backdrop-blur sm:p-7"
@@ -338,6 +373,7 @@ const submit = () => {
                             <div>
                                 <label class="mn-label">
                                     Serial Number
+
                                     <span class="text-zinc-600"
                                         >(Optional)</span
                                     >
@@ -386,6 +422,7 @@ const submit = () => {
                     </div>
 
                     <!-- RESULT -->
+
                     <div
                         v-if="result"
                         class="overflow-hidden rounded-xl border border-white/10 bg-[#0B0B0D]/95 shadow-2xl shadow-black/40"
@@ -413,6 +450,7 @@ const submit = () => {
 
                                     <p class="mt-2 text-sm text-zinc-500">
                                         Ref.
+
                                         {{
                                             result.reference_number ||
                                             "No reference"
@@ -428,6 +466,7 @@ const submit = () => {
                                         class="h-2 w-2 rounded-full"
                                         :class="statusDotClass"
                                     ></span>
+
                                     {{ statusLabel }}
                                 </span>
                             </div>
@@ -471,6 +510,7 @@ const submit = () => {
                             <div class="mt-5 grid gap-3 sm:grid-cols-2">
                                 <div class="mn-info">
                                     <p class="mn-info-label">Buyer</p>
+
                                     <p class="mn-info-value">
                                         {{ result.buyer_name || "—" }}
                                     </p>
@@ -478,6 +518,7 @@ const submit = () => {
 
                                 <div class="mn-info">
                                     <p class="mn-info-label">Serial</p>
+
                                     <p class="mn-info-value">
                                         {{ result.serial_number || "—" }}
                                     </p>
@@ -485,6 +526,7 @@ const submit = () => {
 
                                 <div class="mn-info">
                                     <p class="mn-info-label">Date Sold</p>
+
                                     <p class="mn-info-value">
                                         {{ formatDate(result.date_sold) }}
                                     </p>
@@ -492,6 +534,7 @@ const submit = () => {
 
                                 <div class="mn-info">
                                     <p class="mn-info-label">Warranty Until</p>
+
                                     <p class="mn-info-value">
                                         {{
                                             formatDate(result.warranty_end_date)
@@ -521,7 +564,7 @@ const submit = () => {
                                 </div>
 
                                 <a
-                                    href="https://m.me/montrenova"
+                                    href="https\://m.me/montrenova"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.07]"
@@ -533,6 +576,7 @@ const submit = () => {
                     </div>
 
                     <!-- EMPTY / NOT FOUND STATE -->
+
                     <div
                         v-else-if="searched"
                         class="rounded-xl border border-red-400/20 bg-red-400/10 p-5 shadow-2xl shadow-black/30 sm:p-6"
@@ -558,7 +602,7 @@ const submit = () => {
                                 </p>
 
                                 <a
-                                    href="https://m.me/montrenova"
+                                    href="https\://m.me/montrenova"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     class="mt-4 inline-flex rounded-lg border border-red-300/20 bg-red-300/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-red-100 transition hover:border-red-200/40"
@@ -570,6 +614,7 @@ const submit = () => {
                     </div>
 
                     <!-- TERMS -->
+
                     <div
                         class="rounded-xl border border-white/10 bg-[#0B0B0D]/75 p-5 backdrop-blur sm:p-6"
                     >
@@ -630,26 +675,43 @@ const submit = () => {
 </template>
 
 <style scoped>
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+
 .mn-label {
     margin-bottom: 0.55rem;
+
     display: block;
+
     font-size: 0.7rem;
+
     font-weight: 900;
+
     text-transform: uppercase;
+
     letter-spacing: 0.18em;
+
     color: rgb(113 113 122);
 }
 
 .mn-input {
     width: 100%;
+
     border-radius: 0.75rem;
+
     border: 1px solid rgb(255 255 255 / 0.1);
+
     background: rgb(255 255 255 / 0.035);
+
     padding: 1rem;
+
     font-size: 0.92rem;
+
     font-weight: 600;
+
     color: white;
+
     outline: none;
+
     transition:
         border-color 160ms ease,
         background 160ms ease,
@@ -658,37 +720,225 @@ const submit = () => {
 
 .mn-input::placeholder {
     color: rgb(82 82 91);
+
     font-weight: 500;
+
     letter-spacing: normal;
+
     text-transform: none;
 }
 
 .mn-input:focus {
     border-color: rgb(255 255 255 / 0.36);
+
     background: rgb(255 255 255 / 0.055);
+
     box-shadow: 0 0 0 3px rgb(255 255 255 / 0.08);
 }
 
 .mn-info {
     border-radius: 0.75rem;
+
     border: 1px solid rgb(255 255 255 / 0.1);
+
     background: rgb(255 255 255 / 0.03);
+
     padding: 1rem;
 }
 
 .mn-info-label {
     font-size: 0.68rem;
+
     font-weight: 900;
+
     text-transform: uppercase;
+
     letter-spacing: 0.14em;
+
     color: rgb(113 113 122);
 }
 
 .mn-info-value {
     margin-top: 0.45rem;
+
     overflow-wrap: anywhere;
+
     font-size: 0.92rem;
+
     font-weight: 800;
+
     color: white;
+}
+
+/* Montre Nova design system — dark marble, Manrope and restrained monochrome. */
+
+.mn-subpage {
+    --mn-bg: #080809;
+    --mn-surface: #111113;
+    --mn-muted: #a7a7ac;
+    min-height: 100vh;
+    color: #f2f2f3;
+    font-family:
+        "Manrope",
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    background: #080809;
+    isolation: isolate;
+}
+.mn-subpage,
+.mn-subpage button,
+.mn-subpage input,
+.mn-subpage select {
+    font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+}
+.mn-subpage :is(h1, h2, h3, h4) {
+    font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    overflow-wrap: break-word;
+}
+.mn-subpage h1 {
+    letter-spacing: -0.055em;
+    line-height: 1.09;
+    font-weight: 650;
+}
+.mn-subpage :is(h2, h3) {
+    letter-spacing: -0.035em;
+    line-height: 1.18;
+}
+.mn-marble-underlay {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+    background:
+        radial-gradient(
+            ellipse at 73% 12%,
+            rgba(64, 65, 70, 0.13),
+            transparent 45%
+        ),
+        linear-gradient(155deg, #0b0b0e 0%, #060607 52%, #0b0b0e 100%);
+}
+.mn-marble-underlay::before {
+    content: "";
+    position: absolute;
+    inset: -5%;
+    opacity: 0.32;
+    background-image:
+        linear-gradient(
+            154deg,
+            transparent 0 36%,
+            rgba(200, 201, 208, 0.1) 36.09%,
+            rgba(200, 201, 208, 0.025) 36.3%,
+            transparent 36.6%
+        ),
+        linear-gradient(
+            147deg,
+            transparent 0 66%,
+            rgba(195, 196, 202, 0.085) 66.08%,
+            rgba(195, 196, 202, 0.02) 66.28%,
+            transparent 66.55%
+        ),
+        linear-gradient(
+            27deg,
+            transparent 0 81%,
+            rgba(180, 182, 191, 0.07) 81.07%,
+            transparent 81.4%
+        );
+    filter: blur(0.45px);
+    transform: scale(1.08);
+}
+.mn-marble-underlay::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+        ellipse at 48% 38%,
+        transparent 0%,
+        rgba(0, 0, 0, 0.45) 80%
+    );
+}
+.mn-subpage .mn-unified-header {
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    background: rgba(12, 12, 14, 0.92) !important;
+    backdrop-filter: blur(22px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+}
+.mn-subpage
+    :is(.premium-panel, .gallery-panel, .product-panel, .carousel-shell) {
+    border-radius: 12px;
+    border-color: rgba(255, 255, 255, 0.11);
+    background: linear-gradient(
+        160deg,
+        rgba(29, 29, 32, 0.96),
+        rgba(13, 13, 15, 0.98)
+    );
+    box-shadow: 0 20px 55px rgba(0, 0, 0, 0.25);
+}
+.mn-subpage
+    :is(
+        .primary-action,
+        .secondary-action,
+        .soft-chip,
+        .gallery-arrow,
+        .view-chip
+    ) {
+    border-radius: 5px;
+}
+.mn-subpage button,
+.mn-subpage a {
+    -webkit-tap-highlight-color: transparent;
+}
+.mn-subpage button:focus-visible,
+.mn-subpage a:focus-visible,
+.mn-subpage input:focus-visible {
+    outline: 2px solid #dedee1;
+    outline-offset: 3px;
+}
+.mn-subpage .micro-label {
+    color: #a2a2a8;
+    font-weight: 700;
+    letter-spacing: 0.17em;
+}
+.mn-subpage :is(.text-red-300, .text-violet-300, .text-red-400) {
+    color: #d6d6da !important;
+}
+.mn-subpage :is(.bg-red-400\/10, .bg-violet-400\/10) {
+    background-color: rgba(255, 255, 255, 0.065) !important;
+}
+.mn-subpage :is(.border-red-400\/20, .border-violet-400\/20) {
+    border-color: rgba(255, 255, 255, 0.14) !important;
+}
+.mn-subpage .mn-float-remove {
+    display: none !important;
+}
+@media (max-width: 639px) {
+    .mn-subpage h1 {
+        font-size: clamp(1.95rem, 8vw, 2.65rem) !important;
+        line-height: 1.14 !important;
+        letter-spacing: -0.048em !important;
+    }
+    .mn-subpage h2 {
+        line-height: 1.22;
+    }
+    .mn-subpage .product-hero-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+    }
+    .mn-subpage .gallery-stage {
+        height: min(88vw, 420px);
+    }
+    .mn-subpage .primary-action {
+        min-height: 48px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mn-subpage *,
+    .mn-subpage *::before,
+    .mn-subpage *::after {
+        scroll-behavior: auto !important;
+    }
 }
 </style>
