@@ -1153,14 +1153,14 @@ const productBadges = (watch) => {
                     </button>
                     <button
                         type="button"
-                        class="hero-full-arrow hero-full-arrow-right"
+                        class="hero-full-arrow hero-full-arrow-right mn-hero-next-edge"
                         aria-label="Next featured image"
                         @click.stop="
                             nextBestSeller();
                             resetBestSellerAutoPlay();
                         "
                     >
-                        <span aria-hidden="true"></span>
+                        <span aria-hidden="true">→</span>
                     </button>
                 </template>
 
@@ -10999,5 +10999,346 @@ a:visited {
 .hero-full-main-image,
 .hero-full-backdrop-image {
     filter: none !important;
+}
+
+/* MONTRE NOVA | INVENTORY & CATALOG FINAL RESPONSIVE REFINEMENT */
+.mn-watch-grid {
+    align-items: stretch !important;
+}
+.mn-watch-card {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+}
+.mn-watch-media {
+    flex: none !important;
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+}
+.mn-watch-media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.mn-watch-body {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: #18181a !important;
+    padding: 19px 17px !important;
+    gap: 0 !important;
+}
+.mn-watch-heading {
+    min-width: 0 !important;
+}
+.mn-watch-heading h3 {
+    font-size: clamp(14px, 1.4vw, 18px) !important;
+    line-height: 1.4 !important;
+    font-weight: 630 !important;
+    letter-spacing: -0.03em !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+}
+.mn-watch-brand {
+    color: #b8b8bc !important;
+    font-size: 10px !important;
+    margin-bottom: 7px !important;
+}
+.mn-watch-reference {
+    color: #98989d !important;
+    font-size: 10px !important;
+    line-height: 1.35 !important;
+    margin-top: 8px !important;
+    overflow-wrap: anywhere !important;
+}
+.mn-watch-tags {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 7px !important;
+    margin: auto 0 0 !important;
+    padding: 17px 0 15px !important;
+    align-content: start !important;
+}
+.mn-watch-tags span {
+    display: inline-flex !important;
+    align-items: center !important;
+    width: max-content !important;
+    max-width: 100% !important;
+    border-radius: 3px !important;
+    background: #2a2a2d !important;
+    color: #e8e8eb !important;
+    border: 1px solid #454549 !important;
+    font-size: 9px !important;
+    font-weight: 750 !important;
+    letter-spacing: 0.06em !important;
+    line-height: 1.3 !important;
+    padding: 6px 9px !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+}
+.mn-watch-price-row {
+    margin-top: 0 !important;
+    padding-top: 14px !important;
+    border-top: 1px solid #38383c !important;
+    align-items: baseline !important;
+    gap: 7px !important;
+}
+.mn-watch-price {
+    font-size: clamp(15px, 1.6vw, 22px) !important;
+    line-height: 1.25 !important;
+}
+.mn-watch-details {
+    color: #e4e4e7 !important;
+    font-size: 10px !important;
+    letter-spacing: 0.09em !important;
+    white-space: nowrap !important;
+}
+/* Reference/catalog tiles: equal images, shared padding and text rhythm */
+.mn-reference-list {
+    background: transparent !important;
+    border-top: 0 !important;
+}
+.mn-reference-row {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    border-radius: 5px !important;
+    overflow: hidden !important;
+    text-align: left !important;
+    background: #18181a !important;
+}
+.mn-reference-thumb {
+    display: block !important;
+    width: 100% !important;
+    aspect-ratio: 5/4 !important;
+    height: auto !important;
+    overflow: hidden !important;
+    background: #161618 !important;
+}
+.mn-reference-thumb img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+}
+.mn-reference-name {
+    min-height: 83px !important;
+    padding: 16px 17px 3px !important;
+}
+.mn-reference-name > p {
+    font-size: 10px !important;
+    color: #b5b5b9 !important;
+    line-height: 1.35 !important;
+    letter-spacing: 0.12em !important;
+}
+.mn-reference-name h3 {
+    font-size: clamp(14px, 1.55vw, 19px) !important;
+    line-height: 1.35 !important;
+    margin-top: 6px !important;
+    overflow-wrap: break-word !important;
+}
+.mn-reference-code {
+    display: block !important;
+    padding: 8px 17px 0 !important;
+    color: #a4a4a9 !important;
+    font-size: 10px !important;
+    line-height: 1.5 !important;
+    overflow-wrap: anywhere !important;
+}
+.mn-reference-action {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    align-self: flex-start !important;
+    margin: auto 17px 17px !important;
+    margin-top: 16px !important;
+    padding: 9px 12px !important;
+    background: #252528 !important;
+    border: 1px solid #48484d !important;
+    border-radius: 3px !important;
+    color: #f0f0f2 !important;
+    font-size: 9px !important;
+    letter-spacing: 0.065em !important;
+}
+@media (max-width: 767px) {
+    .mn-watch-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 11px !important;
+    }
+    .mn-watch-media {
+        aspect-ratio: 1/1 !important;
+    }
+    .mn-watch-body {
+        padding: 14px 12px !important;
+    }
+    .mn-watch-heading h3 {
+        font-size: clamp(12px, 3.25vw, 15px) !important;
+        line-height: 1.38 !important;
+    }
+    .mn-watch-brand {
+        font-size: 9px !important;
+        margin-bottom: 6px !important;
+    }
+    .mn-watch-reference {
+        font-size: 9px !important;
+        margin-top: 6px !important;
+    }
+    .mn-watch-tags {
+        padding: 13px 0 12px !important;
+        gap: 5px !important;
+    }
+    .mn-watch-tags span {
+        font-size: 8px !important;
+        padding: 5px 7px !important;
+    }
+    .mn-watch-price-row {
+        padding-top: 11px !important;
+    }
+    .mn-watch-price {
+        font-size: clamp(14px, 3.65vw, 17px) !important;
+    }
+    .mn-watch-details {
+        font-size: 9px !important;
+    }
+    .mn-reference-list {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 12px !important;
+    }
+    .mn-reference-row {
+        height: 100% !important;
+    }
+    .mn-reference-name {
+        padding: 12px 12px 2px !important;
+        min-height: 70px !important;
+    }
+    .mn-reference-name > p {
+        font-size: 9px !important;
+    }
+    .mn-reference-name h3 {
+        font-size: clamp(13px, 3.6vw, 16px) !important;
+    }
+    .mn-reference-code {
+        padding: 8px 12px 0 !important;
+        font-size: 9px !important;
+    }
+    .mn-reference-action {
+        margin: auto 12px 12px !important;
+        margin-top: 13px !important;
+        padding: 8px 9px !important;
+        font-size: 8px !important;
+    }
+}
+@media (max-width: 359px) {
+    .mn-watch-body {
+        padding: 11px 9px !important;
+    }
+    .mn-watch-tags span {
+        font-size: 7.5px !important;
+    }
+    .mn-reference-list {
+        gap: 8px !important;
+    }
+    .mn-reference-name {
+        padding: 10px 9px 2px !important;
+    }
+    .mn-reference-code {
+        padding-left: 9px !important;
+        padding-right: 9px !important;
+    }
+    .mn-reference-action {
+        margin-left: 9px !important;
+        margin-right: 9px !important;
+    }
+}
+
+/* HERO CAROUSEL — FINAL RESPONSIVE ARROW POSITION FIX
+   Explicitly cancel older left/right positioning rules. */
+.hero-full-carousel-section .hero-full-arrow {
+    position: absolute !important;
+    top: 50% !important;
+    bottom: auto !important;
+    transform: translateY(-50%) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 42px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    border: 1px solid rgba(255, 255, 255, 0.38) !important;
+    background: rgba(8, 8, 10, 0.64) !important;
+    color: #f5f5f5 !important;
+    box-shadow: 0 5px 24px rgba(0, 0, 0, 0.25) !important;
+    -webkit-backdrop-filter: blur(9px);
+    backdrop-filter: blur(9px);
+    z-index: 42 !important;
+}
+.hero-full-carousel-section .hero-full-arrow-left {
+    left: clamp(12px, 2.2vw, 30px) !important;
+    right: auto !important;
+}
+.hero-full-carousel-section .hero-full-arrow-right {
+    right: clamp(12px, 2.2vw, 30px) !important;
+    left: auto !important;
+}
+.hero-full-carousel-section .hero-full-arrow span {
+    display: block !important;
+    font-family: Arial, sans-serif !important;
+    font-size: 21px !important;
+    font-weight: 400 !important;
+    line-height: 1 !important;
+    color: inherit !important;
+    opacity: 1 !important;
+}
+.hero-full-carousel-section .hero-full-arrow:focus-visible {
+    outline: 2px solid white !important;
+    outline-offset: 3px;
+}
+@media (max-width: 767px) {
+    .hero-full-carousel-section .hero-full-arrow {
+        top: 48% !important;
+        width: 35px !important;
+        height: 35px !important;
+        background: rgba(8, 8, 10, 0.66) !important;
+    }
+    .hero-full-carousel-section .hero-full-arrow-left {
+        left: 12px !important;
+        right: auto !important;
+    }
+    .hero-full-carousel-section .hero-full-arrow-right {
+        right: 12px !important;
+        left: auto !important;
+    }
+    .hero-full-carousel-section .hero-full-arrow span {
+        font-size: 18px !important;
+    }
+}
+
+/* MOBILE HERO — symmetric edge navigation; keep actions out of the title area. */
+.hero-full-carousel-section {
+    position: relative;
+}
+.hero-full-carousel-section > button.mn-hero-next-edge {
+    position: absolute !important;
+    inset: 46% 12px auto auto !important;
+    margin: 0 !important;
+    transform: translateY(-50%) !important;
+}
+@media (max-width: 767px) {
+    .hero-full-carousel-section > button.hero-full-arrow-left {
+        inset: 46% auto auto 12px !important;
+        margin: 0 !important;
+        transform: translateY(-50%) !important;
+    }
+    .hero-full-carousel-section > button.mn-hero-next-edge {
+        inset: 46% 12px auto auto !important;
+        margin: 0 !important;
+        transform: translateY(-50%) !important;
+    }
 }
 </style>
