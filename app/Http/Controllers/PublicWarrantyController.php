@@ -13,6 +13,7 @@ class PublicWarrantyController extends Controller
     {
         return Inertia::render('Public/WarrantyCheck', [
             'result' => null,
+            'results' => [],
             'searched' => false,
         ]);
     }
@@ -27,40 +28,31 @@ class PublicWarrantyController extends Controller
         $buyerName = trim($validated['buyer_name']);
         $serialNumber = trim($validated['serial_number'] ?? '');
 
-        $watch = Watch::query()
+        $watches = Watch::query()
             ->where('status', 'sold')
             ->whereNotNull('date_sold')
-            ->whereRaw('LOWER(TRIM(buyer_name)) = ?', [strtolower($buyerName)])
+            ->whereRaw('LOWER(TRIM(buyer_name)) = ?', [mb_strtolower($buyerName)])
             ->when($serialNumber !== '', function ($query) use ($serialNumber) {
                 $query->whereRaw('LOWER(TRIM(serial_number)) = ?', [
-                    strtolower($serialNumber),
+                    mb_strtolower($serialNumber),
                 ]);
             })
-            ->latest('date_sold')
-            ->first();
+            ->orderByDesc('date_sold')
+            ->orderByDesc('id')
+            ->get();
 
-        if (! $watch) {
-            return Inertia::render('Public/WarrantyCheck', [
-                'result' => null,
-                'searched' => true,
-            ]);
-        }
+        $today = Carbon::today();
 
-        $dateSold = Carbon::parse($watch->date_sold)->startOfDay();
-        $warrantyEnd = $dateSold->copy()->addYear();
-        $daysLeft = now()->startOfDay()->diffInDays($warrantyEnd, false);
+        $results = $watches->map(function (Watch $watch) use ($today) {
+            $dateSold = Carbon::parse($watch->date_sold)->startOfDay();
+            $warrantyEnd = $dateSold->copy()->addYear();
+            $daysLeft = (int) $today->diffInDays($warrantyEnd, false);
 
-        if ($daysLeft < 0) {
-            $warrantyStatus = 'expired';
-        } elseif ($daysLeft <= 30) {
-            $warrantyStatus = 'expiring_soon';
-        } else {
-            $warrantyStatus = 'active';
-        }
+            $warrantyStatus = $daysLeft < 0
+                ? 'expired'
+                : ($daysLeft <= 30 ? 'expiring_soon' : 'active');
 
-        return Inertia::render('Public/WarrantyCheck', [
-            'searched' => true,
-            'result' => [
+            return [
                 'id' => $watch->id,
                 'buyer_name' => $watch->buyer_name,
                 'brand' => $watch->brand,
@@ -72,7 +64,14 @@ class PublicWarrantyController extends Controller
                 'warranty_end_date' => $warrantyEnd->format('Y-m-d'),
                 'days_left' => $daysLeft,
                 'status' => $warrantyStatus,
-            ],
+            ];
+        })->values()->all();
+
+        return Inertia::render('Public/WarrantyCheck', [
+            'searched' => true,
+            'results' => $results,
+            // Backwards compatibility for any view still expecting one result.
+            'result' => $results[0] ?? null,
         ]);
     }
 }

@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, router, useForm } from "@inertiajs/vue3";
-import { computed, ref } from "vue";
+import { computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
 
 const props = defineProps({
     money: {
@@ -87,10 +87,59 @@ const props = defineProps({
 
 const showCashModal = ref(false);
 const showExpenseModal = ref(false);
-
-const selectedMonthFilter = ref(
-    props.selectedMonth || new Date().toISOString().slice(0, 7),
+const isFilteringMonth = ref(false);
+const isDeletingExpense = ref(false);
+const anyModalOpen = computed(
+    () => showCashModal.value || showExpenseModal.value,
 );
+
+const localDate = () => {
+    const date = new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+
+const openCashModal = () => {
+    cashForm.starting_cash = props.money.starting_cash ?? 0;
+    cashForm.clearErrors();
+    showCashModal.value = true;
+};
+const closeCashModal = () => {
+    if (cashForm.processing) return;
+    showCashModal.value = false;
+    cashForm.clearErrors();
+};
+const openExpenseModal = () => {
+    expenseForm.reset();
+    expenseForm.clearErrors();
+    expenseForm.spent_at = localDate();
+    showExpenseModal.value = true;
+};
+const closeExpenseModal = () => {
+    if (expenseForm.processing) return;
+    showExpenseModal.value = false;
+    expenseForm.clearErrors();
+};
+
+let previousBodyOverflow = "";
+watch(anyModalOpen, (isOpen) => {
+    if (typeof document === "undefined") return;
+    document.body.style.overflow = isOpen ? "hidden" : previousBodyOverflow;
+});
+const onEscape = (event) => {
+    if (event.key !== "Escape") return;
+    if (showExpenseModal.value) closeExpenseModal();
+    else if (showCashModal.value) closeCashModal();
+};
+onMounted(() => {
+    previousBodyOverflow = document.body.style.overflow;
+    window.addEventListener("keydown", onEscape);
+});
+onBeforeUnmount(() => {
+    window.removeEventListener("keydown", onEscape);
+    if (anyModalOpen.value) document.body.style.overflow = previousBodyOverflow;
+});
+
+const selectedMonthFilter = ref(props.selectedMonth || localDate().slice(0, 7));
 
 const selectedTrendMonth = ref(null);
 
@@ -625,6 +674,8 @@ const formatShortDate = (value) => {
 };
 
 const applyMonthFilter = () => {
+    if (isFilteringMonth.value) return;
+    isFilteringMonth.value = true;
     router.get(
         route("dashboard"),
         {
@@ -634,20 +685,26 @@ const applyMonthFilter = () => {
             preserveState: true,
             preserveScroll: true,
             replace: true,
+            onFinish: () => {
+                isFilteringMonth.value = false;
+            },
         },
     );
 };
 
 const updateStartingCash = () => {
+    if (cashForm.processing) return;
     cashForm.patch(route("admin.dashboard.starting-cash.update"), {
         preserveScroll: true,
         onSuccess: () => {
             showCashModal.value = false;
+            cashForm.clearErrors();
         },
     });
 };
 
 const addExpense = () => {
+    if (expenseForm.processing) return;
     expenseForm.post(route("admin.dashboard.expenses.store"), {
         preserveScroll: true,
         onSuccess: () => {
@@ -658,10 +715,17 @@ const addExpense = () => {
 };
 
 const deleteExpense = (expense) => {
-    if (!confirm(`Delete expense "${expense.title}"?`)) return;
-
+    if (
+        isDeletingExpense.value ||
+        !confirm(`Delete expense "${expense.title}"?`)
+    )
+        return;
+    isDeletingExpense.value = true;
     router.delete(route("admin.dashboard.expenses.destroy", expense.id), {
         preserveScroll: true,
+        onFinish: () => {
+            isDeletingExpense.value = false;
+        },
     });
 };
 </script>
@@ -670,13 +734,15 @@ const deleteExpense = (expense) => {
     <Head title="Dashboard | Montre Nova" />
 
     <AuthenticatedLayout title="Dashboard">
-        <div class="space-y-6 sm:space-y-8">
+        <div
+            class="mn-dashboard min-w-0 w-full max-w-full space-y-5 pb-10 sm:space-y-7"
+        >
             <!-- MOBILE QUICK ACTIONS -->
             <section class="grid grid-cols-2 gap-3 sm:hidden">
                 <button
                     type="button"
                     class="rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black"
-                    @click="showExpenseModal = true"
+                    @click="openExpenseModal"
                 >
                     Add Expense
                 </button>
@@ -684,7 +750,7 @@ const deleteExpense = (expense) => {
                 <button
                     type="button"
                     class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-bold text-white"
-                    @click="showCashModal = true"
+                    @click="openCashModal"
                 >
                     Cash Setup
                 </button>
@@ -735,7 +801,7 @@ const deleteExpense = (expense) => {
                             <button
                                 type="button"
                                 class="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200"
-                                @click="showCashModal = true"
+                                @click="openCashModal"
                             >
                                 Update Starting Cash
                             </button>
@@ -743,7 +809,7 @@ const deleteExpense = (expense) => {
                             <button
                                 type="button"
                                 class="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.06]"
-                                @click="showExpenseModal = true"
+                                @click="openExpenseModal"
                             >
                                 Add Expense
                             </button>
@@ -760,7 +826,7 @@ const deleteExpense = (expense) => {
                         </p>
 
                         <p
-                            class="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl"
+                            class="mt-3 break-words text-[clamp(1.8rem,7vw,3rem)] font-semibold tracking-tight"
                             :class="currentOnhandMoneyClass"
                         >
                             {{ compactPeso(currentOnhandMoney) }}
@@ -855,7 +921,7 @@ const deleteExpense = (expense) => {
                             type="submit"
                             class="rounded-2xl bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
                         >
-                            Apply
+                            {{ isFilteringMonth ? "Loading..." : "Apply" }}
                         </button>
                     </form>
                 </div>
@@ -914,7 +980,7 @@ const deleteExpense = (expense) => {
                     </h3>
                 </div>
 
-                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
                     <div
                         v-for="card in moneyCards"
                         :key="card.label"
@@ -927,7 +993,7 @@ const deleteExpense = (expense) => {
                         </p>
 
                         <p
-                            class="mt-4 text-3xl font-semibold tracking-tight"
+                            class="mt-4 break-words text-[clamp(1.45rem,5vw,1.875rem)] font-semibold tracking-tight"
                             :class="card.valueClass"
                         >
                             {{ card.compactValue }}
@@ -1072,7 +1138,9 @@ const deleteExpense = (expense) => {
                     </div>
                 </div>
 
-                <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div
+                    class="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4"
+                >
                     <div
                         v-for="card in trendSummaryCards"
                         :key="card.label"
@@ -1083,7 +1151,7 @@ const deleteExpense = (expense) => {
                         </p>
 
                         <p
-                            class="mt-2 text-2xl font-semibold tracking-tight"
+                            class="mt-2 break-words text-[clamp(1.15rem,4.5vw,1.5rem)] font-semibold tracking-tight"
                             :class="card.valueClass"
                         >
                             {{ card.value }}
@@ -1256,10 +1324,10 @@ const deleteExpense = (expense) => {
                 >
                     <div
                         v-if="salesProfitTrendRows.length"
-                        class="thin-scrollbar relative min-h-[22rem] overflow-x-auto"
+                        class="thin-scrollbar relative min-h-[20rem] w-full min-w-0 overflow-x-auto overscroll-x-contain"
                     >
                         <svg
-                            class="h-[22rem] w-[900px] max-w-none sm:w-full"
+                            class="mn-trend-svg"
                             :viewBox="`0 0 ${trendChartWidth} ${trendChartHeight}`"
                             role="img"
                             aria-label="Monthly sales and profit line graph"
@@ -1939,7 +2007,7 @@ const deleteExpense = (expense) => {
                         <button
                             type="button"
                             class="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-zinc-200"
-                            @click="showExpenseModal = true"
+                            @click="openExpenseModal"
                         >
                             Add
                         </button>
@@ -2010,16 +2078,13 @@ const deleteExpense = (expense) => {
         <Teleport to="body">
             <div
                 v-if="showCashModal"
-                class="fixed inset-0 z-[999] flex items-end justify-center bg-black/80 px-3 py-3 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
+                class="fixed inset-0 z-[999] flex items-end justify-center bg-black/80 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
             >
-                <div
-                    class="absolute inset-0"
-                    @click="showCashModal = false"
-                ></div>
+                <div class="absolute inset-0" @click="closeCashModal"></div>
 
                 <form
                     @submit.prevent="updateStartingCash"
-                    class="relative w-full max-w-md rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 shadow-2xl shadow-black sm:rounded-[2rem] sm:p-6"
+                    class="mn-modal relative max-h-[100dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-3xl border border-white/10 bg-[#0B0B0D] p-5 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl shadow-black sm:max-h-[90dvh] sm:rounded-3xl sm:p-6"
                 >
                     <p class="text-xs uppercase tracking-[0.3em] text-zinc-600">
                         Business Cash
@@ -2042,6 +2107,7 @@ const deleteExpense = (expense) => {
                         <input
                             v-model="cashForm.starting_cash"
                             type="number"
+                            inputmode="decimal"
                             step="0.01"
                             class="mn-input"
                             placeholder="0.00"
@@ -2059,7 +2125,8 @@ const deleteExpense = (expense) => {
                         <button
                             type="button"
                             class="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30"
-                            @click="showCashModal = false"
+                            @click="closeCashModal"
+                            :disabled="cashForm.processing"
                         >
                             Cancel
                         </button>
@@ -2080,16 +2147,13 @@ const deleteExpense = (expense) => {
         <Teleport to="body">
             <div
                 v-if="showExpenseModal"
-                class="fixed inset-0 z-[999] flex items-end justify-center bg-black/80 px-3 py-3 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
+                class="fixed inset-0 z-[999] flex items-end justify-center bg-black/80 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
             >
-                <div
-                    class="absolute inset-0"
-                    @click="showExpenseModal = false"
-                ></div>
+                <div class="absolute inset-0" @click="closeExpenseModal"></div>
 
                 <form
                     @submit.prevent="addExpense"
-                    class="relative max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 shadow-2xl shadow-black sm:rounded-[2rem] sm:p-6"
+                    class="mn-modal relative max-h-[100dvh] w-full max-w-xl overflow-y-auto overscroll-contain rounded-t-3xl border border-white/10 bg-[#0B0B0D] p-5 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl shadow-black sm:max-h-[90dvh] sm:rounded-3xl sm:p-6"
                 >
                     <p class="text-xs uppercase tracking-[0.3em] text-zinc-600">
                         Business Expense
@@ -2140,6 +2204,8 @@ const deleteExpense = (expense) => {
                             <input
                                 v-model="expenseForm.amount"
                                 type="number"
+                                inputmode="decimal"
+                                min="0"
                                 step="0.01"
                                 class="mn-input"
                                 placeholder="0.00"
@@ -2179,7 +2245,8 @@ const deleteExpense = (expense) => {
                         <button
                             type="button"
                             class="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30"
-                            @click="showExpenseModal = false"
+                            @click="closeExpenseModal"
+                            :disabled="expenseForm.processing"
                         >
                             Cancel
                         </button>
@@ -2284,5 +2351,68 @@ const deleteExpense = (expense) => {
     text-transform: uppercase;
     letter-spacing: 0.22em;
     color: rgb(82 82 91);
+}
+
+.mn-dashboard {
+    overflow-wrap: anywhere;
+}
+.mn-dashboard > * {
+    min-width: 0;
+}
+.mn-dashboard .mn-mini-card {
+    min-width: 0;
+    padding: clamp(0.7rem, 2vw, 1rem);
+}
+.mn-dashboard .mn-mini-label {
+    color: #a1a1aa;
+    letter-spacing: 0.11em;
+    line-height: 1.45;
+}
+.mn-dashboard .mn-mini-value {
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+}
+.mn-dashboard .mn-trend-svg,
+.mn-dashboard svg.mn-trend-svg {
+    display: block !important;
+    width: 900px !important;
+    min-width: 900px !important;
+    max-width: none !important;
+    height: 320px !important;
+    min-height: 0 !important;
+    flex: none !important;
+}
+.mn-dashboard button,
+.mn-modal button {
+    touch-action: manipulation;
+    min-height: 44px;
+}
+.mn-dashboard button:focus-visible,
+.mn-modal button:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
+}
+.mn-modal .mn-input {
+    min-height: 46px;
+    font-size: 16px;
+}
+.mn-modal .mn-label {
+    color: #a1a1aa;
+    letter-spacing: 0.12em;
+}
+@media (max-width: 639px) {
+    .mn-dashboard .mn-mini-card {
+        border-radius: 13px;
+    }
+    .mn-dashboard .mn-th {
+        padding: 0.8rem;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mn-dashboard *,
+    .mn-modal * {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
 }
 </style>

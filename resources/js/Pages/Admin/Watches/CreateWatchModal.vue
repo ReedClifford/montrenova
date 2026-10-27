@@ -2,7 +2,14 @@
 import InputError from "@/Components/InputError.vue";
 import { compressImageFile, formatFileSize } from "@/Utils/imageCompression";
 import { useForm } from "@inertiajs/vue3";
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    onMounted,
+    ref,
+    watch,
+} from "vue";
 
 const props = defineProps({
     show: {
@@ -23,6 +30,8 @@ const isCompressingImages = ref(false);
 const activeTab = ref("basic");
 const imagePreviews = ref([]);
 const fileInput = ref(null);
+const modalBody = ref(null);
+const previousBodyOverflow = ref("");
 const imageLimitMessage = ref("");
 const saveMode = ref("publish");
 const initialFormSnapshot = ref("");
@@ -254,6 +263,7 @@ watch(
     ([value]) => {
         if (value) {
             activeTab.value = "basic";
+            showPublicPreview.value = false;
             clearImages();
             form.reset();
             applyDefaultPublicState();
@@ -434,12 +444,15 @@ const goToTab = (key) => {
     }
 
     activeTab.value = key;
+    nextTick(() => {
+        if (modalBody.value) modalBody.value.scrollTop = 0;
+    });
 };
 
 const goToPreviousTab = () => {
     const previousIndex = Math.max(0, currentTabIndex.value - 1);
 
-    activeTab.value = tabs[previousIndex].key;
+    goToTab(tabs[previousIndex].key);
 };
 
 const goToNextTab = () => {
@@ -447,7 +460,7 @@ const goToNextTab = () => {
 
     const nextIndex = Math.min(tabs.length - 1, currentTabIndex.value + 1);
 
-    activeTab.value = tabs[nextIndex].key;
+    goToTab(tabs[nextIndex].key);
 };
 
 const syncImages = () => {
@@ -701,6 +714,49 @@ const submit = (mode = "publish") => {
     }
 
     form.post(route("admin.watches.store"), {
+        onError: (errors) => {
+            const fields = Object.keys(errors || {});
+            const tabForField = (field) => {
+                if (field.startsWith("images")) return "photos";
+                if (
+                    [
+                        "capital_price",
+                        "selling_price",
+                        "discounted_price",
+                        "status",
+                        "is_visible",
+                        "is_featured",
+                        "display_price",
+                        "allow_inquiry",
+                        "date_acquired",
+                        "date_sold",
+                    ].includes(field)
+                )
+                    return "pricing";
+                if (
+                    [
+                        "movement",
+                        "case_size",
+                        "case_material",
+                        "dial_color",
+                        "crystal",
+                        "bracelet_or_strap",
+                        "water_resistance",
+                        "box_papers",
+                        "warranty_type",
+                        "sections",
+                    ].some((k) => field === k || field.startsWith(k + "."))
+                )
+                    return "specs";
+                return "basic";
+            };
+            if (fields.length) {
+                activeTab.value = tabForField(fields[0]);
+                nextTick(() => {
+                    if (modalBody.value) modalBody.value.scrollTop = 0;
+                });
+            }
+        },
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
@@ -717,13 +773,35 @@ const handleBeforeUnload = (event) => {
     event.returnValue = "";
 };
 
+const onModalKeydown = (event) => {
+    if (event.key !== "Escape" || !props.show) return;
+    if (showPublicPreview.value) closePublicPreview();
+    else closeModal();
+};
+
+watch(
+    () => props.show,
+    (isOpen) => {
+        if (typeof document === "undefined") return;
+        if (isOpen) {
+            previousBodyOverflow.value = document.body.style.overflow;
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = previousBodyOverflow.value;
+        }
+    },
+);
+
 onMounted(() => {
     rememberCleanState();
+    window.addEventListener("keydown", onModalKeydown);
     window.addEventListener("beforeunload", handleBeforeUnload);
 });
 
 onBeforeUnmount(() => {
     window.removeEventListener("beforeunload", handleBeforeUnload);
+    window.removeEventListener("keydown", onModalKeydown);
+    if (props.show) document.body.style.overflow = previousBodyOverflow.value;
     clearImages();
 });
 </script>
@@ -740,7 +818,7 @@ onBeforeUnmount(() => {
         >
             <div
                 v-if="show"
-                class="fixed inset-0 z-[999] flex items-end justify-center bg-black/90 px-0 py-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
+                class="mn-modal-overlay fixed inset-0 z-[999] flex min-w-0 items-end justify-center overflow-hidden bg-black/90 backdrop-blur-sm sm:items-center sm:px-4 sm:py-5"
             >
                 <div class="absolute inset-0" @click="closeModal"></div>
 
@@ -755,7 +833,7 @@ onBeforeUnmount(() => {
                     <form
                         v-if="show"
                         @submit.prevent="submit('publish')"
-                        class="relative flex h-[100svh] w-full max-w-6xl flex-col overflow-hidden rounded-none border border-white/10 bg-[#080808] shadow-2xl shadow-black sm:h-auto sm:max-h-[92vh] sm:rounded-[2rem]"
+                        class="mn-watch-modal relative flex h-[100dvh] min-h-0 w-full min-w-0 max-w-6xl flex-col overflow-hidden rounded-none border border-white/10 bg-[#080808] shadow-2xl shadow-black sm:h-auto sm:max-h-[min(92dvh,960px)] sm:rounded-[1.5rem]"
                     >
                         <!-- MOBILE HANDLE -->
                         <div class="hidden">
@@ -766,7 +844,7 @@ onBeforeUnmount(() => {
 
                         <!-- HEADER -->
                         <div
-                            class="border-b border-white/10 bg-[#0B0B0D] px-4 py-3 sm:px-6 sm:py-5"
+                            class="mn-modal-header shrink-0 border-b border-white/10 bg-[#0B0B0D] px-3 py-3 sm:px-6 sm:py-5"
                         >
                             <div class="flex items-start justify-between gap-4">
                                 <div class="min-w-0">
@@ -803,7 +881,7 @@ onBeforeUnmount(() => {
                                     @click="closeModal"
                                 >
                                     <svg
-                                        class="h-5 w-5"
+                                        class="mn-icon h-5 w-5"
                                         fill="none"
                                         viewBox="0 0 24 24"
                                         stroke-width="1.7"
@@ -973,7 +1051,8 @@ onBeforeUnmount(() => {
 
                         <!-- BODY -->
                         <div
-                            class="thin-scrollbar flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6"
+                            ref="modalBody"
+                            class="mn-modal-content thin-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6 sm:py-6"
                         >
                             <!-- BASIC -->
                             <div
@@ -1484,7 +1563,7 @@ onBeforeUnmount(() => {
                                             "
                                         >
                                             <svg
-                                                class="h-4 w-4"
+                                                class="mn-icon h-4 w-4"
                                                 fill="none"
                                                 viewBox="0 0 24 24"
                                                 stroke-width="1.8"
@@ -1734,7 +1813,7 @@ onBeforeUnmount(() => {
 
                         <!-- FOOTER -->
                         <div
-                            class="safe-bottom border-t border-white/10 bg-[#0B0B0D] px-3 py-3 sm:px-6 sm:py-5"
+                            class="safe-bottom mn-modal-footer shrink-0 border-t border-white/10 bg-[#0B0B0D] px-3 py-2.5 sm:px-6 sm:py-5"
                         >
                             <div
                                 v-if="!canSubmit && missingRequirements.length"
@@ -1938,7 +2017,7 @@ onBeforeUnmount(() => {
                         <!-- PUBLIC LISTING PREVIEW -->
                         <div
                             v-if="showPublicPreview"
-                            class="absolute inset-0 z-50 flex flex-col bg-[#070707]"
+                            class="absolute inset-0 z-50 flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#070707]"
                         >
                             <div
                                 class="safe-top flex items-start justify-between gap-4 border-b border-white/10 bg-[#0B0B0D] px-4 py-4 sm:px-6 sm:py-5"
@@ -1970,7 +2049,7 @@ onBeforeUnmount(() => {
                                     @click="closePublicPreview"
                                 >
                                     <svg
-                                        class="h-5 w-5"
+                                        class="mn-icon h-5 w-5"
                                         fill="none"
                                         viewBox="0 0 24 24"
                                         stroke-width="1.7"
@@ -1986,7 +2065,7 @@ onBeforeUnmount(() => {
                             </div>
 
                             <div
-                                class="thin-scrollbar flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-7"
+                                class="thin-scrollbar min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6 sm:py-7"
                             >
                                 <div
                                     class="mx-auto grid max-w-6xl gap-5 lg:grid-cols-[0.9fr_1.1fr]"
@@ -2092,19 +2171,17 @@ onBeforeUnmount(() => {
                                             <div
                                                 class="mt-5 grid grid-cols-2 gap-3"
                                             >
-                                                <button
-                                                    type="button"
-                                                    class="rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black"
+                                                <span
+                                                    class="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black"
                                                 >
                                                     Inquire Now
-                                                </button>
+                                                </span>
 
-                                                <button
-                                                    type="button"
-                                                    class="rounded-2xl border border-white/10 px-4 py-3 text-sm font-bold text-white"
+                                                <span
+                                                    class="inline-flex items-center justify-center rounded-2xl border border-white/10 px-4 py-3 text-sm font-bold text-white"
                                                 >
                                                     Reserve Watch
-                                                </button>
+                                                </span>
                                             </div>
                                         </div>
 
@@ -2174,6 +2251,90 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* Isolate modal icons from broad global svg rules in the admin layout. */
+.mn-watch-modal svg.mn-icon {
+    display: block !important;
+    width: 20px !important;
+    height: 20px !important;
+    max-width: 20px !important;
+    max-height: 20px !important;
+    flex: none;
+}
+.mn-watch-modal svg.mn-icon.h-4 {
+    width: 16px !important;
+    height: 16px !important;
+    max-width: 16px !important;
+    max-height: 16px !important;
+}
+.mn-modal-content,
+.mn-modal-footer,
+.mn-modal-header {
+    min-width: 0;
+}
+.mn-modal-content {
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-top: 12px;
+}
+.mn-watch-modal input,
+.mn-watch-modal textarea,
+.mn-watch-modal select {
+    max-width: 100%;
+    min-width: 0;
+}
+.mn-watch-modal button {
+    touch-action: manipulation;
+}
+.mn-watch-modal button:focus-visible,
+.mn-watch-modal input:focus-visible,
+.mn-watch-modal select:focus-visible,
+.mn-watch-modal textarea:focus-visible {
+    outline: 2px solid #e4e4e7;
+    outline-offset: 2px;
+}
+@media (max-width: 639px) {
+    .mn-watch-modal {
+        border-left: 0;
+        border-right: 0;
+        border-top: 0;
+        border-bottom: 0;
+    }
+    .mn-modal-header {
+        padding-top: max(10px, env(safe-area-inset-top));
+    }
+    .mn-modal-footer {
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+    .mn-watch-modal .mn-input {
+        min-height: 46px;
+        font-size: 16px;
+    }
+    .mn-modal-footer button {
+        min-width: 0;
+        min-height: 44px;
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+    .mn-modal-footer .grid {
+        min-width: 0;
+    }
+}
+@media (max-height: 600px) and (max-width: 639px) {
+    .mn-modal-header {
+        padding-bottom: 6px;
+    }
+    .mn-modal-footer {
+        padding-top: 6px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mn-watch-modal *,
+    .mn-watch-modal *::before,
+    .mn-watch-modal *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}
+
 .safe-bottom {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }

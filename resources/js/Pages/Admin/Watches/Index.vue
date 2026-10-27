@@ -60,7 +60,11 @@ const props = defineProps({
 
 const activeTab = ref(
     typeof window !== "undefined"
-        ? localStorage.getItem("watch_admin_active_tab") || "inventory"
+        ? ["inventory", "warranty"].includes(
+              localStorage.getItem("watch_admin_active_tab"),
+          )
+            ? localStorage.getItem("watch_admin_active_tab")
+            : "inventory"
         : "inventory",
 );
 
@@ -75,7 +79,11 @@ const suppressSearchWatcher = ref(false);
 
 const viewMode = ref(
     typeof window !== "undefined"
-        ? localStorage.getItem("watch_stock_view") || "table"
+        ? ["table", "gallery"].includes(
+              localStorage.getItem("watch_stock_view"),
+          )
+            ? localStorage.getItem("watch_stock_view")
+            : "table"
         : "table",
 );
 
@@ -195,7 +203,9 @@ const compactPeso = (value) => {
 const formatDate = (value) => {
     if (!value) return "";
 
-    const date = new Date(value);
+    const date = new Date(
+        /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value,
+    );
 
     if (Number.isNaN(date.getTime())) {
         return value;
@@ -211,7 +221,9 @@ const formatDate = (value) => {
 const parseDateOnly = (value) => {
     if (!value) return null;
 
-    const date = new Date(value);
+    const date = new Date(
+        /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value,
+    );
 
     if (Number.isNaN(date.getTime())) {
         return null;
@@ -265,7 +277,7 @@ const warrantyEndDate = (item) => {
 
     if (!endDate) return null;
 
-    return endDate.toISOString().slice(0, 10);
+    return `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
 };
 
 const warrantyDaysLeft = (item) => {
@@ -1761,7 +1773,7 @@ const clearReservation = (watch) => {
     <Head title="Watch Stocks | Montre Nova" />
 
     <AuthenticatedLayout title="Watch Stocks">
-        <div class="space-y-5 pb-28 sm:space-y-7 md:pb-0">
+        <div class="mn-stocks min-w-0 space-y-4 pb-24 sm:space-y-7 md:pb-0">
             <!-- HEADER -->
             <section
                 class="relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 shadow-2xl shadow-black/30 sm:rounded-[2rem] sm:p-8"
@@ -1865,6 +1877,43 @@ const clearReservation = (watch) => {
                     </button>
                 </div>
             </section>
+
+            <!-- Direct access to both sections on mobile; no need to open filters to navigate. -->
+            <nav
+                class="mn-mobile-tabs grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-[#0B0B0D] p-1.5 md:hidden"
+                aria-label="Watch stock sections"
+            >
+                <button
+                    type="button"
+                    class="mn-tab-button"
+                    :class="
+                        activeTab === 'inventory'
+                            ? 'bg-white text-black'
+                            : 'text-zinc-300'
+                    "
+                    :aria-current="
+                        activeTab === 'inventory' ? 'page' : undefined
+                    "
+                    @click="setActiveTab('inventory')"
+                >
+                    Inventory
+                </button>
+                <button
+                    type="button"
+                    class="mn-tab-button"
+                    :class="
+                        activeTab === 'warranty'
+                            ? 'bg-white text-black'
+                            : 'text-zinc-300'
+                    "
+                    :aria-current="
+                        activeTab === 'warranty' ? 'page' : undefined
+                    "
+                    @click="setActiveTab('warranty')"
+                >
+                    Warranty
+                </button>
+            </nav>
 
             <template v-if="activeTab === 'inventory'">
                 <!-- SUMMARY -->
@@ -3025,19 +3074,11 @@ const clearReservation = (watch) => {
                                                 "
                                                 aria-label="More actions"
                                             >
-                                                <svg
-                                                    class="h-5 w-5"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke-width="1.8"
-                                                    stroke="currentColor"
+                                                <span
+                                                    class="mn-more-glyph"
+                                                    aria-hidden="true"
+                                                    >⋮</span
                                                 >
-                                                    <path
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
-                                                        d="M12 6.75h.008v.008H12V6.75zm0 5.25h.008v.008H12V12zm0 5.25h.008v.008H12v-.008z"
-                                                    />
-                                                </svg>
                                             </button>
                                         </div>
 
@@ -4436,24 +4477,14 @@ const clearReservation = (watch) => {
 
         <div
             v-if="!showMobileControls && !isArrangeMode"
-            class="fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-4 z-[100] md:hidden"
+            class="fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-[100] md:hidden"
         >
             <button
                 type="button"
-                class="group relative flex h-14 w-14 items-center justify-center rounded-full border border-white/35 bg-[#050505] text-white shadow-[0_0_28px_rgba(255,255,255,0.22)] ring-1 ring-white/15 backdrop-blur-xl transition hover:border-white/60 hover:bg-white hover:text-black hover:shadow-[0_0_34px_rgba(255,255,255,0.32)] active:scale-95"
+                class="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-white/25 bg-zinc-900 text-white shadow-lg shadow-black/40 transition hover:bg-zinc-800 active:scale-95"
                 aria-label="Open mobile controls"
                 @click="toggleMobileControls"
             >
-                <span
-                    class="pointer-events-none absolute inset-[-6px] rounded-full bg-white/10 blur-md"
-                ></span>
-                <span
-                    class="pointer-events-none absolute inset-0 rounded-full border border-white/25"
-                ></span>
-                <span
-                    class="pointer-events-none absolute inset-0 rounded-full border border-white/20 opacity-40 motion-safe:animate-ping"
-                ></span>
-
                 <span class="sr-only">Open mobile controls</span>
 
                 <span
@@ -4461,44 +4492,16 @@ const clearReservation = (watch) => {
                     class="absolute right-1.5 top-1.5 z-10 h-3 w-3 rounded-full border-2 border-[#050505] bg-white shadow-[0_0_12px_rgba(255,255,255,0.85)]"
                 ></span>
 
-                <svg
-                    class="relative z-10 h-6 w-6"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden="true"
-                >
-                    <path
-                        d="M4 7H20"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                    />
-                    <path
-                        d="M4 12H20"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                    />
-                    <path
-                        d="M4 17H20"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                    />
-                    <circle cx="9" cy="7" r="2" fill="currentColor" />
-                    <circle cx="15" cy="12" r="2" fill="currentColor" />
-                    <circle cx="11" cy="17" r="2" fill="currentColor" />
-                </svg>
+                <span class="mn-filter-glyph" aria-hidden="true">☷</span>
             </button>
         </div>
 
         <div
             v-if="showMobileControls && !isArrangeMode"
-            class="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] z-[100] md:hidden"
+            class="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-[100] md:hidden"
         >
             <section
-                class="mx-auto max-h-[74vh] max-w-md overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#050505]/98 shadow-2xl shadow-black/80 backdrop-blur-xl"
+                class="mx-auto max-h-[min(78dvh,680px)] max-w-md overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#050505]/98 shadow-2xl shadow-black/80 backdrop-blur-xl"
                 @click.stop
             >
                 <div
@@ -4528,25 +4531,12 @@ const clearReservation = (watch) => {
                         @click="closeMobileControls"
                     >
                         <span class="sr-only">Close mobile controls</span>
-                        <svg
-                            class="h-4 w-4"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                            aria-hidden="true"
-                        >
-                            <path
-                                d="M6 6L18 18M18 6L6 18"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                            />
-                        </svg>
+                        <span class="mn-close-glyph" aria-hidden="true">×</span>
                     </button>
                 </div>
 
                 <div
-                    class="max-h-[calc(74vh-4.25rem)] overflow-y-auto p-3 thin-scrollbar"
+                    class="max-h-[calc(min(78dvh,680px)-4.25rem)] overflow-y-auto p-3 thin-scrollbar"
                 >
                     <div
                         class="grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-1"
@@ -4609,19 +4599,10 @@ const clearReservation = (watch) => {
                             <p class="mn-mobile-panel-label">Search</p>
 
                             <div class="relative mt-2">
-                                <svg
-                                    class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke-width="1.8"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        d="m21 21-4.35-4.35m1.6-5.4a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z"
-                                    />
-                                </svg>
+                                <span
+                                    class="mn-search-glyph"
+                                    aria-hidden="true"
+                                ></span>
 
                                 <input
                                     v-model="search"
@@ -5005,6 +4986,100 @@ const clearReservation = (watch) => {
 
     100% {
         transform: translateX(220%);
+    }
+}
+
+/* Local responsive guardrails for the stock management page */
+.mn-stocks {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.mn-stocks button {
+    touch-action: manipulation;
+}
+.mn-stocks button:focus-visible,
+.mn-stocks input:focus-visible {
+    outline: 2px solid #e4e4e7;
+    outline-offset: 2px;
+}
+.mn-tab-button {
+    min-height: 44px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    transition:
+        background-color 0.18s,
+        color 0.18s;
+}
+.mn-more-glyph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    font-size: 24px;
+    line-height: 1;
+}
+.mn-filter-glyph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    font-size: 24px;
+    line-height: 1;
+}
+.mn-close-glyph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    font-size: 24px;
+    line-height: 1;
+}
+.mn-search-glyph {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 15px;
+    height: 15px;
+    border: 2px solid #71717a;
+    border-radius: 50%;
+    pointer-events: none;
+}
+.mn-search-glyph::after {
+    content: "";
+    position: absolute;
+    width: 7px;
+    height: 2px;
+    background: #71717a;
+    transform: rotate(45deg);
+    transform-origin: left center;
+    right: -6px;
+    bottom: -3px;
+    border-radius: 2px;
+}
+@media (max-width: 639px) {
+    .mn-stocks .mn-info-box {
+        padding: 0.7rem;
+    }
+    .mn-stocks .mn-info-value {
+        overflow-wrap: anywhere;
+    }
+    .mn-stocks .mn-action-btn {
+        min-height: 42px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mn-stocks *,
+    .mn-stocks *::before,
+    .mn-stocks *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
     }
 }
 </style>

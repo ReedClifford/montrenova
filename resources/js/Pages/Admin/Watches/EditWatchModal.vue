@@ -1288,6 +1288,42 @@ const closeWithoutPrompt = () => {
     emit("close");
 };
 
+const modalScrollArea = ref(null);
+const previousBodyOverflow = ref(null);
+
+const scrollModalToTop = async () => {
+    await nextTick();
+    modalScrollArea.value?.scrollTo({ top: 0, behavior: "instant" });
+};
+
+watch(activeTab, scrollModalToTop);
+
+watch(
+    () => props.show,
+    (visible) => {
+        if (typeof document === "undefined") return;
+        if (visible) {
+            if (previousBodyOverflow.value === null) {
+                previousBodyOverflow.value = document.body.style.overflow;
+            }
+            document.body.style.overflow = "hidden";
+        } else if (previousBodyOverflow.value !== null) {
+            document.body.style.overflow = previousBodyOverflow.value;
+            previousBodyOverflow.value = null;
+        }
+    },
+    { immediate: true },
+);
+
+const onModalKeydown = (event) => {
+    if (!props.show || event.key !== "Escape") return;
+    if (showPublicPreview.value) {
+        closePublicPreview();
+        return;
+    }
+    closeModal();
+};
+
 const closeModal = () => {
     if (form.processing || isCompressingImages.value) return;
 
@@ -1465,14 +1501,23 @@ onMounted(() => {
 
     if (typeof window !== "undefined") {
         window.addEventListener("beforeunload", handleBeforeUnload);
+        window.addEventListener("keydown", onModalKeydown);
     }
 });
 
 onBeforeUnmount(() => {
     clearNewImages();
+    if (
+        typeof document !== "undefined" &&
+        previousBodyOverflow.value !== null
+    ) {
+        document.body.style.overflow = previousBodyOverflow.value;
+        previousBodyOverflow.value = null;
+    }
 
     if (typeof window !== "undefined") {
         window.removeEventListener("beforeunload", handleBeforeUnload);
+        window.removeEventListener("keydown", onModalKeydown);
     }
 });
 </script>
@@ -1490,6 +1535,7 @@ onBeforeUnmount(() => {
             <div
                 v-if="show && watch && !isClosingAfterSave"
                 class="fixed inset-0 z-[999] flex items-stretch justify-center bg-black/90 p-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
+                role="presentation"
             >
                 <div class="absolute inset-0" @click="closeModal"></div>
 
@@ -1504,7 +1550,10 @@ onBeforeUnmount(() => {
                     <form
                         v-if="show && watch && !isClosingAfterSave"
                         @submit.prevent="submit"
-                        class="relative flex h-[100dvh] max-h-[100dvh] w-full max-w-6xl flex-col overflow-hidden rounded-none border border-white/10 bg-[#080808] shadow-2xl shadow-black sm:h-auto sm:max-h-[92vh] sm:rounded-[2rem]"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Edit watch"
+                        class="mn-edit-panel relative flex h-[100dvh] max-h-[100dvh] min-h-0 w-full max-w-6xl flex-col overflow-hidden rounded-none border border-white/10 bg-[#080808] shadow-2xl shadow-black sm:h-auto sm:max-h-[92dvh] sm:rounded-[1.5rem] lg:rounded-[2rem]"
                     >
                         <!-- MOBILE HANDLE -->
 
@@ -1517,7 +1566,7 @@ onBeforeUnmount(() => {
                         <!-- HEADER -->
 
                         <div
-                            class="border-b border-white/10 bg-[#0B0B0D] px-4 py-3 sm:px-6 sm:py-5"
+                            class="mn-edit-header shrink-0 border-b border-white/10 bg-[#0B0B0D] px-4 py-3 sm:px-6 sm:py-5"
                         >
                             <div class="flex items-start justify-between gap-4">
                                 <div class="min-w-0">
@@ -1555,20 +1604,13 @@ onBeforeUnmount(() => {
                                     type="button"
                                     class="shrink-0 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-zinc-400 transition hover:border-white/30 hover:text-white"
                                     @click="closeModal"
+                                    aria-label="Close edit watch"
                                 >
-                                    <svg
-                                        class="h-5 w-5"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke-width="1.7"
-                                        stroke="currentColor"
+                                    <span
+                                        aria-hidden="true"
+                                        class="mn-close-icon"
+                                        >×</span
                                     >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
                                 </button>
                             </div>
 
@@ -1688,7 +1730,8 @@ onBeforeUnmount(() => {
                         <!-- BODY -->
 
                         <div
-                            class="thin-scrollbar flex-1 overflow-y-auto px-3 py-4 sm:px-6 sm:py-6"
+                            ref="modalScrollArea"
+                            class="thin-scrollbar mn-edit-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-6"
                         >
                             <!-- BASIC -->
 
@@ -2169,19 +2212,11 @@ onBeforeUnmount(() => {
                                                         : 'cursor-not-allowed border-red-400/20 bg-red-400/10 text-red-300'
                                                 "
                                             >
-                                                <svg
-                                                    class="h-4 w-4"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke-width="1.8"
-                                                    stroke="currentColor"
+                                                <span
+                                                    aria-hidden="true"
+                                                    class="mn-plus-icon"
+                                                    >+</span
                                                 >
-                                                    <path
-                                                        stroke-linecap="round"
-                                                        stroke-linejoin="round"
-                                                        d="M12 4.5v15m7.5-7.5h-15"
-                                                    />
-                                                </svg>
 
                                                 <span>
                                                     {{
@@ -2494,7 +2529,7 @@ onBeforeUnmount(() => {
                         <!-- FOOTER -->
 
                         <div
-                            class="safe-bottom border-t border-white/10 bg-[#0B0B0D] px-3 py-3 sm:px-6 sm:py-5"
+                            class="safe-bottom mn-edit-footer shrink-0 border-t border-white/10 bg-[#0B0B0D] px-3 py-3 sm:px-6 sm:py-5"
                         >
                             <div
                                 v-if="submitFeedback"
@@ -2760,24 +2795,16 @@ onBeforeUnmount(() => {
                                     class="shrink-0 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-zinc-400 transition hover:border-white/30 hover:text-white"
                                     @click="closePublicPreview"
                                 >
-                                    <svg
-                                        class="h-5 w-5"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke-width="1.7"
-                                        stroke="currentColor"
+                                    <span
+                                        aria-hidden="true"
+                                        class="mn-close-icon"
+                                        >×</span
                                     >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
                                 </button>
                             </div>
 
                             <div
-                                class="thin-scrollbar flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-7"
+                                class="thin-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 sm:py-7"
                             >
                                 <div
                                     class="mx-auto grid max-w-6xl gap-5 lg:grid-cols-[0.9fr_1.1fr]"
@@ -3217,6 +3244,76 @@ onBeforeUnmount(() => {
         padding: 0.55rem 0.65rem;
 
         font-size: 0.7rem;
+    }
+}
+
+.mn-close-icon {
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    line-height: 1;
+    font-weight: 300;
+}
+.mn-plus-icon {
+    display: inline-flex;
+    width: 16px;
+    height: 16px;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    line-height: 1;
+}
+.mn-edit-panel,
+.mn-edit-panel * {
+    min-width: 0;
+}
+.mn-edit-panel input,
+.mn-edit-panel select,
+.mn-edit-panel textarea {
+    max-width: 100%;
+}
+.mn-edit-panel button,
+.mn-edit-panel label {
+    touch-action: manipulation;
+}
+.mn-edit-panel button:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
+}
+@media (max-width: 639px) {
+    .mn-edit-panel {
+        height: 100dvh;
+        max-height: 100dvh;
+    }
+    .mn-edit-header {
+        padding-top: max(12px, env(safe-area-inset-top));
+    }
+    .mn-edit-scroll {
+        scrollbar-width: thin;
+    }
+    .mn-edit-panel .mn-input {
+        min-height: 46px;
+        font-size: 16px;
+    }
+    .mn-edit-panel textarea.mn-input {
+        min-height: 100px;
+    }
+    .mn-edit-footer {
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+    }
+    .mn-edit-footer button {
+        min-height: 44px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mn-edit-panel *,
+    .mn-edit-panel *::before,
+    .mn-edit-panel *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
     }
 }
 </style>

@@ -6,6 +6,11 @@ import { Head, Link, useForm } from "@inertiajs/vue3";
 import { computed } from "vue";
 
 const props = defineProps({
+    results: {
+        type: Array,
+        default: () => [],
+    },
+
     result: {
         type: Object,
 
@@ -28,7 +33,9 @@ const form = useForm({
 const formatDate = (value) => {
     if (!value) return "—";
 
-    const date = new Date(value);
+    const date = new Date(
+        /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? `${value}T12:00:00` : value,
+    );
 
     if (Number.isNaN(date.getTime())) return "—";
 
@@ -41,73 +48,65 @@ const formatDate = (value) => {
     });
 };
 
-const statusLabel = computed(() => {
-    if (!props.result) return "";
-
-    if (props.result.status === "active") return "Active Warranty";
-
-    if (props.result.status === "expiring_soon") return "Expiring Soon";
-
-    if (props.result.status === "expired") return "Expired Warranty";
-
-    return "Unknown";
+// Supports an array response (results) and the legacy single-result payload.
+const warrantyRecords = computed(() => {
+    if (Array.isArray(props.results)) {
+        if (props.results.length || !props.result) return props.results;
+    }
+    if (Array.isArray(props.result)) return props.result;
+    if (Array.isArray(props.result?.watches)) return props.result.watches;
+    if (Array.isArray(props.result?.results)) return props.result.results;
+    return props.result ? [props.result] : [];
 });
-
-const statusClass = computed(() => {
-    if (!props.result) return "";
-
-    if (props.result.status === "active") {
+const statusLabel = (item) =>
+    ({
+        active: "Active Warranty",
+        expiring_soon: "Expiring Soon",
+        expired: "Expired Warranty",
+    })[item?.status] || "Status Unavailable";
+const statusClass = (item) => {
+    if (item?.status === "active")
         return "border-emerald-400/20 bg-emerald-400/10 text-emerald-300";
-    }
-
-    if (props.result.status === "expiring_soon") {
+    if (item?.status === "expiring_soon")
         return "border-amber-400/20 bg-amber-400/10 text-amber-300";
-    }
-
-    return "border-red-400/20 bg-red-400/10 text-red-300";
-});
-
-const statusDotClass = computed(() => {
-    if (!props.result) return "bg-zinc-500";
-
-    if (props.result.status === "active") return "bg-emerald-300";
-
-    if (props.result.status === "expiring_soon") return "bg-amber-300";
-
-    return "bg-red-300";
-});
-
-const daysLeftLabel = computed(() => {
-    if (!props.result) return "";
-
-    const days = Number(props.result.days_left);
-
+    if (item?.status === "expired")
+        return "border-red-400/20 bg-red-400/10 text-red-300";
+    return "border-white/10 bg-white/[0.03] text-zinc-400";
+};
+const statusDotClass = (item) =>
+    item?.status === "active"
+        ? "bg-emerald-300"
+        : item?.status === "expiring_soon"
+          ? "bg-amber-300"
+          : item?.status === "expired"
+            ? "bg-red-300"
+            : "bg-zinc-500";
+const daysLeftLabel = (item) => {
+    if (
+        item?.days_left === null ||
+        item?.days_left === undefined ||
+        item?.days_left === ""
+    )
+        return "Confirm warranty dates with Montre Nova.";
+    const days = Number(item.days_left);
+    if (!Number.isFinite(days))
+        return "Confirm warranty dates with Montre Nova.";
     if (days < 0) return "Warranty coverage has ended.";
-
     if (days === 0) return "Warranty expires today.";
-
     if (days === 1) return "1 day remaining.";
-
     return `${days} days remaining.`;
-});
-
-const warrantyProgress = computed(() => {
-    if (!props.result) return 0;
-
-    const days = Number(props.result.days_left || 0);
-
+};
+const warrantyProgress = (item) => {
+    const days = Number(item?.days_left);
+    if (item?.days_left == null || !Number.isFinite(days)) return 0;
     if (days <= 0) return 100;
-
-    const usedDays = 365 - Math.min(days, 365);
-
-    return Math.max(0, Math.min(100, Math.round((usedDays / 365) * 100)));
-});
-
-const resultTitle = computed(() => {
-    if (!props.result) return "";
-
-    return `${props.result.brand || ""} ${props.result.model_name || ""}`.trim();
-});
+    return Math.max(
+        0,
+        Math.min(100, Math.round(((365 - Math.min(days, 365)) / 365) * 100)),
+    );
+};
+const resultTitle = (item) =>
+    `${item?.brand || ""} ${item?.model_name || ""}`.trim();
 
 const warrantyItems = [
     {
@@ -138,6 +137,8 @@ const checklistItems = [
 ];
 
 const submit = () => {
+    if (form.processing || !String(form.buyer_name || "").trim()) return;
+
     form.post(route("public.warranty-check.check"), {
         preserveScroll: true,
     });
@@ -423,156 +424,185 @@ const submit = () => {
 
                     <!-- RESULT -->
 
-                    <div
-                        v-if="result"
-                        class="overflow-hidden rounded-xl border border-white/10 bg-[#0B0B0D]/95 shadow-2xl shadow-black/40"
-                    >
-                        <div class="relative p-5 sm:p-7">
-                            <div
-                                class="pointer-events-none absolute right-[-7rem] top-[-7rem] h-64 w-64 rounded-full bg-white/[0.045] blur-3xl"
-                            ></div>
-
-                            <div
-                                class="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+                    <div v-if="warrantyRecords.length" class="space-y-4">
+                        <div
+                            class="flex flex-wrap items-center justify-between gap-2 px-1"
+                        >
+                            <h2 class="text-lg font-semibold text-white">
+                                Purchase warranty records
+                            </h2>
+                            <span
+                                class="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-zinc-300"
+                                >{{ warrantyRecords.length }}
+                                {{
+                                    warrantyRecords.length === 1
+                                        ? "watch"
+                                        : "watches"
+                                }}
+                                found</span
                             >
-                                <div class="min-w-0">
-                                    <p
-                                        class="text-[11px] font-black uppercase tracking-[0.28em] text-zinc-500"
-                                    >
-                                        Warranty Result
-                                    </p>
+                        </div>
+                        <article
+                            v-for="(item, index) in warrantyRecords"
+                            :key="item.id ?? item.serial_number ?? index"
+                            class="overflow-hidden rounded-xl border border-white/10 bg-[#0B0B0D]/95 shadow-xl shadow-black/30"
+                        >
+                            <div class="relative p-5 sm:p-7">
+                                <div
+                                    class="pointer-events-none absolute right-[-7rem] top-[-7rem] h-64 w-64 rounded-full bg-white/[0.045] blur-3xl"
+                                ></div>
 
-                                    <h2
-                                        class="mt-2 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
-                                    >
-                                        {{ resultTitle || "Montre Nova Watch" }}
-                                    </h2>
-
-                                    <p class="mt-2 text-sm text-zinc-500">
-                                        Ref.
-
-                                        {{
-                                            result.reference_number ||
-                                            "No reference"
-                                        }}
-                                    </p>
-                                </div>
-
-                                <span
-                                    class="inline-flex w-fit items-center gap-2 rounded-lg border px-3 py-2 text-xs font-black uppercase tracking-[0.12em]"
-                                    :class="statusClass"
+                                <div
+                                    class="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
                                 >
+                                    <div class="min-w-0">
+                                        <p
+                                            class="text-[11px] font-black uppercase tracking-[0.28em] text-zinc-500"
+                                        >
+                                            Warranty Result
+                                        </p>
+
+                                        <h2
+                                            class="mt-2 text-2xl font-black tracking-[-0.04em] text-white sm:text-3xl"
+                                        >
+                                            {{
+                                                resultTitle(item) ||
+                                                "Montre Nova Watch"
+                                            }}
+                                        </h2>
+
+                                        <p class="mt-2 text-sm text-zinc-500">
+                                            Ref.
+
+                                            {{
+                                                item.reference_number ||
+                                                "No reference"
+                                            }}
+                                        </p>
+                                    </div>
+
                                     <span
-                                        class="h-2 w-2 rounded-full"
-                                        :class="statusDotClass"
-                                    ></span>
-
-                                    {{ statusLabel }}
-                                </span>
-                            </div>
-
-                            <div
-                                class="relative mt-6 rounded-lg border border-white/10 bg-white/[0.035] p-4"
-                            >
-                                <div
-                                    class="mb-3 flex items-center justify-between gap-4"
-                                >
-                                    <p
-                                        class="text-xs font-bold uppercase tracking-[0.18em] text-zinc-500"
+                                        class="inline-flex w-fit items-center gap-2 rounded-lg border px-3 py-2 text-xs font-black uppercase tracking-[0.12em]"
+                                        :class="statusClass(item)"
                                     >
-                                        Warranty Timeline
-                                    </p>
+                                        <span
+                                            class="h-2 w-2 rounded-full"
+                                            :class="statusDotClass(item)"
+                                        ></span>
 
-                                    <p class="text-xs font-bold text-zinc-400">
-                                        {{ warrantyProgress }}%
-                                    </p>
+                                        {{ statusLabel(item) }}
+                                    </span>
                                 </div>
 
                                 <div
-                                    class="h-2 overflow-hidden rounded-full bg-white/10"
+                                    class="relative mt-6 rounded-lg border border-white/10 bg-white/[0.035] p-4"
                                 >
                                     <div
-                                        class="h-full rounded-full bg-white transition-all duration-500"
-                                        :style="{
-                                            width: `${warrantyProgress}%`,
-                                        }"
-                                    ></div>
-                                </div>
+                                        class="mb-3 flex items-center justify-between gap-4"
+                                    >
+                                        <p
+                                            class="text-xs font-bold uppercase tracking-[0.18em] text-zinc-500"
+                                        >
+                                            Warranty Timeline
+                                        </p>
 
-                                <p
-                                    class="mt-3 text-sm font-semibold"
-                                    :class="statusClass"
-                                >
-                                    {{ daysLeftLabel }}
-                                </p>
-                            </div>
+                                        <p
+                                            class="text-xs font-bold text-zinc-400"
+                                        >
+                                            {{ warrantyProgress(item) }}%
+                                        </p>
+                                    </div>
 
-                            <div class="mt-5 grid gap-3 sm:grid-cols-2">
-                                <div class="mn-info">
-                                    <p class="mn-info-label">Buyer</p>
-
-                                    <p class="mn-info-value">
-                                        {{ result.buyer_name || "—" }}
-                                    </p>
-                                </div>
-
-                                <div class="mn-info">
-                                    <p class="mn-info-label">Serial</p>
-
-                                    <p class="mn-info-value">
-                                        {{ result.serial_number || "—" }}
-                                    </p>
-                                </div>
-
-                                <div class="mn-info">
-                                    <p class="mn-info-label">Date Sold</p>
-
-                                    <p class="mn-info-value">
-                                        {{ formatDate(result.date_sold) }}
-                                    </p>
-                                </div>
-
-                                <div class="mn-info">
-                                    <p class="mn-info-label">Warranty Until</p>
-
-                                    <p class="mn-info-value">
-                                        {{
-                                            formatDate(result.warranty_end_date)
-                                        }}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div
-                            class="border-t border-white/10 bg-black/20 p-5 sm:p-6"
-                        >
-                            <div
-                                class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"
-                            >
-                                <div>
-                                    <p class="text-sm font-bold text-white">
-                                        Need help with this warranty?
-                                    </p>
+                                    <div
+                                        class="h-2 overflow-hidden rounded-full bg-white/10"
+                                    >
+                                        <div
+                                            class="h-full rounded-full bg-white transition-all duration-500"
+                                            :style="{
+                                                width: `${warrantyProgress(item)}%`,
+                                            }"
+                                        ></div>
+                                    </div>
 
                                     <p
-                                        class="mt-1 text-xs leading-5 text-zinc-500"
+                                        class="mt-3 text-sm font-semibold"
+                                        :class="statusClass(item)"
                                     >
-                                        Send the warranty result to Montre Nova
-                                        for after-sales support.
+                                        {{ daysLeftLabel(item) }}
                                     </p>
                                 </div>
 
-                                <a
-                                    href="https\://m.me/montrenova"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.07]"
-                                >
-                                    Message Support
-                                </a>
+                                <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                                    <div class="mn-info">
+                                        <p class="mn-info-label">Buyer</p>
+
+                                        <p class="mn-info-value">
+                                            {{ item.buyer_name || "—" }}
+                                        </p>
+                                    </div>
+
+                                    <div class="mn-info">
+                                        <p class="mn-info-label">Serial</p>
+
+                                        <p class="mn-info-value">
+                                            {{ item.serial_number || "—" }}
+                                        </p>
+                                    </div>
+
+                                    <div class="mn-info">
+                                        <p class="mn-info-label">Date Sold</p>
+
+                                        <p class="mn-info-value">
+                                            {{ formatDate(item.date_sold) }}
+                                        </p>
+                                    </div>
+
+                                    <div class="mn-info">
+                                        <p class="mn-info-label">
+                                            Warranty Until
+                                        </p>
+
+                                        <p class="mn-info-value">
+                                            {{
+                                                formatDate(
+                                                    item.warranty_end_date,
+                                                )
+                                            }}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+
+                            <div
+                                class="border-t border-white/10 bg-black/20 p-5 sm:p-6"
+                            >
+                                <div
+                                    class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"
+                                >
+                                    <div>
+                                        <p class="text-sm font-bold text-white">
+                                            Need help with this warranty?
+                                        </p>
+
+                                        <p
+                                            class="mt-1 text-xs leading-5 text-zinc-500"
+                                        >
+                                            Send the warranty result to Montre
+                                            Nova for after-sales support.
+                                        </p>
+                                    </div>
+
+                                    <a
+                                        href="https://m.me/montrenova"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-white transition hover:border-white/30 hover:bg-white/[0.07]"
+                                    >
+                                        Message Support
+                                    </a>
+                                </div>
+                            </div>
+                        </article>
                     </div>
 
                     <!-- EMPTY / NOT FOUND STATE -->
@@ -590,7 +620,7 @@ const submit = () => {
 
                             <div>
                                 <p class="text-sm font-black text-red-300">
-                                    No warranty record found.
+                                    No matching warranty records found.
                                 </p>
 
                                 <p
@@ -602,7 +632,7 @@ const submit = () => {
                                 </p>
 
                                 <a
-                                    href="https\://m.me/montrenova"
+                                    href="https://m.me/montrenova"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     class="mt-4 inline-flex rounded-lg border border-red-300/20 bg-red-300/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-red-100 transition hover:border-red-200/40"
@@ -774,10 +804,15 @@ const submit = () => {
 
 .mn-subpage {
     --mn-bg: #080809;
+
     --mn-surface: #111113;
+
     --mn-muted: #a7a7ac;
+
     min-height: 100vh;
+
     color: #f2f2f3;
+
     font-family:
         "Manrope",
         ui-sans-serif,
@@ -786,98 +821,145 @@ const submit = () => {
         BlinkMacSystemFont,
         "Segoe UI",
         sans-serif;
+
     background: #080809;
+
     isolation: isolate;
 }
+
 .mn-subpage,
 .mn-subpage button,
 .mn-subpage input,
 .mn-subpage select {
     font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
 }
+
 .mn-subpage :is(h1, h2, h3, h4) {
     font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
     overflow-wrap: break-word;
 }
+
 .mn-subpage h1 {
     letter-spacing: -0.055em;
+
     line-height: 1.09;
-    font-weight: 650;
+
+    font-weight: 600;
 }
+
 .mn-subpage :is(h2, h3) {
     letter-spacing: -0.035em;
+
     line-height: 1.18;
 }
+
 .mn-marble-underlay {
     position: fixed;
+
     inset: 0;
+
     z-index: -1;
+
     pointer-events: none;
+
     overflow: hidden;
+
     background:
         radial-gradient(
             ellipse at 73% 12%,
+
             rgba(64, 65, 70, 0.13),
             transparent 45%
         ),
         linear-gradient(155deg, #0b0b0e 0%, #060607 52%, #0b0b0e 100%);
 }
+
 .mn-marble-underlay::before {
     content: "";
+
     position: absolute;
+
     inset: -5%;
+
     opacity: 0.32;
+
     background-image:
         linear-gradient(
             154deg,
             transparent 0 36%,
+
             rgba(200, 201, 208, 0.1) 36.09%,
+
             rgba(200, 201, 208, 0.025) 36.3%,
+
             transparent 36.6%
         ),
         linear-gradient(
             147deg,
             transparent 0 66%,
+
             rgba(195, 196, 202, 0.085) 66.08%,
+
             rgba(195, 196, 202, 0.02) 66.28%,
+
             transparent 66.55%
         ),
         linear-gradient(
             27deg,
             transparent 0 81%,
+
             rgba(180, 182, 191, 0.07) 81.07%,
+
             transparent 81.4%
         );
+
     filter: blur(0.45px);
+
     transform: scale(1.08);
 }
+
 .mn-marble-underlay::after {
     content: "";
+
     position: absolute;
+
     inset: 0;
+
     background: radial-gradient(
         ellipse at 48% 38%,
+
         transparent 0%,
+
         rgba(0, 0, 0, 0.45) 80%
     );
 }
+
 .mn-subpage .mn-unified-header {
     border-color: rgba(255, 255, 255, 0.09) !important;
+
     background: rgba(12, 12, 14, 0.92) !important;
+
     backdrop-filter: blur(22px);
+
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
 }
+
 .mn-subpage
     :is(.premium-panel, .gallery-panel, .product-panel, .carousel-shell) {
     border-radius: 12px;
+
     border-color: rgba(255, 255, 255, 0.11);
+
     background: linear-gradient(
         160deg,
         rgba(29, 29, 32, 0.96),
         rgba(13, 13, 15, 0.98)
     );
+
     box-shadow: 0 20px 55px rgba(0, 0, 0, 0.25);
 }
+
 .mn-subpage
     :is(
         .primary-action,
@@ -888,52 +970,70 @@ const submit = () => {
     ) {
     border-radius: 5px;
 }
+
 .mn-subpage button,
 .mn-subpage a {
     -webkit-tap-highlight-color: transparent;
 }
+
 .mn-subpage button:focus-visible,
 .mn-subpage a:focus-visible,
 .mn-subpage input:focus-visible {
     outline: 2px solid #dedee1;
+
     outline-offset: 3px;
 }
+
 .mn-subpage .micro-label {
     color: #a2a2a8;
+
     font-weight: 700;
+
     letter-spacing: 0.17em;
 }
+
 .mn-subpage :is(.text-red-300, .text-violet-300, .text-red-400) {
     color: #d6d6da !important;
 }
+
 .mn-subpage :is(.bg-red-400\/10, .bg-violet-400\/10) {
     background-color: rgba(255, 255, 255, 0.065) !important;
 }
+
 .mn-subpage :is(.border-red-400\/20, .border-violet-400\/20) {
     border-color: rgba(255, 255, 255, 0.14) !important;
 }
+
 .mn-subpage .mn-float-remove {
     display: none !important;
 }
+
 @media (max-width: 639px) {
     .mn-subpage h1 {
         font-size: clamp(1.95rem, 8vw, 2.65rem) !important;
+
         line-height: 1.14 !important;
+
         letter-spacing: -0.048em !important;
     }
+
     .mn-subpage h2 {
         line-height: 1.22;
     }
+
     .mn-subpage .product-hero-grid {
         grid-template-columns: minmax(0, 1fr) !important;
     }
+
     .mn-subpage .gallery-stage {
         height: min(88vw, 420px);
     }
+
     .mn-subpage .primary-action {
         min-height: 48px;
     }
 }
+
 @media (prefers-reduced-motion: reduce) {
     .mn-subpage *,
     .mn-subpage *::before,

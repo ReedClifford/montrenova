@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, Link, router } from "@inertiajs/vue3";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps({
     selectedMonth: {
@@ -39,8 +39,18 @@ const props = defineProps({
     },
 });
 
-const selectedMonthFilter = ref(
-    props.selectedMonth || new Date().toISOString().slice(0, 7),
+const localMonth = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const selectedMonthFilter = ref(props.selectedMonth || localMonth());
+const isFiltering = ref(false);
+watch(
+    () => props.selectedMonth,
+    (month) => {
+        selectedMonthFilter.value = month || localMonth();
+    },
 );
 
 const peso = (value) => {
@@ -67,7 +77,10 @@ const compactPeso = (value) => {
 const formatDate = (value) => {
     if (!value) return "No date";
 
-    const date = new Date(value);
+    // Date-only database values must not shift to the previous day in local time.
+    const date = new Date(
+        /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value,
+    );
 
     if (Number.isNaN(date.getTime())) {
         return value;
@@ -122,11 +135,11 @@ const saleProfitAmount = (sale) => {
     */
     if (
         sale &&
-        Object.prototype.hasOwnProperty.call(sale, "sold_price") &&
-        (Object.prototype.hasOwnProperty.call(sale, "capital_price") ||
-            Object.prototype.hasOwnProperty.call(sale, "capital") ||
-            Object.prototype.hasOwnProperty.call(sale, "capital_cost") ||
-            Object.prototype.hasOwnProperty.call(sale, "total_capital"))
+        sale.sold_price != null &&
+        (sale.capital_price != null ||
+            sale.capital != null ||
+            sale.capital_cost != null ||
+            sale.total_capital != null)
     ) {
         return saleSoldPrice(sale) - saleCapitalPrice(sale);
     }
@@ -152,9 +165,8 @@ const unitProfitTotal = (unit) => {
     */
     if (
         unit &&
-        Object.prototype.hasOwnProperty.call(unit, "sales_total") &&
-        (Object.prototype.hasOwnProperty.call(unit, "capital_total") ||
-            Object.prototype.hasOwnProperty.call(unit, "total_capital"))
+        (unit.sales_total != null || unit.sold_price_total != null) &&
+        (unit.capital_total != null || unit.total_capital != null)
     ) {
         return unitSalesTotal(unit) - unitCapitalTotal(unit);
     }
@@ -165,6 +177,9 @@ const unitProfitTotal = (unit) => {
 };
 
 const applyMonthFilter = () => {
+    if (isFiltering.value || !/^\d{4}-\d{2}$/.test(selectedMonthFilter.value))
+        return;
+    isFiltering.value = true;
     router.get(
         route("admin.sales.index"),
         {
@@ -174,6 +189,9 @@ const applyMonthFilter = () => {
             preserveState: false,
             preserveScroll: true,
             replace: true,
+            onFinish: () => {
+                isFiltering.value = false;
+            },
         },
     );
 };
@@ -356,9 +374,11 @@ const insightCards = computed(() => [
     <Head title="Sales | Montre Nova" />
 
     <AuthenticatedLayout title="Sales">
-        <div class="space-y-6 sm:space-y-8">
+        <main
+            class="mn-sales mx-auto w-full min-w-0 max-w-[1600px] space-y-5 pb-12 sm:space-y-7"
+        >
             <!-- MOBILE QUICK ACTIONS -->
-            <section class="grid grid-cols-2 gap-3 sm:hidden">
+            <section class="grid grid-cols-2 gap-2 sm:hidden">
                 <Link
                     :href="route('admin.watches.index')"
                     class="rounded-2xl bg-white px-4 py-3 text-center text-sm font-bold text-black"
@@ -370,8 +390,9 @@ const insightCards = computed(() => [
                     type="button"
                     class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-bold text-white"
                     @click="applyMonthFilter"
+                    :disabled="isFiltering"
                 >
-                    Refresh Month
+                    {{ isFiltering ? "Loading..." : "Refresh Month" }}
                 </button>
             </section>
 
@@ -390,7 +411,7 @@ const insightCards = computed(() => [
                 </div>
 
                 <div
-                    class="relative grid gap-6 lg:grid-cols-[1fr_0.48fr] lg:items-center"
+                    class="relative grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,0.55fr)] lg:items-center"
                 >
                     <div>
                         <p
@@ -400,7 +421,7 @@ const insightCards = computed(() => [
                         </p>
 
                         <h2
-                            class="mt-4 max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-5xl"
+                            class="mt-3 max-w-3xl text-[clamp(1.5rem,3vw,2.6rem)] font-semibold leading-tight tracking-tight text-white"
                         >
                             Sales, profit, and sold watch performance.
                         </h2>
@@ -441,13 +462,13 @@ const insightCards = computed(() => [
                         </p>
 
                         <p
-                            class="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl"
+                            class="mt-3 break-words text-[clamp(1.8rem,4vw,3rem)] font-semibold tracking-tight tabular-nums"
                             :class="selectedMonthNetProfitClass"
                         >
                             {{ compactPeso(selectedMonthSummary.net_profit) }}
                         </p>
 
-                        <p class="mt-2 text-sm text-zinc-500">
+                        <p class="mt-2 break-words text-sm text-zinc-500">
                             {{ peso(selectedMonthSummary.net_profit) }}
                         </p>
 
@@ -457,14 +478,14 @@ const insightCards = computed(() => [
                             <div
                                 v-for="stat in heroStats"
                                 :key="stat.label"
-                                class="flex items-center justify-between gap-4"
+                                class="flex min-w-0 items-start justify-between gap-3"
                             >
                                 <span class="text-sm text-zinc-500">
                                     {{ stat.label }}
                                 </span>
 
                                 <span
-                                    class="text-right text-sm font-semibold"
+                                    class="min-w-0 break-words text-right text-sm font-semibold tabular-nums"
                                     :class="stat.valueClass"
                                 >
                                     {{ stat.value }}
@@ -476,11 +497,14 @@ const insightCards = computed(() => [
             </section>
 
             <!-- INSIGHTS -->
-            <section class="grid gap-3 sm:grid-cols-3">
+            <section
+                class="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3"
+                aria-label="Monthly insights"
+            >
                 <div
                     v-for="card in insightCards"
                     :key="card.label"
-                    class="rounded-[1.4rem] border p-4 sm:p-5"
+                    class="min-w-0 rounded-2xl border p-3.5 sm:p-5"
                     :class="card.className"
                 >
                     <p
@@ -489,7 +513,9 @@ const insightCards = computed(() => [
                         {{ card.label }}
                     </p>
 
-                    <p class="mt-3 text-2xl font-semibold tracking-tight">
+                    <p
+                        class="mt-3 break-words text-xl font-semibold tracking-tight sm:text-2xl"
+                    >
                         {{ card.value }}
                     </p>
 
@@ -501,7 +527,7 @@ const insightCards = computed(() => [
 
             <!-- MONTH CHECKER -->
             <section
-                class="rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 sm:p-6"
+                class="min-w-0 rounded-2xl border border-white/10 bg-[#101012] p-4 sm:rounded-3xl sm:p-6"
             >
                 <div
                     class="flex flex-col justify-between gap-5 lg:flex-row lg:items-end"
@@ -517,7 +543,7 @@ const insightCards = computed(() => [
                             {{ selectedMonthSummary.label || "Selected Month" }}
                         </h3>
 
-                        <p class="mt-2 text-sm text-zinc-500">
+                        <p class="mt-2 break-words text-sm text-zinc-500">
                             {{
                                 selectedMonthSummary.date_range ||
                                 "Select a month to view performance."
@@ -526,25 +552,30 @@ const insightCards = computed(() => [
                     </div>
 
                     <form
-                        class="grid gap-3 sm:grid-cols-[1fr_auto]"
+                        class="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 sm:w-auto sm:gap-3"
                         @submit.prevent="applyMonthFilter"
                     >
                         <input
                             v-model="selectedMonthFilter"
                             type="month"
-                            class="mn-input"
+                            aria-label="Select sales month"
+                            class="mn-input min-w-0"
+                            :disabled="isFiltering"
                         />
 
                         <button
                             type="submit"
-                            class="rounded-2xl bg-white px-5 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
+                            :disabled="isFiltering"
+                            class="rounded-xl bg-white px-4 py-3 text-sm font-bold text-black transition hover:bg-zinc-200 disabled:cursor-wait disabled:opacity-60"
                         >
-                            Check Month
+                            {{ isFiltering ? "Loading..." : "Check Month" }}
                         </button>
                     </form>
                 </div>
 
-                <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                <div
+                    class="mt-5 grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6 sm:gap-3"
+                >
                     <div
                         v-for="card in selectedMonthCards"
                         :key="card.label"
@@ -555,13 +586,13 @@ const insightCards = computed(() => [
                         </p>
 
                         <p
-                            class="mt-2 text-2xl font-semibold tracking-tight"
+                            class="mt-2 break-words text-xl font-semibold tracking-tight tabular-nums sm:text-2xl"
                             :class="card.valueClass"
                         >
                             {{ card.value }}
                         </p>
 
-                        <p class="mt-1 text-xs text-zinc-600">
+                        <p class="mt-1 break-words text-xs text-zinc-500">
                             {{ card.fullValue }}
                         </p>
                     </div>
@@ -581,19 +612,23 @@ const insightCards = computed(() => [
                         Week, month, and year
                     </h3>
 
-                    <p class="mt-2 text-sm text-zinc-500">
+                    <p class="mt-2 break-words text-sm text-zinc-500">
                         Net profit uses the actual sold price minus capital cost
                         and expenses.
                     </p>
                 </div>
 
-                <div class="grid gap-4 xl:grid-cols-3">
+                <div
+                    class="grid min-w-0 gap-3 md:grid-cols-2 xl:grid-cols-3 sm:gap-4"
+                >
                     <div
                         v-for="card in performanceCards"
                         :key="card.label"
-                        class="rounded-[1.7rem] border border-white/10 bg-[#0B0B0D] p-5 transition hover:border-white/20 sm:p-6"
+                        class="min-w-0 rounded-2xl border border-white/10 bg-[#101012] p-4 transition-colors hover:border-white/20 sm:rounded-3xl sm:p-6"
                     >
-                        <div class="flex items-start justify-between gap-4">
+                        <div
+                            class="flex min-w-0 items-start justify-between gap-2.5"
+                        >
                             <div>
                                 <p
                                     class="text-xs font-bold uppercase tracking-[0.22em] text-zinc-600"
@@ -617,18 +652,20 @@ const insightCards = computed(() => [
                             <p class="text-sm text-zinc-500">Net Profit</p>
 
                             <p
-                                class="mt-2 text-3xl font-semibold tracking-tight"
+                                class="mt-2 break-words text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl"
                                 :class="netProfitClass(card.netProfitValue)"
                             >
                                 {{ card.compactNetProfit }}
                             </p>
 
-                            <p class="mt-1 text-xs text-zinc-600">
+                            <p class="mt-1 break-words text-xs text-zinc-500">
                                 {{ card.netProfit }}
                             </p>
                         </div>
 
-                        <div class="mt-5 grid grid-cols-2 gap-3">
+                        <div
+                            class="mt-5 grid min-w-0 grid-cols-2 gap-2.5 sm:gap-3"
+                        >
                             <div class="mn-mini-card">
                                 <p class="mn-mini-label">Sales</p>
                                 <p class="mn-mini-value">
@@ -638,7 +675,12 @@ const insightCards = computed(() => [
 
                             <div class="mn-mini-card">
                                 <p class="mn-mini-label">Gross</p>
-                                <p class="mn-mini-value text-emerald-300">
+                                <p
+                                    class="mn-mini-value"
+                                    :class="
+                                        netProfitClass(unitProfitTotal(unit))
+                                    "
+                                >
                                     {{ card.compactGrossProfit }}
                                 </p>
                             </div>
@@ -664,11 +706,11 @@ const insightCards = computed(() => [
             <!-- TOP SOLD + RECENT SALES -->
             <section
                 id="recent-sales"
-                class="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]"
+                class="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]"
             >
                 <!-- TOP SOLD -->
                 <div
-                    class="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D]"
+                    class="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[#101012] sm:rounded-3xl"
                 >
                     <div class="border-b border-white/10 p-5 sm:p-6">
                         <p
@@ -686,9 +728,11 @@ const insightCards = computed(() => [
                         <div
                             v-for="(unit, index) in topSoldUnits"
                             :key="`${unit.brand}-${unit.model_name}-${unit.reference_number}`"
-                            class="p-5 transition hover:bg-white/[0.02]"
+                            class="p-4 transition-colors hover:bg-white/[0.02] sm:p-5"
                         >
-                            <div class="flex items-start justify-between gap-4">
+                            <div
+                                class="flex min-w-0 items-start justify-between gap-2.5"
+                            >
                                 <div class="min-w-0">
                                     <div class="flex items-center gap-2">
                                         <span
@@ -717,7 +761,7 @@ const insightCards = computed(() => [
                                 </div>
 
                                 <div
-                                    class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-medium text-zinc-300"
+                                    class="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs font-medium text-zinc-300"
                                 >
                                     {{ unit.sold_count }} sold
                                 </div>
@@ -729,17 +773,28 @@ const insightCards = computed(() => [
                                     <p class="mn-mini-value">
                                         {{ compactPeso(unitSalesTotal(unit)) }}
                                     </p>
-                                    <p class="mt-1 text-xs text-zinc-600">
+                                    <p
+                                        class="mt-1 break-words text-xs text-zinc-500"
+                                    >
                                         {{ peso(unitSalesTotal(unit)) }}
                                     </p>
                                 </div>
 
                                 <div class="mn-mini-card">
                                     <p class="mn-mini-label">Profit</p>
-                                    <p class="mn-mini-value text-emerald-300">
+                                    <p
+                                        class="mn-mini-value"
+                                        :class="
+                                            netProfitClass(
+                                                unitProfitTotal(unit),
+                                            )
+                                        "
+                                    >
                                         {{ compactPeso(unitProfitTotal(unit)) }}
                                     </p>
-                                    <p class="mt-1 text-xs text-zinc-600">
+                                    <p
+                                        class="mt-1 break-words text-xs text-zinc-500"
+                                    >
                                         {{ peso(unitProfitTotal(unit)) }}
                                     </p>
                                 </div>
@@ -754,7 +809,7 @@ const insightCards = computed(() => [
                                 No sold units yet.
                             </p>
 
-                            <p class="mt-2 text-sm text-zinc-500">
+                            <p class="mt-2 break-words text-sm text-zinc-500">
                                 Mark watches as sold to generate your top
                                 selling list.
                             </p>
@@ -764,7 +819,7 @@ const insightCards = computed(() => [
 
                 <!-- RECENT SALES -->
                 <div
-                    class="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0B0B0D]"
+                    class="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[#101012] sm:rounded-3xl"
                 >
                     <div class="border-b border-white/10 p-5 sm:p-6">
                         <p
@@ -783,16 +838,16 @@ const insightCards = computed(() => [
                         <div
                             v-for="sale in recentSales"
                             :key="sale.id"
-                            class="p-5"
+                            class="p-4 sm:p-5"
                         >
                             <div class="flex items-center gap-4">
                                 <div
                                     class="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#050505]"
                                 >
                                     <img
-                                        v-if="sale.primary_image"
+                                        v-if="sale.primary_image?.image_url"
                                         :src="sale.primary_image.image_url"
-                                        class="h-full w-full object-cover"
+                                        class="h-full w-full object-contain"
                                         alt=""
                                     />
 
@@ -821,7 +876,9 @@ const insightCards = computed(() => [
                                         }}
                                     </p>
 
-                                    <p class="mt-1 text-xs text-zinc-600">
+                                    <p
+                                        class="mt-1 break-words text-xs text-zinc-500"
+                                    >
                                         {{ formatDate(sale.date_sold) }}
                                     </p>
                                 </div>
@@ -861,7 +918,7 @@ const insightCards = computed(() => [
                                 No sold watches yet.
                             </p>
 
-                            <p class="mt-2 text-sm text-zinc-500">
+                            <p class="mt-2 break-words text-sm text-zinc-500">
                                 Change a watch status to sold to show it here.
                             </p>
                         </div>
@@ -869,7 +926,9 @@ const insightCards = computed(() => [
 
                     <!-- DESKTOP TABLE -->
                     <div class="hidden overflow-x-auto md:block">
-                        <table class="min-w-full divide-y divide-white/10">
+                        <table
+                            class="w-full min-w-[620px] divide-y divide-white/10"
+                        >
                             <thead>
                                 <tr class="bg-white/[0.02]">
                                     <th class="mn-th">Watch</th>
@@ -891,12 +950,15 @@ const insightCards = computed(() => [
                                                 class="h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#050505]"
                                             >
                                                 <img
-                                                    v-if="sale.primary_image"
+                                                    v-if="
+                                                        sale.primary_image
+                                                            ?.image_url
+                                                    "
                                                     :src="
                                                         sale.primary_image
                                                             .image_url
                                                     "
-                                                    class="h-full w-full object-cover"
+                                                    class="h-full w-full object-contain"
                                                     alt=""
                                                 />
 
@@ -962,7 +1024,9 @@ const insightCards = computed(() => [
                                             No sold watches yet.
                                         </p>
 
-                                        <p class="mt-2 text-sm text-zinc-500">
+                                        <p
+                                            class="mt-2 break-words text-sm text-zinc-500"
+                                        >
                                             Change a watch status to sold to
                                             show it here.
                                         </p>
@@ -973,7 +1037,7 @@ const insightCards = computed(() => [
                     </div>
                 </div>
             </section>
-        </div>
+        </main>
     </AuthenticatedLayout>
 </template>
 
@@ -1002,7 +1066,8 @@ const insightCards = computed(() => [
     border-radius: 1rem;
     border: 1px solid rgb(255 255 255 / 0.1);
     background: rgb(255 255 255 / 0.03);
-    padding: 1rem;
+    padding: clamp(0.65rem, 1.5vw, 1rem);
+    min-width: 0;
 }
 
 .mn-mini-label {
@@ -1010,13 +1075,15 @@ const insightCards = computed(() => [
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.16em;
-    color: rgb(113 113 122);
+    color: rgb(161 161 170);
 }
 
 .mn-mini-value {
     margin-top: 0.45rem;
-    font-size: 0.95rem;
+    font-size: clamp(0.8rem, 1.4vw, 0.95rem);
     font-weight: 700;
+    overflow-wrap: anywhere;
+    font-variant-numeric: tabular-nums;
     color: white;
 }
 
@@ -1027,5 +1094,39 @@ const insightCards = computed(() => [
     text-transform: uppercase;
     letter-spacing: 0.22em;
     color: rgb(82 82 91);
+}
+.mn-sales {
+    overflow-wrap: anywhere;
+}
+.mn-sales > section,
+.mn-sales > section > div {
+    min-width: 0;
+}
+.mn-sales button,
+.mn-sales a {
+    touch-action: manipulation;
+}
+.mn-sales button:focus-visible,
+.mn-sales a:focus-visible,
+.mn-input:focus-visible {
+    outline: 2px solid #f4f4f5;
+    outline-offset: 2px;
+}
+.mn-sales button:disabled {
+    opacity: 0.55;
+    cursor: wait;
+}
+@media (max-width: 360px) {
+    .mn-mini-label {
+        font-size: 0.61rem;
+        letter-spacing: 0.07em;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mn-sales *,
+    .mn-sales *::before,
+    .mn-sales *::after {
+        transition-duration: 0.01ms !important;
+    }
 }
 </style>
