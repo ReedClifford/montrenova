@@ -23,6 +23,46 @@ class PreorderTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_follow_up_queue_counts_all_orders_and_filters_before_pagination(): void
+    {
+        $this->admin();
+        for ($i = 0; $i < 16; $i++) {
+            $this->order();
+        }
+        $supplier = $this->order();
+        $this->entry($supplier, 'payment', 4000);
+        $old = $this->order();
+        $old->update(['status' => 'ordered', 'created_at' => now()->subDays(15)]);
+        $overdue = $this->order();
+        $overdue->update(['status' => 'ordered', 'estimated_arrival' => today()->subDay()]);
+        $recent = $this->order();
+        $recent->update(['status' => 'ordered', 'estimated_arrival' => today()->addDay()]);
+        $unpaid = $this->order();
+        $this->entry($unpaid, 'payment', 19000);
+        $this->entry($unpaid, 'cost', 2000);
+        $unpaid->update(['status' => 'arrived']);
+        $paid = $this->order();
+        $this->entry($paid, 'payment', 20000);
+        $paid->update(['status' => 'arrived']);
+        $this->order()->update(['status' => 'cancelled']);
+        $this->order()->update(['status' => 'fulfilled']);
+
+        $response = $this->get(route('admin.preorders.index'))->assertOk();
+        $counts = collect($response->viewData('page')['props']['followUps'])->pluck('count', 'key')->all();
+        $this->assertSame(['deposit' => 16, 'supplier' => 1, 'sourcing' => 2, 'balance' => 1, 'handover' => 1], $counts);
+        foreach (['supplier' => [$supplier->id], 'sourcing' => [$overdue->id, $old->id], 'balance' => [$unpaid->id], 'handover' => [$paid->id]] as $queue => $ids) {
+            $filtered = $this->get(route('admin.preorders.index', ['queue' => $queue]))->assertOk();
+            $orders = $filtered->viewData('page')['props']['orders'];
+            $this->assertSame(count($ids), $orders['total']);
+            $this->assertEqualsCanonicalizing($ids, array_column($orders['data'], 'id'));
+        }
+        $this->get(route('admin.preorders.index', ['queue' => 'deposit']))->assertInertia(fn (Assert $page) => $page
+            ->where('orders.total', 16)->has('orders.data', 15)->where('filters.queue', 'deposit'));
+        $this->get(route('admin.preorders.index', ['queue' => 'balance', 'search' => 'no matching customer']))
+            ->assertInertia(fn (Assert $page) => $page->where('orders.total', 0)->where('followUps.3.count', 1));
+        $this->get(route('admin.preorders.index', ['queue' => 'unknown']))->assertSessionHasErrors('queue');
+    }
+
     public function test_customer_tracking_is_private_and_only_exposes_customer_facing_fields(): void
     {
         $this->admin();

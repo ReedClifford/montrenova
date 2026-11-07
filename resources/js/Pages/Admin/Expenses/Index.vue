@@ -1,4 +1,9 @@
 <script setup>
+import AdminRecordCard from "@/Components/AdminRecordCard.vue";
+import FormFeedback from "@/Components/FormFeedback.vue";
+import { useUnsavedChanges } from "@/Composables/useUnsavedChanges";
+import Modal from "@/Components/Modal.vue";
+import { lockBodyScroll } from "@/Utils/scrollLock";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, Link, router, useForm } from "@inertiajs/vue3";
 import { computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
@@ -57,20 +62,23 @@ let suppressFilterWatch = false;
 const isAnyModalOpen = computed(
     () => showExpenseModal.value || showDeleteModal.value,
 );
+let releaseExpenseScroll;
 watch(isAnyModalOpen, (open) => {
-    if (typeof document !== "undefined")
-        document.body.style.overflow = open ? "hidden" : "";
+    if (open) releaseExpenseScroll = lockBodyScroll();
+    else {
+        releaseExpenseScroll?.();
+        releaseExpenseScroll = null;
+    }
 });
 const onEscape = (event) => {
     if (event.key !== "Escape") return;
-    if (showExpenseModal.value && !form.processing) closeExpenseModal();
     if (showDeleteModal.value && !isDeleting.value) closeDeleteModal();
 };
 onMounted(() => window.addEventListener("keydown", onEscape));
 onBeforeUnmount(() => {
     clearTimeout(timeout);
     window.removeEventListener("keydown", onEscape);
-    if (typeof document !== "undefined") document.body.style.overflow = "";
+    releaseExpenseScroll?.();
 });
 const form = useForm({
     title: "",
@@ -78,6 +86,13 @@ const form = useForm({
     amount: "",
     spent_at: "",
     notes: "",
+});
+const cleanExpense = ref("");
+const { confirmDiscard } = useUnsavedChanges({
+    dirty: () =>
+        showExpenseModal.value &&
+        JSON.stringify(form.data()) !== cleanExpense.value,
+    busy: () => form.processing,
 });
 const peso = (value) => {
     return new Intl.NumberFormat("en-PH", {
@@ -263,6 +278,7 @@ const openCreateModal = () => {
         form.spent_at = localDate();
     }
     showExpenseModal.value = true;
+    cleanExpense.value = JSON.stringify(form.data());
 };
 const openEditModal = (expense) => {
     modalMode.value = "edit";
@@ -274,9 +290,13 @@ const openEditModal = (expense) => {
     form.notes = expense.notes || "";
     form.clearErrors();
     showExpenseModal.value = true;
+    cleanExpense.value = JSON.stringify(form.data());
 };
-const closeExpenseModal = () => {
-    if (form.processing) return;
+const closeExpenseModal = async () => {
+    if (form.processing || !(await confirmDiscard())) return;
+    resetExpenseModal();
+};
+const resetExpenseModal = () => {
     showExpenseModal.value = false;
     selectedExpense.value = null;
     form.reset();
@@ -287,13 +307,13 @@ const submitExpense = () => {
     if (modalMode.value === "create") {
         form.post(route("admin.expenses.store"), {
             preserveScroll: true,
-            onSuccess: () => closeExpenseModal(),
+            onSuccess: resetExpenseModal,
         });
         return;
     }
     form.patch(route("admin.expenses.update", selectedExpense.value.id), {
         preserveScroll: true,
-        onSuccess: () => closeExpenseModal(),
+        onSuccess: resetExpenseModal,
     });
 };
 const openDeleteModal = (expense) => {
@@ -638,52 +658,43 @@ const deleteExpense = () => {
             </section>
             <!-- MOBILE CARDS -->
             <section class="space-y-3 md:hidden" aria-label="Expense entries">
-                <div
+                <AdminRecordCard
                     v-for="expense in expenseRows"
                     :key="expense.id"
-                    class="rounded-2xl border border-white/10 bg-[#0B0B0D] p-4"
+                    :title="expense.title"
+                    :subtitle="expense.category || 'General'"
+                    details-label="Expense notes"
                 >
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="min-w-0">
-                            <p
-                                class="truncate text-sm font-semibold text-white"
-                            >
-                                {{ expense.title }}
-                            </p>
-                            <p class="mt-1 text-xs text-zinc-500">
-                                {{ expense.category || "General" }}
-                            </p>
-                        </div>
-                        <p class="shrink-0 text-sm font-semibold text-red-300">
-                            {{ compactPeso(expense.amount) }}
-                        </p>
-                    </div>
-                    <p class="mt-3 text-xs text-zinc-400">
-                        {{ formatDate(expense.spent_at) }}
-                    </p>
-                    <p
-                        v-if="expense.notes"
-                        class="mt-3 line-clamp-2 text-xs leading-5 text-zinc-500"
+                    <template #metrics
+                        ><dl>
+                            <dt>Amount</dt>
+                            <dd class="text-red-300">
+                                {{ peso(expense.amount) }}
+                            </dd>
+                        </dl>
+                        <dl>
+                            <dt>Date spent</dt>
+                            <dd>{{ formatDate(expense.spent_at) }}</dd>
+                        </dl></template
                     >
-                        {{ expense.notes }}
-                    </p>
-                    <div class="mt-5 grid grid-cols-2 gap-2">
-                        <button
+                    <template #actions
+                        ><button type="button" @click="openEditModal(expense)">
+                            Edit expense</button
+                        ><button
                             type="button"
-                            class="mn-action-btn border-white/10 text-zinc-300"
-                            @click="openEditModal(expense)"
-                        >
-                            Edit
-                        </button>
-                        <button
-                            type="button"
-                            class="mn-action-btn border-red-500/20 text-red-300"
+                            class="text-red-300"
                             @click="openDeleteModal(expense)"
                         >
                             Delete
-                        </button>
-                    </div>
-                </div>
+                        </button></template
+                    >
+                    <template v-if="expense.notes" #details
+                        ><p class="whitespace-pre-wrap">
+                            {{ expense.notes }}
+                        </p></template
+                    >
+                </AdminRecordCard>
+
                 <div
                     v-if="!expenseRows.length"
                     class="rounded-[1.5rem] border border-white/10 bg-[#0B0B0D] p-10 text-center"
@@ -811,168 +822,178 @@ const deleteExpense = () => {
             </section>
         </div>
         <!-- ADD / EDIT MODAL -->
-        <Teleport to="body">
-            <div
-                v-if="showExpenseModal"
-                class="fixed inset-0 z-[1000] flex items-end justify-center bg-black/80 backdrop-blur-sm sm:items-center sm:px-4 sm:py-6"
+        <Modal
+            :show="showExpenseModal"
+            max-width="xl"
+            :closeable="!form.processing"
+            label="Expense details"
+            @close="closeExpenseModal"
+        >
+            <form
+                @submit.prevent="submitExpense"
+                aria-labelledby="expense-modal-title"
+                class="mn-modal relative flex max-h-[calc(100dvh-5rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0B0B0D] shadow-2xl shadow-black sm:max-h-[85dvh] sm:rounded-3xl"
             >
-                <div class="absolute inset-0" @click="closeExpenseModal"></div>
-                <form
-                    @submit.prevent="submitExpense"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-labelledby="expense-modal-title"
-                    class="mn-modal relative flex max-h-[100dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-[#0B0B0D] shadow-2xl shadow-black sm:max-h-[90dvh] sm:rounded-3xl"
+                <div
+                    class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6"
                 >
-                    <div
-                        class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6"
+                    <p class="text-xs uppercase tracking-[0.3em] text-zinc-500">
+                        Expense
+                    </p>
+                    <h2
+                        id="expense-modal-title"
+                        class="mt-3 text-2xl font-semibold tracking-tight text-white"
                     >
-                        <p
-                            class="text-xs uppercase tracking-[0.3em] text-zinc-500"
-                        >
-                            Expense
-                        </p>
-                        <h2
-                            id="expense-modal-title"
-                            class="mt-3 text-2xl font-semibold tracking-tight text-white"
-                        >
-                            {{
-                                modalMode === "create"
-                                    ? "Add Expense"
-                                    : "Edit Expense"
-                            }}
-                        </h2>
-                        <p class="mt-3 text-sm leading-6 text-zinc-500">
-                            Record business costs like ads, transportation,
-                            packaging, repairs, fees, and other expenses.
-                        </p>
-                        <datalist id="expense-categories">
-                            <option
-                                v-for="item in categories"
-                                :key="item"
-                                :value="item"
+                        {{
+                            modalMode === "create"
+                                ? "Add Expense"
+                                : "Edit Expense"
+                        }}
+                    </h2>
+                    <p class="mt-3 text-sm leading-6 text-zinc-500">
+                        Record business costs like ads, transportation,
+                        packaging, repairs, fees, and other expenses.
+                    </p>
+                    <p class="mt-3 text-xs text-zinc-400">
+                        Title, amount and date are required. Category and notes
+                        are optional.
+                    </p>
+                    <FormFeedback :errors="form.errors" />
+                    <datalist id="expense-categories">
+                        <option
+                            v-for="item in categories"
+                            :key="item"
+                            :value="item"
+                        />
+                    </datalist>
+                    <div class="mt-6 grid gap-5 md:grid-cols-2">
+                        <div>
+                            <label class="mn-label" for="expense-title"
+                                >Title *</label
+                            >
+                            <input
+                                v-model="form.title"
+                                class="mn-input"
+                                id="expense-title"
+                                :aria-invalid="Boolean(form.errors.title)"
+                                :disabled="form.processing"
+                                required
+                                maxlength="255"
+                                placeholder="Facebook Ads"
                             />
-                        </datalist>
-                        <div class="mt-6 grid gap-5 md:grid-cols-2">
-                            <div>
-                                <label class="mn-label" for="expense-title"
-                                    >Title</label
-                                >
-                                <input
-                                    v-model="form.title"
-                                    class="mn-input"
-                                    id="expense-title"
-                                    required
-                                    maxlength="255"
-                                    placeholder="Facebook Ads"
-                                />
-                                <p
-                                    v-if="form.errors.title"
-                                    class="mt-2 text-sm text-red-300"
-                                >
-                                    {{ form.errors.title }}
-                                </p>
-                            </div>
-                            <div>
-                                <label class="mn-label" for="expense-category"
-                                    >Category</label
-                                >
-                                <input
-                                    v-model="form.category"
-                                    list="expense-categories"
-                                    id="expense-category"
-                                    class="mn-input"
-                                    required
-                                    placeholder="Ads, Transpo, Packaging"
-                                />
-                                <p
-                                    v-if="form.errors.category"
-                                    class="mt-2 text-sm text-red-300"
-                                >
-                                    {{ form.errors.category }}
-                                </p>
-                            </div>
-                            <div>
-                                <label class="mn-label" for="expense-amount"
-                                    >Amount</label
-                                >
-                                <input
-                                    v-model="form.amount"
-                                    id="expense-amount"
-                                    type="number"
-                                    required
-                                    inputmode="decimal"
-                                    min="0"
-                                    step="0.01"
-                                    class="mn-input"
-                                    placeholder="0.00"
-                                />
-                                <p
-                                    v-if="form.errors.amount"
-                                    class="mt-2 text-sm text-red-300"
-                                >
-                                    {{ form.errors.amount }}
-                                </p>
-                            </div>
-                            <div>
-                                <label class="mn-label" for="expense-date"
-                                    >Date Spent</label
-                                >
-                                <input
-                                    v-model="form.spent_at"
-                                    id="expense-date"
-                                    type="date"
-                                    required
-                                    class="mn-input"
-                                />
-                                <p
-                                    v-if="form.errors.spent_at"
-                                    class="mt-2 text-sm text-red-300"
-                                >
-                                    {{ form.errors.spent_at }}
-                                </p>
-                            </div>
-                            <div class="md:col-span-2">
-                                <label class="mn-label" for="expense-notes"
-                                    >Notes</label
-                                >
-                                <textarea
-                                    v-model="form.notes"
-                                    id="expense-notes"
-                                    rows="4"
-                                    class="mn-input"
-                                    placeholder="Optional notes..."
-                                ></textarea>
-                                <p
-                                    v-if="form.errors.notes"
-                                    class="mt-2 text-sm text-red-300"
-                                >
-                                    {{ form.errors.notes }}
-                                </p>
-                            </div>
+                            <p
+                                v-if="form.errors.title"
+                                class="mt-2 text-sm text-red-300"
+                            >
+                                {{ form.errors.title }}
+                            </p>
+                        </div>
+                        <div>
+                            <label class="mn-label" for="expense-category"
+                                >Category</label
+                            >
+                            <input
+                                v-model="form.category"
+                                list="expense-categories"
+                                id="expense-category"
+                                :aria-invalid="Boolean(form.errors.category)"
+                                :disabled="form.processing"
+                                class="mn-input"
+                                placeholder="Ads, Transpo, Packaging"
+                            />
+                            <p
+                                v-if="form.errors.category"
+                                class="mt-2 text-sm text-red-300"
+                            >
+                                {{ form.errors.category }}
+                            </p>
+                        </div>
+                        <div>
+                            <label class="mn-label" for="expense-amount"
+                                >Amount *</label
+                            >
+                            <input
+                                v-model="form.amount"
+                                id="expense-amount"
+                                :aria-invalid="Boolean(form.errors.amount)"
+                                :disabled="form.processing"
+                                type="number"
+                                required
+                                inputmode="decimal"
+                                min="0"
+                                step="0.01"
+                                class="mn-input"
+                                placeholder="0.00"
+                            />
+                            <p
+                                v-if="form.errors.amount"
+                                class="mt-2 text-sm text-red-300"
+                            >
+                                {{ form.errors.amount }}
+                            </p>
+                        </div>
+                        <div>
+                            <label class="mn-label" for="expense-date"
+                                >Date spent *</label
+                            >
+                            <input
+                                v-model="form.spent_at"
+                                id="expense-date"
+                                :aria-invalid="Boolean(form.errors.spent_at)"
+                                :disabled="form.processing"
+                                type="date"
+                                required
+                                class="mn-input"
+                            />
+                            <p
+                                v-if="form.errors.spent_at"
+                                class="mt-2 text-sm text-red-300"
+                            >
+                                {{ form.errors.spent_at }}
+                            </p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="mn-label" for="expense-notes"
+                                >Notes (optional)</label
+                            >
+                            <textarea
+                                v-model="form.notes"
+                                id="expense-notes"
+                                :aria-invalid="Boolean(form.errors.notes)"
+                                :disabled="form.processing"
+                                rows="4"
+                                class="mn-input"
+                                placeholder="Optional notes..."
+                            ></textarea>
+                            <p
+                                v-if="form.errors.notes"
+                                class="mt-2 text-sm text-red-300"
+                            >
+                                {{ form.errors.notes }}
+                            </p>
                         </div>
                     </div>
-                    <div
-                        class="grid shrink-0 grid-cols-2 gap-3 border-t border-white/10 bg-[#0B0B0D] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5"
+                </div>
+                <div
+                    class="grid shrink-0 grid-cols-2 gap-3 border-t border-white/10 bg-[#0B0B0D] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5"
+                >
+                    <button
+                        type="button"
+                        class="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30"
+                        @click="closeExpenseModal"
                     >
-                        <button
-                            type="button"
-                            class="rounded-2xl border border-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/30"
-                            @click="closeExpenseModal"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            :disabled="form.processing"
-                            class="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-60"
-                        >
-                            {{ form.processing ? "Saving..." : "Save Expense" }}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </Teleport>
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        :disabled="form.processing"
+                        class="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:opacity-60"
+                    >
+                        {{ form.processing ? "Saving..." : "Save Expense" }}
+                    </button>
+                </div>
+            </form>
+        </Modal>
         <!-- DELETE MODAL -->
         <Teleport to="body">
             <div

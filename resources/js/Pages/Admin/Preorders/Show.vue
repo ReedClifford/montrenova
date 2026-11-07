@@ -3,6 +3,10 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Modal from "@/Components/Modal.vue";
 import PreorderPhotoGallery from "@/Components/PreorderPhotoGallery.vue";
 import FulfillmentReadiness from "@/Components/FulfillmentReadiness.vue";
+import AttachmentPreview from "@/Components/AttachmentPreview.vue";
+import FormFeedback from "@/Components/FormFeedback.vue";
+import { paymentMethods } from "@/Utils/paymentMethods";
+import { useUnsavedChanges } from "@/Composables/useUnsavedChanges";
 import { Head, Link, useForm, usePage } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 import "./preorders.css";
@@ -56,6 +60,39 @@ const entry = useForm({
 });
 const transition = useForm({ status: "", cancellation_reason: "" });
 const fulfillment = useForm({ serial_number: "" });
+const cleanDialog = ref("");
+const activeFormData = () =>
+    JSON.stringify(
+        dialog.value === "entry"
+            ? entry.data()
+            : dialog.value === "status"
+              ? transition.data()
+              : fulfillment.data(),
+        (key, value) =>
+            value instanceof File
+                ? {
+                      name: value.name,
+                      size: value.size,
+                      lastModified: value.lastModified,
+                  }
+                : value,
+    );
+const { confirmDiscard } = useUnsavedChanges({
+    dirty: () =>
+        ["entry", "status", "fulfill"].includes(dialog.value) &&
+        Boolean(cleanDialog.value) &&
+        activeFormData() !== cleanDialog.value,
+    busy: () =>
+        entry.processing || transition.processing || fulfillment.processing,
+});
+async function closeDialog() {
+    if (!busy.value && (await confirmDiscard())) dialog.value = null;
+}
+function openFulfillment() {
+    fulfillment.clearErrors();
+    dialog.value = "fulfill";
+    cleanDialog.value = activeFormData();
+}
 const entryTitle = computed(
     () =>
         ({
@@ -94,11 +131,13 @@ function openEntry(type) {
     entry.request_key = crypto.randomUUID();
     entry.paid_at = today();
     dialog.value = "entry";
+    cleanDialog.value = activeFormData();
 }
 function changeStatus(status) {
     transition.clearErrors();
     transition.status = status;
     dialog.value = "status";
+    cleanDialog.value = activeFormData();
 }
 function submitEntry() {
     entry.post(route("admin.preorders.entries.store", props.order.id), {
@@ -467,10 +506,7 @@ const busy = computed(
                             <button
                                 class="primary"
                                 style="margin-top: 14px"
-                                @click="
-                                    fulfillment.clearErrors();
-                                    dialog = 'fulfill';
-                                "
+                                @click="openFulfillment"
                                 :disabled="order.balance > 0 || order.cost <= 0"
                                 aria-describedby="fulfillment-blockers"
                                 :title="
@@ -519,7 +555,7 @@ const busy = computed(
                 </div>
             </div>
         </div>
-        <Modal :show="dialog !== null" :closeable="!busy" @close="dialog = null"
+        <Modal :show="dialog !== null" :closeable="!busy" @close="closeDialog"
             ><div class="po dialog">
                 <form
                     v-if="dialog === 'resetTracking'"
@@ -534,7 +570,7 @@ const busy = computed(
                         <button
                             type="button"
                             :disabled="tracking.processing"
-                            @click="dialog = null"
+                            @click="closeDialog"
                         >
                             Keep current link</button
                         ><button
@@ -546,6 +582,7 @@ const busy = computed(
                     </div>
                 </form>
                 <form v-if="dialog === 'entry'" @submit.prevent="submitEntry">
+                    <FormFeedback :errors="entry.errors" />
                     <p class="eyebrow">Order #{{ order.id }}</p>
                     <h2>{{ entryTitle }}</h2>
                     <p class="notice">
@@ -582,11 +619,13 @@ const busy = computed(
                         ><label
                             >Method<select v-model="entry.method" required>
                                 <option disabled value="">Select method</option>
-                                <option>GCash</option>
-                                <option>Bank transfer</option>
-                                <option>Cash</option>
-                                <option>Maya</option>
-                                <option>Other</option>
+                                <option
+                                    v-for="method in paymentMethods"
+                                    :key="method"
+                                    :value="method"
+                                >
+                                    {{ method }}
+                                </option>
                             </select></label
                         ><label
                             >Reference number<input
@@ -607,6 +646,10 @@ const busy = computed(
                                 "
                         /></label>
                     </div>
+                    <AttachmentPreview :file="entry.proof" />
+                    <p v-if="entry.method === 'Others'" class="form-hint">
+                        Describe the payment arrangement in the notes above.
+                    </p>
                     <div
                         v-for="(error, key) in entry.errors"
                         :key="key"
@@ -621,7 +664,7 @@ const busy = computed(
                     <div class="actions">
                         <button
                             type="button"
-                            @click="dialog = null"
+                            @click="closeDialog"
                             :disabled="busy"
                         >
                             Back</button
@@ -675,7 +718,7 @@ const busy = computed(
                     <div class="actions">
                         <button
                             type="button"
-                            @click="dialog = null"
+                            @click="closeDialog"
                             :disabled="busy"
                         >
                             Go back</button
@@ -720,7 +763,7 @@ const busy = computed(
                     <div class="actions">
                         <button
                             type="button"
-                            @click="dialog = null"
+                            @click="closeDialog"
                             :disabled="busy"
                         >
                             Back</button

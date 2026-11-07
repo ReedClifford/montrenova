@@ -1,5 +1,8 @@
 <script setup>
+import { paymentMethodsDescription } from "@/Utils/paymentMethods";
+import { requestDiscardChanges } from "@/Utils/discardChanges";
 import InputError from "@/Components/InputError.vue";
+import { useUnsavedChanges } from "@/Composables/useUnsavedChanges";
 
 import { compressImageFile, formatFileSize } from "@/Utils/imageCompression";
 
@@ -173,7 +176,7 @@ const defaultSections = () => [
         title: "Payment Methods",
 
         content:
-            "Accepted payment methods include cash, Maribank, GoTyme, QR code payments, and selected trade-ins subject to evaluation.",
+            paymentMethodsDescription,
     },
 ];
 
@@ -306,13 +309,14 @@ const hasUnsavedChanges = computed(() => {
     return snapshotFormState() !== originalSnapshot.value;
 });
 
-const confirmDiscardChanges = () => {
+const confirmDiscardChanges = async () => {
     if (!hasUnsavedChanges.value) {
         return true;
     }
 
-    return window.confirm("You have unsaved changes. Close without saving?");
+    return requestDiscardChanges();
 };
+useUnsavedChanges({ dirty: () => hasUnsavedChanges.value, busy: () => form.processing || isCompressingImages.value, beforeUnload: false });
 
 const handleBeforeUnload = (event) => {
     if (
@@ -1324,7 +1328,7 @@ const onModalKeydown = (event) => {
     closeModal();
 };
 
-const closeModal = () => {
+const closeModal = async () => {
     if (form.processing || isCompressingImages.value) return;
 
     if (showPublicPreview.value) {
@@ -1333,7 +1337,7 @@ const closeModal = () => {
         return;
     }
 
-    if (!confirmDiscardChanges()) return;
+    if (!(await confirmDiscardChanges())) return;
 
     closeWithoutPrompt();
 };

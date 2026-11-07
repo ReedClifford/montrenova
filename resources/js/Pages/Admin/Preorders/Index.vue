@@ -2,6 +2,8 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Modal from "@/Components/Modal.vue";
 import PreorderPhotoGallery from "@/Components/PreorderPhotoGallery.vue";
+import FormFeedback from "@/Components/FormFeedback.vue";
+import { useUnsavedChanges } from "@/Composables/useUnsavedChanges";
 import { Head, Link, router, useForm, usePage } from "@inertiajs/vue3";
 import { ref, computed, onMounted } from "vue";
 import "./preorders.css";
@@ -12,6 +14,7 @@ const props = defineProps({
     summary: Object,
     filters: Object,
     sourceWatch: Object,
+    followUps: { type: Array, default: () => [] },
 });
 const sources = computed(() =>
     props.sourceWatch &&
@@ -53,6 +56,41 @@ const deposit = computed(
             Number(order.deposit_percentage || 0)) /
         100,
 );
+const cleanDialog = ref("");
+const dialogData = () =>
+    JSON.stringify(dialog.value === "listing" ? listing.data() : order.data());
+const { confirmDiscard } = useUnsavedChanges({
+    dirty: () =>
+        Boolean(
+            dialog.value &&
+                cleanDialog.value &&
+                dialogData() !== cleanDialog.value,
+        ),
+    busy: () => listing.processing || order.processing,
+});
+async function closeDialog() {
+    if (listing.processing || order.processing || !(await confirmDiscard()))
+        return;
+    dialog.value = null;
+}
+function applyQueue(queue = "") {
+    tab.value = "orders";
+    router.get(
+        route("admin.preorders.index"),
+        { search: search.value || undefined, queue: queue || undefined },
+        { preserveState: true, preserveScroll: true },
+    );
+}
+const queueHelp = {
+    deposit: "Record the remaining required deposit to confirm the order.",
+    supplier: "Deposit confirmed. Place the supplier order when ready.",
+    sourcing:
+        "Ordered watches past their arrival estimate, or created at least 14 days ago. Follow up with the supplier.",
+    balance:
+        "The watch has arrived. Collect the remaining balance before handover.",
+    handover:
+        "Fully paid and arrived. Check actual costs and serial number before fulfillment.",
+};
 function openListing(item = null) {
     editing.value = item;
     listing.reset();
@@ -63,6 +101,7 @@ function openListing(item = null) {
         listing.is_visible = item.is_visible;
     }
     dialog.value = "listing";
+    cleanDialog.value = dialogData();
 }
 function saveListing() {
     const options = {
@@ -87,6 +126,7 @@ function openOrder(item = null) {
         order.total_price = item.price;
     }
     dialog.value = "order";
+    cleanDialog.value = dialogData();
 }
 function selectListing() {
     order.total_price =
@@ -96,7 +136,11 @@ function selectListing() {
 function findSources() {
     router.get(
         route("admin.preorders.index"),
-        { search: search.value, source_search: sourceSearch.value },
+        {
+            search: search.value,
+            source_search: sourceSearch.value,
+            queue: props.filters.queue || undefined,
+        },
         { preserveState: true, preserveScroll: true },
     );
 }
@@ -109,6 +153,7 @@ onMounted(() => {
     if (!existing) {
         listing.source_watch_id = props.sourceWatch.id;
         listing.price = props.sourceWatch.selling_price;
+        cleanDialog.value = dialogData();
     }
 });
 </script>
@@ -155,6 +200,35 @@ onMounted(() => {
                     }}</strong>
                 </div>
             </div>
+            <section class="follow-up-queue" aria-labelledby="follow-up-title">
+                <div class="row between">
+                    <div>
+                        <h2 id="follow-up-title">Preorder follow-ups</h2>
+                        <p class="muted">
+                            Across all orders · choose a queue to see what needs
+                            attention.
+                        </p>
+                    </div>
+                    <button v-if="filters.queue" @click="applyQueue()">
+                        Show all orders
+                    </button>
+                </div>
+                <div class="queue-cards">
+                    <button
+                        v-for="queue in followUps"
+                        :key="queue.key"
+                        :class="{ active: filters.queue === queue.key }"
+                        :aria-pressed="filters.queue === queue.key"
+                        @click="applyQueue(queue.key)"
+                    >
+                        <strong>{{ queue.count }}</strong
+                        ><span>{{ queue.label }}</span>
+                    </button>
+                </div>
+                <p v-if="filters.queue" class="queue-help" role="status">
+                    {{ queueHelp[filters.queue] }}
+                </p>
+            </section>
             <p class="notice">
                 Deposits are held for customers until fulfillment. Sales and
                 profit are recorded once, when a fully paid order is handed
@@ -179,7 +253,7 @@ onMounted(() => {
                     @submit.prevent="
                         router.get(
                             route('admin.preorders.index'),
-                            { search },
+                            { search, queue: filters.queue || undefined },
                             { preserveState: true, preserveScroll: true },
                         )
                     "
@@ -192,10 +266,19 @@ onMounted(() => {
                     ><button style="align-self: end">Search</button>
                 </form>
                 <div v-if="!orders.data.length" class="empty">
-                    <h2>No orders yet</h2>
+                    <h2>
+                        {{
+                            filters.queue || filters.search
+                                ? "No matching orders"
+                                : "No orders yet"
+                        }}
+                    </h2>
                     <p class="muted">
-                        Publish a sold watch, then create an order after your
-                        Messenger conversation.
+                        {{
+                            filters.queue || filters.search
+                                ? "Try another queue or clear your search to see more orders."
+                                : "Publish a sold watch, then create an order after your Messenger conversation."
+                        }}
                     </p>
                 </div>
                 <Link
@@ -315,7 +398,7 @@ onMounted(() => {
         <Modal
             :show="dialog !== null"
             :closeable="!listing.processing && !order.processing"
-            @close="dialog = null"
+            @close="closeDialog"
         >
             <div
                 class="po dialog"
@@ -340,6 +423,11 @@ onMounted(() => {
                         intact.
                     </p>
                     <form @submit.prevent="saveListing">
+                        <p class="form-hint">
+                            Fields marked required must be completed. Arrival
+                            estimate is optional.
+                        </p>
+                        <FormFeedback :errors="listing.errors" />
                         <div class="grid">
                             <template v-if="!editing"
                                 ><label class="span-2"
@@ -404,7 +492,7 @@ onMounted(() => {
                         <div class="actions">
                             <button
                                 type="button"
-                                @click="dialog = null"
+                                @click="closeDialog"
                                 :disabled="listing.processing"
                             >
                                 Cancel</button
@@ -431,6 +519,11 @@ onMounted(() => {
                             order.post(route('admin.preorders.store'))
                         "
                     >
+                        <p class="form-hint">
+                            Watch, customer, contact, price and deposit are
+                            required. Notes stay private to the admin.
+                        </p>
+                        <FormFeedback :errors="order.errors" />
                         <div class="grid">
                             <label class="span-2"
                                 >Watch<select
@@ -503,7 +596,7 @@ onMounted(() => {
                         <div class="actions">
                             <button
                                 type="button"
-                                @click="dialog = null"
+                                @click="closeDialog"
                                 :disabled="order.processing"
                             >
                                 Cancel</button

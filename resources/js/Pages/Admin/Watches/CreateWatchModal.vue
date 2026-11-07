@@ -1,5 +1,8 @@
 <script setup>
+import { paymentMethodsDescription } from "@/Utils/paymentMethods";
+import { requestDiscardChanges } from "@/Utils/discardChanges";
 import InputError from "@/Components/InputError.vue";
+import { useUnsavedChanges } from "@/Composables/useUnsavedChanges";
 import { compressImageFile, formatFileSize } from "@/Utils/imageCompression";
 import { useForm } from "@inertiajs/vue3";
 import {
@@ -87,7 +90,7 @@ const form = useForm({
         {
             title: "Payment Methods",
             content:
-                "Accepted payment methods include cash, Maribank, GoTyme, QR code payments, and selected trade-ins subject to evaluation.",
+                paymentMethodsDescription,
         },
     ],
 });
@@ -135,7 +138,7 @@ const defaultSections = () => [
     {
         title: "Payment Methods",
         content:
-            "Accepted payment methods include cash, Maribank, GoTyme, QR code payments, and selected trade-ins subject to evaluation.",
+            paymentMethodsDescription,
     },
 ];
 
@@ -250,13 +253,12 @@ const hasUnsavedChanges = computed(() => {
     );
 });
 
-const confirmCloseIfDirty = () => {
+const confirmCloseIfDirty = async () => {
     if (!hasUnsavedChanges.value) return true;
 
-    return window.confirm(
-        "You have unsaved watch details. Close without saving?",
-    );
+    return requestDiscardChanges();
 };
+useUnsavedChanges({ dirty: () => hasUnsavedChanges.value, busy: () => form.processing || isCompressingImages.value, beforeUnload: false });
 
 watch(
     () => [props.show, props.duplicateSource],
@@ -674,7 +676,7 @@ const resetModalState = () => {
     rememberCleanState();
 };
 
-const closeModal = () => {
+const closeModal = async () => {
     if (form.processing || isCompressingImages.value) return;
 
     if (showPublicPreview.value) {
@@ -682,7 +684,7 @@ const closeModal = () => {
         return;
     }
 
-    if (!confirmCloseIfDirty()) return;
+    if (!(await confirmCloseIfDirty())) return;
 
     resetModalState();
     emit("close");

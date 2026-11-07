@@ -1,4 +1,5 @@
 <script setup>
+import { paymentMethodsDescription } from "@/Utils/paymentMethods";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import InputError from "@/Components/InputError.vue";
 import { Head, Link, useForm } from "@inertiajs/vue3";
@@ -54,7 +55,7 @@ const form = useForm({
         {
             title: "Payment Methods",
             content:
-                "Accepted payment methods include cash, GCash, bank transfer, QR code payments, and selected trade-ins subject to evaluation. All photos posted are actual photos unless stated otherwise.",
+                paymentMethodsDescription,
         },
     ],
 });

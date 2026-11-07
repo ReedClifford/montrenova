@@ -9,6 +9,7 @@ use App\Models\PreorderEntry;
 use App\Models\PreorderListing;
 use App\Models\Watch;
 use App\Services\PreorderAccounting;
+use App\Services\PreorderFollowUps;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -24,22 +25,29 @@ class PreorderController extends Controller
             'search' => ['nullable', 'string', 'max:100'],
             'source_search' => ['nullable', 'string', 'max:100'],
             'source_watch_id' => ['nullable', 'integer'],
+            'queue' => ['nullable', 'in:'.implode(',', array_keys(PreorderFollowUps::LABELS))],
         ]);
         $search = mb_substr(trim((string) $request->query('search')), 0, 100);
+        $queue = (string) $request->query('queue', '');
+        $orders = PreorderFollowUps::apply(Preorder::with(['listing', 'entries']), $queue)
+            ->when($search, fn ($q) => $q->where(fn ($q) => $q
+                ->where('customer_name', 'like', "%{$search}%")->orWhere('contact', 'like', "%{$search}%")));
 
         return Inertia::render('Admin/Preorders/Index', [
             'sourceWatch' => $request->query('source_watch_id') ? Watch::where('status', 'sold')
                 ->find($request->integer('source_watch_id'), ['id', 'brand', 'model_name', 'reference_number', 'selling_price']) : null,
             'listings' => PreorderListing::withCount('orders')->latest()->get(),
-            'orders' => Preorder::with(['listing', 'entries'])->when($search, fn ($q) => $q
-                ->where(fn ($q) => $q->where('customer_name', 'like', "%{$search}%")->orWhere('contact', 'like', "%{$search}%")))
-                ->latest()->paginate(15)->withQueryString(),
+            'orders' => $orders->latest()->paginate(15)->withQueryString(),
+            'followUps' => collect(PreorderFollowUps::LABELS)->map(fn ($label, $key) => [
+                'key' => $key, 'label' => $label,
+                'count' => PreorderFollowUps::apply(Preorder::query(), $key)->count(),
+            ])->values(),
             'soldWatches' => Watch::where('status', 'sold')->when($request->query('source_search'), fn ($q, $term) => $q
                 ->where(fn ($q) => $q->where('model_name', 'like', '%'.mb_substr($term, 0, 100).'%')
                     ->orWhere('reference_number', 'like', '%'.mb_substr($term, 0, 100).'%')))
                 ->whereNotIn('id', PreorderListing::select('source_watch_id'))->latest()->limit(50)
                 ->get(['id', 'brand', 'model_name', 'reference_number', 'selling_price']),
-            'filters' => ['search' => $search, 'source_search' => $request->query('source_search', '')],
+            'filters' => ['search' => $search, 'source_search' => $request->query('source_search', ''), 'queue' => $queue],
             'summary' => PreorderAccounting::summary(),
         ]);
     }

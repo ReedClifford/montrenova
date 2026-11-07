@@ -1,4 +1,5 @@
 <script setup>
+import AdminRecordCard from "@/Components/AdminRecordCard.vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, Link, router } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
@@ -834,81 +835,47 @@ const insightCards = computed(() => [
                     </div>
 
                     <!-- MOBILE CARDS -->
-                    <div class="divide-y divide-white/10 md:hidden">
-                        <div
+                    <div class="space-y-3 p-3 md:hidden">
+                        <AdminRecordCard
                             v-for="sale in recentSales"
                             :key="sale.id"
-                            class="p-4 sm:p-5"
+                            :title="
+                                [sale.brand, sale.model_name]
+                                    .filter(Boolean)
+                                    .join(' ')
+                            "
+                            :subtitle="
+                                'Ref. ' +
+                                (sale.reference_number || 'No reference')
+                            "
+                            :image="sale.primary_image?.image_url"
                         >
-                            <div class="flex items-center gap-4">
-                                <div
-                                    class="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#050505]"
-                                >
-                                    <img
-                                        v-if="sale.primary_image?.image_url"
-                                        :src="sale.primary_image.image_url"
-                                        class="h-full w-full object-contain"
-                                        alt=""
-                                    />
-
-                                    <div
-                                        v-else
-                                        class="flex h-full w-full items-center justify-center text-xs font-semibold text-zinc-600"
-                                    >
-                                        MN
-                                    </div>
-                                </div>
-
-                                <div class="min-w-0 flex-1">
-                                    <p
-                                        class="truncate text-sm font-semibold text-white"
-                                    >
-                                        {{ sale.brand }} {{ sale.model_name }}
-                                    </p>
-
-                                    <p
-                                        class="mt-1 truncate text-xs text-zinc-500"
-                                    >
-                                        Ref.
-                                        {{
-                                            sale.reference_number ||
-                                            "No reference"
-                                        }}
-                                    </p>
-
-                                    <p
-                                        class="mt-1 break-words text-xs text-zinc-500"
-                                    >
-                                        {{ formatDate(sale.date_sold) }}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="mt-4 grid grid-cols-2 gap-3">
-                                <div class="mn-mini-card">
-                                    <p class="mn-mini-label">Sold Price</p>
-                                    <p class="mn-mini-value">
-                                        {{ compactPeso(saleSoldPrice(sale)) }}
-                                    </p>
-                                </div>
-
-                                <div class="mn-mini-card">
-                                    <p class="mn-mini-label">Profit</p>
-                                    <p
-                                        class="mn-mini-value"
+                            <template #badges
+                                ><span
+                                    class="bg-emerald-500/10 text-emerald-300"
+                                    >Sold ·
+                                    {{ formatDate(sale.date_sold) }}</span
+                                ></template
+                            >
+                            <template #metrics
+                                ><dl>
+                                    <dt>Sold price</dt>
+                                    <dd>{{ peso(saleSoldPrice(sale)) }}</dd>
+                                </dl>
+                                <dl>
+                                    <dt>Gross profit</dt>
+                                    <dd
                                         :class="
                                             netProfitClass(
                                                 saleProfitAmount(sale),
                                             )
                                         "
                                     >
-                                        {{
-                                            compactPeso(saleProfitAmount(sale))
-                                        }}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                                        {{ peso(saleProfitAmount(sale)) }}
+                                    </dd>
+                                </dl></template
+                            >
+                        </AdminRecordCard>
 
                         <div
                             v-if="!recentSales.length"

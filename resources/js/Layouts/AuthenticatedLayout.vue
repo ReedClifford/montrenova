@@ -2,6 +2,7 @@
 import { Link, usePage } from "@inertiajs/vue3";
 import { computed, nextTick, onBeforeUnmount, watch, ref } from "vue";
 import { lockBodyScroll } from "@/Utils/scrollLock";
+import DiscardChangesDialog from "@/Components/DiscardChangesDialog.vue";
 
 const props = defineProps({
     title: { type: String, default: "Dashboard" },
@@ -136,6 +137,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+    <DiscardChangesDialog />
     <div class="mn-shell min-h-screen bg-[#070709] text-zinc-100 antialiased">
         <!-- DESKTOP SIDEBAR -->
         <aside
@@ -510,18 +512,17 @@ onBeforeUnmount(() => {
                         </div>
                     </div>
                     <div class="flex shrink-0 items-center gap-2">
-                        <Link
+                        <a
                             :href="route('welcome')"
-                            class="mn-add-button"
-                            aria-label="Preview public website" target="_blank" rel="noopener noreferrer"
-                            ><span
-                                class="text-xl leading-none"
-                                aria-hidden="true"
-                                >↗</span
-                            ><span class="hidden sm:inline"
-                                >View website</span
-                            ></Link
+                            class="mn-website-link"
+                            aria-label="View public website (opens in a new tab)"
+                            title="View public website in a new tab"
+                            target="_blank"
+                            rel="noopener noreferrer"
                         >
+                            <span class="hidden sm:inline">View website</span>
+                            <span class="sm:hidden">Website</span>
+                        </a>
                         <button
                             type="button"
                             class="mn-header-avatar hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-xs font-semibold text-zinc-200 sm:flex lg:hidden"
@@ -704,23 +705,31 @@ onBeforeUnmount(() => {
     border-radius: 4px;
     background: currentColor;
 }
-.mn-add-button {
+.mn-website-link {
     display: inline-flex;
-    height: 42px;
-    min-width: 42px;
+    min-height: 44px;
+    flex-shrink: 0;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    border-radius: 11px;
-    background: #fafafa;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.025);
     padding: 0 12px;
     font-size: 12px;
-    font-weight: 700;
-    color: #09090b;
-    transition: background 0.16s ease;
+    font-weight: 550;
+    white-space: nowrap;
+    color: #d4d4d8;
+    transition: background 0.16s ease, border-color 0.16s ease;
 }
-.mn-add-button:hover {
-    background: #e4e4e7;
+.mn-website-link:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #fafafa;
+}
+.mn-website-link:focus-visible {
+    outline: 2px solid #d6bd8f;
+    outline-offset: 3px;
 }
 .mn-bottom-link {
     min-height: 53px;
