@@ -60,7 +60,7 @@ class PreorderController extends Controller
                     'movement', 'case_size', 'case_material', 'dial_color', 'crystal', 'bracelet_or_strap',
                     'water_resistance', 'box_papers', 'warranty_type']);
                 $snapshot['images'] = [];
-                foreach ($watch->images as $image) {
+                foreach ($watch->images->sortByDesc('is_primary')->values() as $image) {
                     if (! Storage::disk('public')->exists($image->image_path)) {
                         continue;
                     }

@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Modal from "@/Components/Modal.vue";
+import PreorderPhotoGallery from "@/Components/PreorderPhotoGallery.vue";
 import { Head, Link, router, useForm, usePage } from "@inertiajs/vue3";
 import { ref, computed, onMounted } from "vue";
 import "./preorders.css";
@@ -278,11 +279,11 @@ onMounted(() => {
                 </div>
                 <div v-for="l in listings" :key="l.id" class="item row between">
                     <div class="row">
-                        <img
-                            v-if="l.watch_snapshot.primary_image_url"
-                            :src="l.watch_snapshot.primary_image_url"
-                            alt=""
-                            class="list-image"
+                        <PreorderPhotoGallery
+                            :images="l.watch_snapshot.images || []"
+                            :primary-image="l.watch_snapshot.primary_image_url"
+                            :title="name(l.watch_snapshot)"
+                            thumbnail
                         />
                         <div class="break">
                             <h2>{{ name(l.watch_snapshot) }}</h2>

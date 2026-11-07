@@ -13,6 +13,24 @@ class PreorderListing extends Model
         return ['watch_snapshot' => 'array', 'price' => 'decimal:2', 'is_visible' => 'boolean'];
     }
 
+    public function getWatchSnapshotAttribute($value): array
+    {
+        $snapshot = is_array($value) ? $value : (json_decode($value ?? '{}', true) ?: []);
+        $snapshot['images'] = collect($snapshot['images'] ?? [])->filter(fn ($image) => is_array($image))
+            ->map(function (array $image): array {
+                if (! empty($image['path'])) {
+                    // Resolve against the current request rather than a host saved at publication.
+                    $image['image_url'] = asset('storage/'.ltrim($image['path'], '/'));
+                    $image['hd_url'] = $image['image_url'];
+                }
+
+                return $image;
+            })->values()->all();
+        $snapshot['primary_image_url'] = $snapshot['images'][0]['image_url'] ?? ($snapshot['primary_image_url'] ?? null);
+
+        return $snapshot;
+    }
+
     public function sourceWatch()
     {
         return $this->belongsTo(Watch::class, 'source_watch_id');

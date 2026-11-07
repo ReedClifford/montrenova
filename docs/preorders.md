@@ -4,6 +4,10 @@
 
 1. Open **Watch Stocks**, choose a sold watch and select **Preorder listing**. Alternatively, open **Preorders → Publish a watch** and search the sold models.
 2. Set the preorder price and arrival estimate. Publishing copies the watch specifications and photos to an independent listing; it does not change the original sale, buyer or warranty. Hide a listing to stop public inquiries without affecting existing orders.
+
+Photos keep their full original proportions in the public and admin preorder galleries. Select a thumbnail, swipe or use the arrows to browse; tap a photo for fullscreen viewing and zoom. The source watch's primary image is copied first, and stored photo paths are resolved against the current site address.
+
+Public preorder details also show up to eight randomly selected other published preorder listings. Cards use the same shared Continue browsing carousel as Watch Show, with matching square photos, card sizes, typography, price rows and horizontal swipe/keyboard navigation. Preorder cards link to their own listing and show a PREORDER badge. The current listing and hidden listings are excluded. If there are no other published models, the section links back to the Collection instead of showing placeholder products.
 3. Customers see **Preorder** in the Collection, the 20% deposit requirement, and a Messenger inquiry button. Messenger opens a prepared inquiry; it does not automatically create or confirm an order.
 4. After agreeing with the customer, create a **Customer order**. Set the agreed price, customer contact and estimated arrival. The deposit defaults to 20%; an admin can set the agreed percentage. Subsequent listing price changes do not change existing orders.
 5. Use **Record payment** only for money received. Include the date, method, reference and optional private proof. Partial payments accumulate, balance updates automatically, and reaching the required deposit confirms the order.

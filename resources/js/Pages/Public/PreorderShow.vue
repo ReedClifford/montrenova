@@ -1,9 +1,13 @@
 <script setup>
 import PublicHeader from "@/Components/PublicHeader.vue";
-import { Head, Link } from "@inertiajs/vue3";
-import { computed, ref } from "vue";
-const props = defineProps({ watch: Object });
-const selected = ref(0);
+import { Head } from "@inertiajs/vue3";
+import { computed } from "vue";
+import PreorderPhotoGallery from "@/Components/PreorderPhotoGallery.vue";
+import PreorderRecommendations from "@/Components/PreorderRecommendations.vue";
+const props = defineProps({
+    watch: Object,
+    relatedPreorders: { type: Array, default: () => [] },
+});
 const name = computed(() =>
     [props.watch.brand, props.watch.model_name].filter(Boolean).join(" "),
 );
@@ -46,26 +50,11 @@ const specs = computed(() =>
         <main>
             <div class="product">
                 <section aria-label="Watch photos">
-                    <div class="hero-image">
-                        <img
-                            v-if="watch.images?.length"
-                            :src="watch.images[selected]?.image_url"
-                            :alt="name"
-                        /><span v-else class="placeholder">Montre Nova</span
-                        ><span class="badge">Preorder</span>
-                    </div>
-                    <div v-if="watch.images?.length > 1" class="thumbs">
-                        <button
-                            v-for="(image, i) in watch.images"
-                            :key="i"
-                            @click="selected = i"
-                            :aria-label="`View photo ${i + 1}`"
-                            :aria-pressed="selected === i"
-                            :class="{ active: selected === i }"
-                        >
-                            <img :src="image.image_url" alt="" />
-                        </button>
-                    </div>
+                    <PreorderPhotoGallery
+                        :images="watch.images || []"
+                        :primary-image="watch.primary_image_url"
+                        :title="name"
+                    />
                     <p class="caption">
                         Reference photos from a previously sold piece. Confirm
                         the incoming watch’s condition and details with us.
@@ -121,6 +110,7 @@ const specs = computed(() =>
                     </section>
                 </section>
             </div>
+            <PreorderRecommendations :items="relatedPreorders" />
         </main>
         <footer>Montre Nova · Thoughtfully selected timepieces</footer>
     </div>
@@ -132,20 +122,7 @@ const specs = computed(() =>
     color: #eee;
     font-family: inherit;
 }
-.preorder-public header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    max-width: 1320px;
-    margin: auto;
-    padding: 25px 28px;
-    border-bottom: 1px solid #ffffff12;
-}
-.preorder-public header a {
-    color: #b7b7bf;
-    font-size: 13px;
-}
+
 .preorder-public main {
     max-width: 1240px;
     padding: 55px 28px 80px;
@@ -157,31 +134,13 @@ const specs = computed(() =>
     gap: 64px;
     align-items: start;
 }
-.hero-image {
-    position: relative;
-    background: #171719;
-    aspect-ratio: 4/5;
-    overflow: hidden;
-    border-radius: 18px;
-    display: grid;
-    place-items: center;
+@media (min-width: 1024px) {
+    .product > section:first-child {
+        position: sticky;
+        top: 100px;
+    }
 }
-.hero-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-.badge {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    background: #e2cfaa;
-    color: #2b2112;
-    font-size: 12px;
-    font-weight: 600;
-    border-radius: 30px;
-    padding: 8px 15px;
-}
+
 .eyebrow {
     text-transform: uppercase;
     letter-spacing: 0.18em;
@@ -244,29 +203,7 @@ const specs = computed(() =>
     color: #898991;
     margin-top: 14px;
 }
-.thumbs {
-    display: flex;
-    gap: 10px;
-    overflow-x: auto;
-    padding: 14px 2px;
-}
-.thumbs button {
-    width: 65px;
-    height: 75px;
-    flex-shrink: 0;
-    border: 1px solid #ffffff20;
-    border-radius: 7px;
-    overflow: hidden;
-}
-.thumbs .active {
-    outline: 2px solid #d3b780;
-    outline-offset: 2px;
-}
-.thumbs img {
-    height: 100%;
-    width: 100%;
-    object-fit: cover;
-}
+
 .description {
     font-size: 14px;
     line-height: 1.9;
@@ -303,19 +240,13 @@ const specs = computed(() =>
     border-top: 1px solid #ffffff10;
     font-size: 11px;
 }
-.placeholder {
-    font-size: 30px;
-    color: #6a6254;
-}
+
 .preorder-public a:focus-visible,
 .preorder-public button:focus-visible {
     outline: 2px solid #d3b780;
     outline-offset: 4px;
 }
 @media (max-width: 760px) {
-    .preorder-public header {
-        padding: 18px 20px;
-    }
     .preorder-public main {
         padding: 25px 20px 50px;
     }
@@ -323,32 +254,13 @@ const specs = computed(() =>
         grid-template-columns: 1fr;
         gap: 28px;
     }
-    .hero-image {
-        aspect-ratio: 1;
-    }
+
     .price {
         font-size: 29px;
         margin: 20px 0;
     }
     .deposit {
         padding: 19px;
-    }
-}
-@media (max-width: 480px) {
-    .preorder-public header > a:first-child {
-        min-width: 0;
-    }
-    .preorder-public header :deep(h1) {
-        font-size: 13px;
-        letter-spacing: 0.18em;
-    }
-    .preorder-public header :deep(p) {
-        font-size: 6px;
-        letter-spacing: 0.1em;
-    }
-    .preorder-public header > a:last-child {
-        flex-shrink: 0;
-        white-space: nowrap;
     }
 }
 </style>

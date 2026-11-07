@@ -23,6 +23,57 @@ class PreorderTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_preorder_recommendations_only_include_other_published_listings_and_are_limited(): void
+    {
+        $current = $this->listing();
+        $allowed = [];
+        for ($i = 0; $i < 10; $i++) {
+            $allowed[] = 'preorder-'.$this->listing()->id;
+        }
+        $hidden = $this->listing();
+        $hidden->update(['is_visible' => false]);
+        $response = $this->get(route('public.preorders.show', $current))->assertOk();
+        $recommendations = collect($response->viewData('page')['props']['relatedPreorders']);
+        $this->assertCount(8, $recommendations);
+        $ids = $recommendations->pluck('id')->all();
+        $this->assertNotContains('preorder-'.$current->id, $ids);
+        $this->assertNotContains('preorder-'.$hidden->id, $ids);
+        $this->assertCount(8, array_unique($ids));
+        $this->assertEmpty(array_diff($ids, $allowed));
+        foreach ($recommendations as $item) {
+            $this->assertSame('preorder', $item['status']);
+            $this->assertArrayHasKey('url', $item);
+        }
+    }
+
+    public function test_preorder_page_handles_no_other_published_listings(): void
+    {
+        $current = $this->listing();
+        $this->get(route('public.preorders.show', $current))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('relatedPreorders', 0));
+    }
+
+    public function test_preorder_photos_use_the_current_host_and_primary_source_photo_first(): void
+    {
+        Storage::fake('public');
+        $this->admin();
+        $watch = Watch::create(['model_name' => 'Photo test', 'brand' => 'Seiko', 'slug' => (string) Str::uuid(), 'status' => 'sold']);
+        Storage::disk('public')->put('first.jpg', 'secondary photo');
+        Storage::disk('public')->put('primary.jpg', 'primary photo');
+        $watch->images()->create(['image_path' => 'first.jpg', 'sort_order' => 1, 'is_primary' => false]);
+        $watch->images()->create(['image_path' => 'primary.jpg', 'sort_order' => 2, 'is_primary' => true]);
+        $this->post(route('admin.preorder-listings.store'), ['source_watch_id' => $watch->id, 'price' => 20000])->assertSessionHasNoErrors();
+        $listing = PreorderListing::where('source_watch_id', $watch->id)->firstOrFail();
+        $snapshot = $listing->watch_snapshot;
+        $this->assertSame('primary photo', Storage::disk('public')->get($snapshot['images'][0]['path']));
+        $snapshot['images'][0]['image_url'] = 'http://old-preview-host.test/storage/old.jpg';
+        $snapshot['primary_image_url'] = 'http://old-preview-host.test/storage/old.jpg';
+        $listing->update(['watch_snapshot' => $snapshot]);
+        $this->get('https://current-shop.example.test/preorders/'.$listing->id)->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('watch.images.0.image_url', 'https://current-shop.example.test/storage/'.$snapshot['images'][0]['path'])
+            ->where('watch.primary_image_url', 'https://current-shop.example.test/storage/'.$snapshot['images'][0]['path']));
+    }
+
     public function test_investor_dashboards_keep_separate_settings_participants_and_preorder_cutoffs(): void
     {
         $this->admin();

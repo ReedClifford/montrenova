@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Modal from "@/Components/Modal.vue";
+import PreorderPhotoGallery from "@/Components/PreorderPhotoGallery.vue";
 import FulfillmentReadiness from "@/Components/FulfillmentReadiness.vue";
 import { Head, Link, useForm, usePage } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
@@ -140,12 +141,6 @@ const busy = computed(
                 <div>
                     <section class="panel">
                         <div class="row">
-                            <img
-                                v-if="watch.primary_image_url"
-                                :src="watch.primary_image_url"
-                                class="list-image"
-                                alt=""
-                            />
                             <div>
                                 <h2>
                                     {{ watch.brand }} {{ watch.model_name }}
@@ -154,6 +149,19 @@ const busy = computed(
                                     {{ watch.reference_number }}
                                 </p>
                             </div>
+                        </div>
+                        <div style="margin-top: 18px">
+                            <PreorderPhotoGallery
+                                :images="watch.images || []"
+                                :primary-image="watch.primary_image_url"
+                                :title="
+                                    [watch.brand, watch.model_name]
+                                        .filter(Boolean)
+                                        .join(' ')
+                                "
+                                compact
+                                badge="Reference photos"
+                            />
                         </div>
                         <div class="grid" style="margin-top: 20px">
                             <div>
