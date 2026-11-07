@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Preorder extends Model
 {
+    protected $hidden = ['tracking_token'];
+
     protected $guarded = ['id'];
 
     protected $appends = ['paid', 'balance', 'required_deposit', 'cost', 'payment_status', 'refundable'];

@@ -1,4 +1,5 @@
 <script setup>
+import CollectionBackLink from "@/Components/CollectionBackLink.vue";
 import PublicHeader from "@/Components/PublicHeader.vue";
 import { Head } from "@inertiajs/vue3";
 import { computed } from "vue";
@@ -48,6 +49,7 @@ const specs = computed(() =>
     <div class="preorder-public">
         <PublicHeader position="sticky" />
         <main>
+            <div style="max-width:1240px;margin:0 auto;padding:12px 20px 0"><CollectionBackLink /></div>
             <div class="product">
                 <section aria-label="Watch photos">
                     <PreorderPhotoGallery

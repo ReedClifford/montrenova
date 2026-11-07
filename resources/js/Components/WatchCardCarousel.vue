@@ -1,6 +1,5 @@
 <script setup>
-import { Link } from "@inertiajs/vue3";
-import { ref, watch } from "vue";
+import WatchCard from "@/Components/WatchCard.vue";
 const props = defineProps({
     items: { type: Array, default: () => [] },
     eyebrow: { type: String, default: "More Available Watches" },
@@ -12,17 +11,6 @@ const props = defineProps({
     statusLabel: { type: String, default: "AVAILABLE" },
     label: { type: String, default: "More available watches, swipe to browse" },
 });
-const brokenImages = ref({});
-watch(
-    () => props.items,
-    () => (brokenImages.value = {}),
-);
-const money = (value) =>
-    new Intl.NumberFormat("en-PH", {
-        style: "currency",
-        currency: "PHP",
-        minimumFractionDigits: 0,
-    }).format(Number(value || 0));
 function onKey(event) {
     if (
         event.target !== event.currentTarget ||
@@ -81,65 +69,13 @@ function onKey(event) {
                 tabindex="0"
                 @keydown="onKey"
             >
-                <Link
+                <WatchCard
                     v-for="watchItem in items"
                     :key="watchItem.id"
-                    :href="watchItem.url"
-                    class="carousel-card mn-more-card group"
-                >
-                    <div class="mn-more-photo">
-                        <img
-                            v-if="
-                                watchItem.card_image &&
-                                !brokenImages[watchItem.id]
-                            "
-                            :src="watchItem.card_image"
-                            :alt="`${watchItem.brand} ${watchItem.model_name}`"
-                            loading="lazy"
-                            class="mn-more-image"
-                            @error="
-                                brokenImages = {
-                                    ...brokenImages,
-                                    [watchItem.id]: true,
-                                }
-                            "
-                        />
-                        <div v-else class="mn-more-placeholder">MN</div>
-                        <span class="mn-more-status">{{
-                            watchItem.status_label || statusLabel
-                        }}</span>
-                    </div>
-                    <div class="mn-more-content">
-                        <div class="mn-more-heading">
-                            <p class="mn-more-brand">
-                                {{ watchItem.brand || "Montre Nova" }}
-                            </p>
-                            <h3 class="mn-more-title">
-                                {{ watchItem.model_name }}
-                            </h3>
-                            <p class="mn-more-ref">
-                                {{
-                                    watchItem.reference_number ||
-                                    "Reference on request"
-                                }}
-                            </p>
-                        </div>
-                        <div class="mn-more-price-row">
-                            <div class="mn-more-price-block">
-                                <p class="mn-more-price">
-                                    {{ money(watchItem.card_price) }}
-                                </p>
-                                <p
-                                    v-if="watchItem.card_original_price != null"
-                                    class="mn-more-original"
-                                >
-                                    {{ money(watchItem.card_original_price) }}
-                                </p>
-                            </div>
-                            <span class="mn-more-view">VIEW</span>
-                        </div>
-                    </div>
-                </Link>
+                    :item="watchItem"
+                    :status-label="statusLabel"
+                    class="carousel-card mn-more-card"
+                />
             </div>
         </div>
     </div>
@@ -217,165 +153,20 @@ function onKey(event) {
     align-items: stretch;
 }
 .carousel-card.mn-more-card {
-    display: flex;
-    flex-direction: column;
     flex: 0 0 clamp(215px, 23vw, 282px);
     width: clamp(215px, 23vw, 282px);
-    min-width: 0;
-    max-width: none;
     height: auto;
-    overflow: hidden;
     scroll-snap-align: start;
-    border: 1px solid rgba(255, 255, 255, 0.13);
-    border-radius: 7px;
-    background: #18181a;
-    box-shadow: none;
-    text-decoration: none;
-    transform: none;
-}
-.carousel-card.mn-more-card::before {
-    display: none;
-}
-.carousel-card.mn-more-card:hover {
-    transform: none;
-    border-color: rgba(255, 255, 255, 0.35);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
-}
-.mn-more-photo {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    overflow: hidden;
-    background: #242427;
-}
-.mn-more-image {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.35s ease;
-}
-.mn-more-card:hover .mn-more-image {
-    transform: scale(1.025);
-}
-.mn-more-placeholder {
-    display: grid;
-    place-items: center;
-    height: 100%;
-    color: #a0a0a6;
-    letter-spacing: 0.18em;
-    font-weight: 700;
-}
-.mn-more-status {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    padding: 7px 10px;
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    border-radius: 999px;
-    background: rgba(14, 14, 16, 0.86);
-    color: #f2f2f3;
-    font-size: 9px;
-    font-weight: 750;
-    letter-spacing: 0.1em;
-}
-.mn-more-content {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 176px;
-    gap: 17px;
-    padding: 16px;
-}
-.mn-more-heading {
-    min-width: 0;
-}
-.mn-more-brand {
-    margin: 0 0 7px;
-    color: #bdbdc2;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-}
-.mn-more-title {
-    margin: 0;
-    color: #f5f5f6;
-    font-size: 15px;
-    font-weight: 650;
-    line-height: 1.4;
-    letter-spacing: -0.02em;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    overflow-wrap: anywhere;
-}
-.mn-more-ref {
-    margin: 8px 0 0;
-    color: #a4a4ab;
-    font-size: 10px;
-    line-height: 1.5;
-    overflow-wrap: anywhere;
-}
-.mn-more-price-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: end;
-    gap: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-    padding-top: 12px;
-}
-.mn-more-price-block {
-    min-width: 0;
-}
-.mn-more-price {
-    color: #f5f5f5;
-    font-size: 17px;
-    font-weight: 750;
-    line-height: 1.2;
-    margin: 0;
-    white-space: nowrap;
-}
-.mn-more-original {
-    color: #95959b;
-    font-size: 10px;
-    margin: 5px 0 0;
-    text-decoration: line-through;
-}
-.mn-more-view {
-    flex-shrink: 0;
-    color: #e4e4e6;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
 }
 @media (max-width: 639px) {
+    .carousel-card.mn-more-card {
+        flex-basis: min(68vw, 255px);
+        width: min(68vw, 255px);
+    }
     .carousel-row {
         gap: 12px;
         padding: 8px 14px 18px;
         scroll-padding-inline: 14px;
-    }
-    .carousel-card.mn-more-card {
-        flex: 0 0 min(68vw, 255px);
-        width: min(68vw, 255px);
-    }
-    .mn-more-content {
-        min-height: 171px;
-        padding: 14px;
-        gap: 12px;
-    }
-    .mn-more-title {
-        font-size: 14px;
-    }
-    .mn-more-price {
-        font-size: 16px;
-    }
-}
-@media (prefers-reduced-motion: reduce) {
-    .mn-more-image {
-        transition: none;
     }
 }
 </style>

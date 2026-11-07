@@ -6,7 +6,28 @@ import FulfillmentReadiness from "@/Components/FulfillmentReadiness.vue";
 import { Head, Link, useForm, usePage } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 import "./preorders.css";
-const props = defineProps({ order: Object });
+const props = defineProps({ order: Object, trackingUrl: String });
+const tracking = useForm({});
+const trackingCopied = ref(false);
+const trackingCopyError = ref(false);
+async function copyTracking() {
+    try {
+        await navigator.clipboard.writeText(props.trackingUrl);
+        trackingCopied.value = true;
+        trackingCopyError.value = false;
+    } catch {
+        trackingCopyError.value = true;
+    }
+}
+function generateTracking() {
+    tracking.post(route("admin.preorders.tracking", props.order.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            dialog.value = null;
+            trackingCopied.value = false;
+        },
+    });
+}
 const page = usePage();
 const dialog = ref(null);
 const money = (n) =>
@@ -102,7 +123,11 @@ function fulfill() {
     });
 }
 const busy = computed(
-    () => entry.processing || transition.processing || fulfillment.processing,
+    () =>
+        entry.processing ||
+        transition.processing ||
+        fulfillment.processing ||
+        tracking.processing,
 );
 </script>
 
@@ -139,6 +164,55 @@ const busy = computed(
             </div>
             <div class="detail">
                 <div>
+                    <section class="panel">
+                        <h2>Customer tracking</h2>
+                        <p class="muted" style="margin: 12px 0">
+                            Share this private link directly with the customer.
+                            Anyone with the link can view the order status and
+                            payment summary.
+                        </p>
+                        <template v-if="trackingUrl">
+                            <input
+                                aria-label="Private tracking link"
+                                :value="trackingUrl"
+                                readonly
+                                @focus="$event.target.select()"
+                                style="width: 100%; min-width: 0"
+                            />
+                            <div class="row" style="margin-top: 12px">
+                                <button @click="copyTracking">
+                                    {{
+                                        trackingCopied ? "Copied" : "Copy link"
+                                    }}
+                                </button>
+                                <a
+                                    :href="trackingUrl"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    class="button"
+                                    >Preview customer view ↗</a
+                                >
+                                <button @click="dialog = 'resetTracking'">
+                                    Reset link
+                                </button>
+                            </div>
+                            <p
+                                v-if="trackingCopyError"
+                                role="status"
+                                class="muted"
+                            >
+                                Select and copy the link above.
+                            </p>
+                        </template>
+                        <button
+                            v-else
+                            class="primary"
+                            :disabled="tracking.processing"
+                            @click="generateTracking"
+                        >
+                            Create tracking link
+                        </button>
+                    </section>
                     <section class="panel">
                         <div class="row">
                             <div>
@@ -447,6 +521,30 @@ const busy = computed(
         </div>
         <Modal :show="dialog !== null" :closeable="!busy" @close="dialog = null"
             ><div class="po dialog">
+                <form
+                    v-if="dialog === 'resetTracking'"
+                    @submit.prevent="generateTracking"
+                >
+                    <h2>Reset tracking link?</h2>
+                    <p class="notice">
+                        The previous link will stop working. Share the new link
+                        with the customer after resetting.
+                    </p>
+                    <div class="row">
+                        <button
+                            type="button"
+                            :disabled="tracking.processing"
+                            @click="dialog = null"
+                        >
+                            Keep current link</button
+                        ><button
+                            class="primary"
+                            :disabled="tracking.processing"
+                        >
+                            Reset link
+                        </button>
+                    </div>
+                </form>
                 <form v-if="dialog === 'entry'" @submit.prevent="submitEntry">
                     <p class="eyebrow">Order #{{ order.id }}</p>
                     <h2>{{ entryTitle }}</h2>

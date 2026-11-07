@@ -1,4 +1,5 @@
 <script setup>
+import CollectionBackLink from "@/Components/CollectionBackLink.vue";
 import PublicHeader from "@/Components/PublicHeader.vue";
 import WatchCardCarousel from "@/Components/WatchCardCarousel.vue";
 
@@ -681,12 +682,7 @@ onBeforeUnmount(() => {
 
                     <span class="shrink-0 text-zinc-700">/</span>
 
-                    <Link
-                        :href="route('welcome') + '#collection'"
-                        class="shrink-0 transition hover:text-white"
-                    >
-                        Collection
-                    </Link>
+                    <CollectionBackLink />
 
                     <span class="shrink-0 text-zinc-700">/</span>
 

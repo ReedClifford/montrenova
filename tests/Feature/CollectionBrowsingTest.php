@@ -13,6 +13,18 @@ class CollectionBrowsingTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_collection_defaults_to_available_and_all_keeps_available_first(): void
+    {
+        $stock = $this->stock('On hand');
+        $listing = $this->listing('New preorder');
+        $this->get('/')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('collectionType', 'available')->where('watches.total', 1)
+            ->where('watches.data.0.id', $stock->id));
+        $this->get('/?type=all')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('collectionType', 'all')->where('watches.total', 2)
+            ->where('watches.data.0.id', $stock->id)->where('watches.data.1.id', 'preorder-'.$listing->id));
+    }
+
     private function stock(string $name, string $status = 'available'): Watch
     {
         return Watch::create(['brand' => 'Seiko', 'model_name' => $name, 'slug' => (string) Str::uuid(),
@@ -35,7 +47,7 @@ class CollectionBrowsingTest extends TestCase
         $this->listing('Presage preorder');
         $this->listing('Presage hidden', false);
         $this->stock('Presage reserved', 'reserved');
-        $this->get('/?search=Presage')->assertOk()->assertInertia(fn (Assert $page) => $page
+        $this->get('/?type=all&search=Presage')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Welcome')->where('collectionSearch', 'Presage')
             ->where('watches.total', 2)->has('watches.data', 2));
     }
@@ -55,7 +67,7 @@ class CollectionBrowsingTest extends TestCase
     public function test_reference_search_and_no_results_return_clear_filter_state(): void
     {
         $this->listing('Cocktail Time');
-        $this->get('/?search=SRPB43')->assertOk()->assertInertia(fn (Assert $page) => $page
+        $this->get('/?type=all&search=SRPB43')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('watches.total', 1));
         $this->get('/?search=unknown-model')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('collectionSearch', 'unknown-model')->where('watches.total', 0)->has('watches.data', 0));

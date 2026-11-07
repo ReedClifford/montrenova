@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import { Link } from "@inertiajs/vue3";
+import CollectionBackLink from "@/Components/CollectionBackLink.vue";
 import WatchCardCarousel from "@/Components/WatchCardCarousel.vue";
 const props = defineProps({ items: { type: Array, default: () => [] } });
 const cards = computed(() =>
@@ -29,9 +29,7 @@ const cards = computed(() =>
         />
         <div v-else class="recommendations-empty">
             <p>More preorder models are on their way.</p>
-            <Link :href="route('welcome') + '#collection'"
-                >Explore the collection →</Link
-            >
+            <CollectionBackLink />
         </div>
     </section>
 </template>

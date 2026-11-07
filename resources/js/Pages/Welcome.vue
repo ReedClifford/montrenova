@@ -1,11 +1,13 @@
 <script setup>
+import WatchCard from "@/Components/WatchCard.vue";
+import { readCollection, saveCollection, consumeCollectionRestore } from "@/Utils/collectionMemory";
 import MontreLogo from "@/Components/MontreLogo.vue";
 import { Head, Link, router } from "@inertiajs/vue3";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
     collectionSearch: { type: String, default: "" },
-    collectionType: { type: String, default: "all" },
+    collectionType: { type: String, default: "available" },
     canLogin: {
         type: Boolean,
         default: true,
@@ -76,7 +78,7 @@ function searchCollection(type = props.collectionType) {
         route("welcome") + "#collection",
         {
             search: collectionSearchInput.value.trim() || undefined,
-            type: type === "all" ? undefined : type,
+            type,
         },
         {
             preserveState: true,
@@ -106,7 +108,16 @@ watch(
                   ? "Available"
                   : "All"),
 );
-const watchSort = ref("newest");
+const savedCollection = readCollection();
+const sameCollection = savedCollection?.url?.split('#')[0] === window.location.pathname + window.location.search;
+const watchSort = ref(sameCollection ? savedCollection.sort || 'newest' : 'newest');
+if (sameCollection && savedCollection.filter) activeWatchFilter.value = savedCollection.filter;
+let stopCollectionMemory;
+onMounted(() => {
+ stopCollectionMemory = router.on('before', () => saveCollection({url: window.location.pathname + window.location.search + '#collection', scroll: window.scrollY, sort: watchSort.value, filter: activeWatchFilter.value}));
+ if (consumeCollectionRestore() && sameCollection) requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo({top: Number(savedCollection.scroll) || 0, behavior: 'instant'})));
+});
+onBeforeUnmount(() => stopCollectionMemory?.());
 
 let sectionObserver = null;
 let bestSellerCarouselTimer = null;
@@ -784,6 +795,9 @@ const filteredAndSortedWatches = computed(() => {
         });
     }
 
+    if (watchSort.value === 'newest' && props.collectionType === 'all') {
+        collection.sort((a,b) => Number(a.status === 'preorder') - Number(b.status === 'preorder'));
+    }
     return collection;
 });
 
@@ -1228,7 +1242,7 @@ const productBadges = (watch) => {
                         <div>
                             <div class="mn-collection-title-row">
                                 <h2>Watch Collection</h2>
-                                <span>{{ availableCount }} watches</span>
+                                <span>{{ availableCount }} {{ availableCount === 1 ? "watch" : "watches" }}</span>
                             </div>
                             <p class="mn-collection-intro">
                                 Explore on-hand pieces and preorder models, with clear references and transparent pricing.
@@ -1245,7 +1259,7 @@ const productBadges = (watch) => {
 
                     <form class="collection-search" role="search" @submit.prevent="searchCollection()">
                         <label for="collection-search">Find your next timepiece</label>
-                        <div><input id="collection-search" v-model="collectionSearchInput" type="search" maxlength="100" placeholder="Search brand, model or reference…" /><button type="submit" :disabled="collectionSearching">{{ collectionSearching ? 'Searching…' : 'Search collection' }}</button><button v-if="collectionSearch || collectionType !== 'all'" type="button" @click="collectionSearchInput=''; searchCollection('all')">Clear</button></div>
+                        <div><input id="collection-search" v-model="collectionSearchInput" type="search" maxlength="100" placeholder="Search brand, model or reference…" /><button type="submit" :disabled="collectionSearching">{{ collectionSearching ? 'Searching…' : 'Search collection' }}</button><button v-if="collectionSearch || collectionType !== 'available'" type="button" @click="collectionSearchInput=''; searchCollection('available')">Clear</button></div>
                         <p v-if="collectionSearch" role="status">{{ availableCount }} {{ availableCount === 1 ? 'match' : 'matches' }} for “{{ collectionSearch }}” across the collection.</p>
                     </form>
                     <div class="mn-filter-bar animated-in" :aria-busy="collectionSearching">
@@ -1270,7 +1284,7 @@ const productBadges = (watch) => {
                         <div
                             class="mn-sort-panel"
                             role="group"
-                            aria-label="Sort available watches"
+                            aria-label="Sort watches"
                         >
                             <span class="mn-sort-caption">SORT BY</span>
                             <div class="mn-sort-options">
@@ -1313,91 +1327,9 @@ const productBadges = (watch) => {
                             tag="div"
                             class="mn-watch-grid"
                         >
-                            <Link
-                                v-for="(
-                                    watch, index
-                                ) in filteredAndSortedWatches"
-                                :key="watch.id"
-                                :href="watch.url || route('public.watches.show', watch.id)"
-                                class="mn-watch-card group"
-                                :class="isSold(watch) ? 'opacity-65' : ''"
-                                :style="{ animationDelay: `${index * 45}ms` }"
-                                :aria-label="`View details for ${watchFullName(watch)}${watchReference(watch)}`"
-                            >
-                                <div class="mn-watch-media">
-                                    <img
-                                        v-if="watchImage(watch)"
-                                        :src="watchImage(watch)"
-                                        :alt="`${watch.brand} ${watch.model_name}`"
-                                        class="h-full w-full object-cover transition duration-700 group-hover:scale-[1.03]"
-                                        loading="lazy"
-                                        @error="handleImageError"
-                                    />
-                                    <div
-                                        v-else
-                                        class="flex h-full w-full items-center justify-center bg-[#e8e8e4]"
-                                    >
-                                        <div class="mn-watch-placeholder">
-                                            MN
-                                        </div>
-                                    </div>
-
-                                    <div class="mn-watch-badges">
-                                        <span
-                                            v-for="badge in productBadges(
-                                                watch,
-                                            ).slice(0, 1)"
-                                            :key="badge.label"
-                                            class="mn-watch-badge"
-                                            >{{ badge.label }}</span
-                                        >
-                                    </div>
-                                </div>
-
-                                <div class="mn-watch-body">
-                                    <div class="mn-watch-heading">
-                                        <p class="mn-watch-brand">
-                                            {{ watch.brand || "Montre Nova" }}
-                                        </p>
-                                        <h3>{{ watch.model_name }}</h3>
-                                        <p class="mn-watch-reference">
-                                            {{
-                                                watch.reference_number ||
-                                                "Reference upon request"
-                                            }}
-                                        </p>
-                                    </div>
-
-                                    <div class="mn-watch-tags">
-                                        <span>{{
-                                            watch.condition ||
-                                            "Condition upon request"
-                                        }}</span>
-                                        <span v-if="watch.category">{{
-                                            watch.category
-                                        }}</span>
-                                    </div>
-
-                                    <div class="mn-watch-price-row">
-                                        <p v-if="watch.status === 'preorder'" class="text-xs text-amber-200/80">20% down payment required</p>
-                                        <div>
-                                            <p class="mn-watch-price">
-                                                {{ peso(finalPrice(watch)) }}
-                                            </p>
-                                            <p
-                                                v-if="isBelowSrp(watch)"
-                                                class="mn-watch-original-price"
-                                            >
-                                                {{ peso(originalPrice(watch)) }}
-                                            </p>
-                                        </div>
-                                        <span class="mn-watch-details"
-                                            >View
-                                            <span aria-hidden="true"></span
-                                        ></span>
-                                    </div>
-                                </div>
-                            </Link>
+                            <WatchCard v-for="watch in filteredAndSortedWatches" :key="watch.id" :item="{
+ ...watch, url: watch.url || route('public.watches.show', watch.id), card_image: watchImage(watch), card_price: finalPrice(watch), card_original_price: isBelowSrp(watch) ? originalPrice(watch) : null, status_label: watch.status === 'preorder' ? 'PREORDER' : (watch.status || 'available').toUpperCase(),
+ }" />
                         </TransitionGroup>
 
                         <div
@@ -1452,8 +1384,8 @@ const productBadges = (watch) => {
 
                     <div v-else class="mn-empty-state">
                         <p>THE COLLECTION</p>
-                        <h3>{{ collectionSearch || collectionType !== 'all' ? 'No matching timepieces.' : 'New pieces are on their way.' }}</h3>
-                        <p>{{ collectionSearch || collectionType !== 'all' ? 'Try another model or reference, or clear the filters to explore more pieces.' : 'Tell us the model you have in mind and we’ll help you source it.' }}</p>
+                        <h3>{{ collectionSearch ? 'No matching timepieces.' : collectionType === 'available' ? 'No available watches right now.' : collectionType === 'preorder' ? 'Preorder models are coming soon.' : 'New pieces are on their way.' }}</h3>
+                        <p>{{ collectionSearch ? 'Try another model or reference, or explore all watches.' : collectionType === 'available' ? 'Explore our preorder models or tell us which watch you would like us to source.' : 'Tell us the model you have in mind and we’ll help you source it.' }}</p>
                         <button v-if="collectionSearch || collectionType !== 'all'" type="button" class="mn-solid-button" @click="collectionSearchInput=''; searchCollection('all')">Explore all watches</button>
                         <button
                             type="button"
@@ -11478,4 +11410,51 @@ a:visited {
         font-size: 9px !important;
     }
 }
+
+/* Shared content slots keep available and preorder tiles the same size. */
+.mn-watch-card .mn-watch-heading h3 {
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    height: 2.8em !important;
+    min-height: 2.8em !important;
+    overflow: hidden !important;
+}
+.mn-watch-card .mn-watch-brand,
+.mn-watch-card .mn-watch-reference {
+    display: block !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+.mn-watch-card .mn-watch-tags {
+    height: 88px !important;
+    flex: none !important;
+    overflow: hidden !important;
+}
+.mn-watch-card .mn-watch-tags span {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+.mn-watch-card .mn-watch-terms {
+    height: 42px;
+    flex: none;
+}
+.mn-watch-card .mn-watch-price-row > div {
+    min-height: 46px;
+}
+/* Keep deposit terms separate from the card's price and tap target. */
+.mn-watch-card .mn-watch-deposit-note { margin: 0 !important; padding: 9px 0 0 !important; color: #d6bd8f !important; font-size: 10px !important; line-height: 1.65 !important; letter-spacing: .015em !important; }
+.mn-watch-card .mn-watch-price-row { display: grid !important; grid-template-columns: minmax(0,1fr) auto !important; align-items: center !important; gap: 12px !important; }
+.mn-watch-card .mn-watch-details { display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 10px !important; min-height: 44px !important; padding: 10px 12px !important; border: 1px solid #ffffff24 !important; border-radius: 6px !important; background: #ffffff05 !important; white-space: nowrap !important; color: #f4f4f5 !important; }
+@media(max-width:639px) {
+ .mn-watch-card .mn-watch-heading h3 { height:2.76em !important; min-height:2.76em !important; }
+ .mn-watch-card .mn-watch-tags { height:74px !important; }
+ .mn-watch-card .mn-watch-price-row { grid-template-columns: minmax(0,1fr) !important; gap: 12px !important; align-items: stretch !important; }
+ .mn-watch-card .mn-watch-details { width:100% !important; justify-content:space-between !important; min-height:44px !important; padding: 10px 12px !important; font-size: 10px !important; }
+ .mn-watch-card .mn-watch-price { white-space: normal !important; overflow-wrap:anywhere !important; }
+ .mn-watch-card .mn-watch-deposit-note { font-size:10px !important; }
+}
+
 </style>

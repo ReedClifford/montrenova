@@ -21,7 +21,7 @@ class PublicWatchController extends Controller
             'type' => ['nullable', 'in:all,available,preorder'],
         ]);
         $search = trim($filters['search'] ?? '');
-        $type = $filters['type'] ?? 'all';
+        $type = $filters['type'] ?? 'available';
         $featuredWatches = Watch::query()
             ->with(['primaryImage', 'images'])
             ->withCount('images')
@@ -65,6 +65,7 @@ class PublicWatchController extends Controller
         }
         $watches = DB::query()->fromSub($stockRows->unionAll($preorderRows), 'collection')
             ->when($type !== 'all', fn ($query) => $query->where('kind', $type === 'available' ? 'stock' : 'preorder'))
+            ->orderByRaw("CASE WHEN kind = 'stock' THEN 0 ELSE 1 END")
             ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
             ->orderBy('display_order')
             ->orderByDesc('created_at')

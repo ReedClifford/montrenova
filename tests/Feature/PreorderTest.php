@@ -23,6 +23,49 @@ class PreorderTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_customer_tracking_is_private_and_only_exposes_customer_facing_fields(): void
+    {
+        $this->admin();
+        $order = $this->order();
+        $this->entry($order, 'payment', 4000);
+        $this->entry($order, 'cost', 3000);
+        $order->update(['notes' => 'Private supplier negotiation', 'tracking_token' => Str::random(64)]);
+        $this->app['auth']->forgetGuards();
+        $response = $this->get(route('public.preorders.track', $order->tracking_token))->assertOk();
+        $response->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive')
+            ->assertHeader('Referrer-Policy', 'no-referrer')
+            ->assertInertia(fn (Assert $page) => $page->component('Public/PreorderTracking')
+                ->where('order.status', 'confirmed')->where('order.paid', 4000)
+                ->where('order.balance', 16000)->has('order.transactions', 1)
+                ->where('order.transactions.0.type', 'payment')
+                ->missing('order.cost')->missing('order.notes')->missing('order.contact')
+                ->missing('order.customer_name')->missing('order.tracking_token')
+                ->missing('order.transactions.0.reference')->missing('order.transactions.0.proof_path'));
+        $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
+        $this->get(route('public.preorders.track', Str::random(64)))->assertNotFound();
+        $this->get('/track/preorders/'.$order->id)->assertNotFound();
+    }
+
+    public function test_only_admin_can_create_and_reset_tracking_links_and_old_links_are_revoked(): void
+    {
+        $order = $this->order();
+        $this->post(route('admin.preorders.tracking', $order))->assertRedirect('/login');
+        $this->actingAs(User::factory()->create(['role' => 'investor']));
+        $this->post(route('admin.preorders.tracking', $order))->assertRedirect(route('investor.dashboard'));
+        $this->assertNull($order->fresh()->tracking_token);
+        $this->admin();
+        $this->post(route('admin.preorders.tracking', $order))->assertSessionHasNoErrors();
+        $old = $order->fresh()->tracking_token;
+        $this->assertSame(64, strlen($old));
+        $this->assertArrayNotHasKey('tracking_token', $order->fresh()->toArray());
+        $this->get(route('admin.preorders.show', $order))->assertInertia(fn (Assert $page) => $page
+            ->where('trackingUrl', route('public.preorders.track', $old)));
+        $this->post(route('admin.preorders.tracking', $order))->assertSessionHasNoErrors();
+        $this->assertNotSame($old, $order->fresh()->tracking_token);
+        $this->get(route('public.preorders.track', $old))->assertNotFound();
+        $this->get(route('public.preorders.track', $order->fresh()->tracking_token))->assertOk();
+    }
+
     public function test_preorder_recommendations_only_include_other_published_listings_and_are_limited(): void
     {
         $current = $this->listing();
@@ -148,9 +191,9 @@ class PreorderTest extends TestCase
             Watch::create(['brand' => 'Seiko', 'model_name' => 'Available '.$i, 'slug' => 'stock-'.$i,
                 'status' => 'available', 'is_visible' => true, 'selling_price' => 15000]);
         }
-        $first = $this->get('/')->assertOk()->assertInertia(fn (Assert $page) => $page
+        $first = $this->get('/?type=all')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Welcome')->where('watches.total', 22)->has('watches.data', 20));
-        $second = $this->get('/?page=2')->assertOk()->assertInertia(fn (Assert $page) => $page
+        $second = $this->get('/?type=all&page=2')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('watches.total', 22)->has('watches.data', 2));
         $ids = array_merge(array_column($first->viewData('page')['props']['watches']['data'], 'id'),
             array_column($second->viewData('page')['props']['watches']['data'], 'id'));

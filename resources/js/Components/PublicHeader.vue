@@ -1,4 +1,8 @@
 <script setup>
+import {
+    collectionHref,
+    requestCollectionRestore,
+} from "@/Utils/collectionMemory";
 import { Link, usePage } from "@inertiajs/vue3";
 import { computed, onMounted, onBeforeUnmount, ref, watch } from "vue";
 defineProps({ position: { type: String, default: "fixed" } });
@@ -9,7 +13,7 @@ const toggle = ref(null);
 const links = computed(() => [
     {
         label: "Collection",
-        href: route("welcome") + "#collection",
+        href: collectionHref(),
         active: ["Welcome", "Public/WatchShow", "Public/PreorderShow"].includes(
             page.component,
         ),
@@ -78,6 +82,10 @@ onBeforeUnmount(() => {
                     v-for="link in links"
                     :key="link.label"
                     :href="link.href"
+                    @click="
+                        link.label === 'Collection' &&
+                        requestCollectionRestore()
+                    "
                     :class="{ active: link.active }"
                     :aria-current="link.active ? 'page' : undefined"
                     >{{ link.label }}</Link
@@ -118,7 +126,10 @@ onBeforeUnmount(() => {
                 :href="link.href"
                 :class="{ active: link.active }"
                 :aria-current="link.active ? 'page' : undefined"
-                @click="open = false"
+                @click="
+                    open = false;
+                    link.label === 'Collection' && requestCollectionRestore();
+                "
                 >{{ link.label }}<span aria-hidden="true">↗</span></Link
             >
         </div>

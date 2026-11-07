@@ -107,7 +107,18 @@ class PreorderController extends Controller
 
     public function show(Preorder $preorder)
     {
-        return Inertia::render('Admin/Preorders/Show', ['order' => $preorder->load(['listing', 'entries'])]);
+        return Inertia::render('Admin/Preorders/Show', [
+            'order' => $preorder->load(['listing', 'entries']),
+            'trackingUrl' => $preorder->tracking_token
+                ? route('public.preorders.track', $preorder->tracking_token) : null,
+        ]);
+    }
+
+    public function tracking(Preorder $preorder)
+    {
+        $preorder->update(['tracking_token' => Str::random(64)]);
+
+        return back()->with('success', 'New private tracking link ready. Any previous link is now disabled.');
     }
 
     public function entry(Request $request, Preorder $preorder)
