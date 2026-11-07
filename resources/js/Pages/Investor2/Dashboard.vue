@@ -1,4 +1,5 @@
 <script setup>
+import UiIcon from "@/Components/UiIcon.vue";
 import InvestorNavigation from "@/Components/InvestorNavigation.vue";
 import InvestorExpenseBreakdown from "@/Components/InvestorExpenseBreakdown.vue";
 import PreorderBalanceNote from "@/Components/PreorderBalanceNote.vue";
@@ -1219,7 +1220,7 @@ const yearlyChartOptions = computed(() => ({
                             <p class="mt-3 text-xl font-bold text-red-700">
                                 {{ formatCurrency(summary.total_expenses) }}
                             </p>
-                            <button type="button" @click="selectDashboardTab('expenses')" class="mt-3 min-h-[44px] text-sm font-semibold text-amber-600 underline underline-offset-4">View full breakdown →</button>
+                            <button type="button" @click="selectDashboardTab('expenses')" class="mt-3 min-h-[44px] text-sm font-semibold text-amber-600 underline underline-offset-4">View full breakdown <UiIcon name="chevron-right" /></button>
                         </article>
 
                         <article

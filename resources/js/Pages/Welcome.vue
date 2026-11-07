@@ -1,4 +1,5 @@
 <script setup>
+import UiIcon from "@/Components/UiIcon.vue";
 import WatchCard from "@/Components/WatchCard.vue";
 import { readCollection, saveCollection, consumeCollectionRestore } from "@/Utils/collectionMemory";
 import MontreLogo from "@/Components/MontreLogo.vue";
@@ -1189,7 +1190,7 @@ const productBadges = (watch) => {
                             resetBestSellerAutoPlay();
                         "
                     >
-                        <span aria-hidden="true">→</span>
+                        <span aria-hidden="true"><UiIcon name="chevron-right" /></span>
                     </button>
                 </template>
 

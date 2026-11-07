@@ -1,4 +1,5 @@
 <script setup>
+import UiIcon from "@/Components/UiIcon.vue";
 import { paymentMethodsDescription } from "@/Utils/paymentMethods";
 import { requestDiscardChanges } from "@/Utils/discardChanges";
 import InputError from "@/Components/InputError.vue";
@@ -2465,7 +2466,7 @@ onBeforeUnmount(() => {
                                                             )
                                                         "
                                                     >
-                                                        →
+                                                        <UiIcon name="chevron-right" />
                                                     </button>
                                                 </div>
 

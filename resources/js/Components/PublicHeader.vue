@@ -1,4 +1,5 @@
 <script setup>
+import UiIcon from "@/Components/UiIcon.vue";
 import {
     collectionHref,
     requestCollectionRestore,
@@ -130,7 +131,7 @@ onBeforeUnmount(() => {
                     open = false;
                     link.label === 'Collection' && requestCollectionRestore();
                 "
-                >{{ link.label }}<span aria-hidden="true">↗</span></Link
+                >{{ link.label }}<span aria-hidden="true"><UiIcon name="chevron-right" /></span></Link
             >
         </div>
     </nav>

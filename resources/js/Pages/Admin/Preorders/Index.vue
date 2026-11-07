@@ -1,4 +1,5 @@
 <script setup>
+import UiIcon from "@/Components/UiIcon.vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Modal from "@/Components/Modal.vue";
 import PreorderPhotoGallery from "@/Components/PreorderPhotoGallery.vue";
@@ -324,7 +325,7 @@ onMounted(() => {
                                 )
                             }}</strong>
                         </div>
-                        <span aria-hidden="true">→</span>
+                        <span aria-hidden="true"><UiIcon name="chevron-right" /></span>
                     </div>
                 </Link>
                 <nav
@@ -387,7 +388,7 @@ onMounted(() => {
                             class="button"
                             target="_blank"
                             rel="noopener"
-                            >Preview ↗</a
+                            >Preview <UiIcon name="eye" /></a
                         ><button @click="openOrder(l)" class="primary">
                             New order
                         </button>

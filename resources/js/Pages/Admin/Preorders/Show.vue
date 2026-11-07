@@ -1,4 +1,5 @@
 <script setup>
+import UiIcon from "@/Components/UiIcon.vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Modal from "@/Components/Modal.vue";
 import PreorderPhotoGallery from "@/Components/PreorderPhotoGallery.vue";
@@ -229,7 +230,7 @@ const busy = computed(
                                     target="_blank"
                                     rel="noreferrer"
                                     class="button"
-                                    >Preview customer view ↗</a
+                                    >Preview customer view <UiIcon name="eye" /></a
                                 >
                                 <button @click="dialog = 'resetTracking'">
                                     Reset link

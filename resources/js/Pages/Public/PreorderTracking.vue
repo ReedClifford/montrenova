@@ -1,4 +1,5 @@
 <script setup>
+import UiIcon from "@/Components/UiIcon.vue";
 import { Head } from "@inertiajs/vue3";
 import PublicHeader from "@/Components/PublicHeader.vue";
 import { computed } from "vue";
@@ -177,7 +178,7 @@ const messenger = computed(
                 target="_blank"
                 rel="noreferrer"
                 class="tracking-contact"
-                >Ask about this preorder on Messenger ↗</a
+                >Ask about this preorder on Messenger <UiIcon name="chat" /></a
             >
         </main>
     </div>

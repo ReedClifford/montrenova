@@ -1,4 +1,5 @@
 <script setup>
+import UiIcon from "@/Components/UiIcon.vue";
 import PublicHeader from "@/Components/PublicHeader.vue";
 
 import { Head, Link, router } from "@inertiajs/vue3";
@@ -535,7 +536,7 @@ const resultSummary = computed(() => {
                         <p
                             class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600"
                         >
-                            Swipe →
+                            Swipe <UiIcon name="chevron-right" />
                         </p>
                     </div>
 
@@ -600,7 +601,7 @@ const resultSummary = computed(() => {
                     <p
                         class="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600"
                     >
-                        Swipe cards →
+                        Swipe cards <UiIcon name="chevron-right" />
                     </p>
                 </div>
 
@@ -726,7 +727,7 @@ const resultSummary = computed(() => {
                                         <span class="ask-pill">
                                             Inquire
 
-                                            <span aria-hidden="true">→</span>
+                                            <span aria-hidden="true"><UiIcon name="chevron-right" /></span>
                                         </span>
                                     </div>
                                 </div>

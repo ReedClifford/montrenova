@@ -1,4 +1,5 @@
 <script setup>
+import UiIcon from "@/Components/UiIcon.vue";
 import CollectionBackLink from "@/Components/CollectionBackLink.vue";
 import PublicHeader from "@/Components/PublicHeader.vue";
 import { Head } from "@inertiajs/vue3";
@@ -87,7 +88,7 @@ const specs = computed(() =>
                         target="_blank"
                         rel="noopener noreferrer"
                         >Preorder via Messenger
-                        <span aria-hidden="true">↗</span></a
+                        <span aria-hidden="true"><UiIcon name="chat" /></span></a
                     >
                     <p class="caption">
                         Confirm availability, the final price, lead time and

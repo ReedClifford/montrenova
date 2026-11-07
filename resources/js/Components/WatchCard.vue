@@ -1,4 +1,5 @@
 <script setup>
+import UiIcon from "@/Components/UiIcon.vue";
 import { Link } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
 const props = defineProps({
@@ -67,7 +68,7 @@ const money = (value) =>
                     </p>
                 </div>
                 <span class="tile-view" aria-hidden="true"
-                    >View watch <span>↗</span></span
+                    >View watch <span><UiIcon name="eye" /></span></span
                 >
             </div>
         </div>

@@ -1,4 +1,5 @@
 <script setup>
+import UiIcon from "@/Components/UiIcon.vue";
 import { computed } from "vue";
 const props = defineProps({ order: Object });
 const emit = defineEmits(["payment", "cost"]);
@@ -64,7 +65,7 @@ const remaining = computed(() => checks.value.filter((c) => !c.done).length);
                                 ? "Record payment"
                                 : "Record cost"
                         }}
-                        →
+                        <UiIcon name="chevron-right" />
                     </button>
                 </div>
             </li>

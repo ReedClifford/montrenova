@@ -1,4 +1,5 @@
 <script setup>
+import UiIcon from "@/Components/UiIcon.vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Modal from "@/Components/Modal.vue";
 import { Head, Link, router, useForm } from "@inertiajs/vue3";
@@ -215,7 +216,7 @@ onBeforeUnmount(() => {
                         target="_blank"
                         rel="noopener noreferrer"
                         class="btn-secondary text-center"
-                        >View catalog <span aria-hidden="true">↗</span></Link
+                        >View catalog <span aria-hidden="true"><UiIcon name="eye" /></span></Link
                     >
                     <button
                         type="button"
