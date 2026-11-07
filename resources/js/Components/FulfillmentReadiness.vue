@@ -78,7 +78,7 @@ const remaining = computed(() => checks.value.filter((c) => !c.done).length);
             }}
             to enable Fulfill Preorder.
         </p>
-        <p v-else class="readiness-helper">
+        <p v-else id="fulfillment-blockers" class="readiness-helper">
             All requirements met. Confirm the serial number and hand over the
             watch.
         </p>

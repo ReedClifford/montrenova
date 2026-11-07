@@ -1,6 +1,5 @@
 <script setup>
 import PublicHeader from "@/Components/PublicHeader.vue";
-import MontreLogo from "@/Components/MontreLogo.vue";
 
 import { Head, Link, router } from "@inertiajs/vue3";
 
@@ -35,12 +34,6 @@ const props = defineProps({
         type: Number,
 
         default: 0,
-    },
-
-    catalogDebug: {
-        type: Object,
-
-        default: () => ({}),
     },
 });
 

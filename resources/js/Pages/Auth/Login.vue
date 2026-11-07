@@ -174,7 +174,7 @@ const submit = () => {
                                     autocomplete="username"
                                     autofocus
                                     class="block w-full rounded-2xl border border-white/10 bg-[#050505] px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-white/40 focus:ring-2 focus:ring-white/10"
-                                    placeholder="admin@montrenova.com"
+                                    placeholder="you@example.com"
                                 />
 
                                 <InputError

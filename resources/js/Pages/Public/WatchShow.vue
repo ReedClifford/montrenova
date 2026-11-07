@@ -1,6 +1,5 @@
 <script setup>
 import PublicHeader from "@/Components/PublicHeader.vue";
-import MontreLogo from "@/Components/MontreLogo.vue";
 
 import { Head, Link } from "@inertiajs/vue3";
 

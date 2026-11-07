@@ -12,6 +12,8 @@
 
 Order flow: **Awaiting deposit → Confirmed → Ordered → Arrived → Fulfilled**. Payment state is tracked independently. Fulfillment requires full payment and recorded supplier costs.
 
+The **Ready for handover?** checklist shows the arrival, payment and cost requirements, including exactly how much remains to collect. Its shortcuts open the relevant payment/cost form. Payment forms suggest the outstanding deposit or balance; always verify the amount actually received before saving. Projected profit is shown only after acquisition costs have been recorded.
+
 ## Accounting
 
 - Unfulfilled receipts are customer deposit liabilities, not sales or profit.

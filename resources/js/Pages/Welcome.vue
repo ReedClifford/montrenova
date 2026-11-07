@@ -259,7 +259,7 @@ const stopBestSellerAutoPlay = () => {
 const startBestSellerAutoPlay = () => {
     stopBestSellerAutoPlay();
 
-    if (!hasBestSellerCarousel.value) return;
+    if (!hasBestSellerCarousel.value || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     bestSellerCarouselTimer = window.setInterval(() => {
         nextBestSeller();

@@ -653,6 +653,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+@media (min-width: 1024px) {
+    [aria-label="Open navigation"],
+    [aria-label="Open account menu"] { display: none; }
+}
 .mn-shell {
     color-scheme: dark;
 }

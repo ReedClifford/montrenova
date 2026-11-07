@@ -2,7 +2,6 @@
 import PublicHeader from "@/Components/PublicHeader.vue";
 import { Head, Link } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
-import MontreLogo from "@/Components/MontreLogo.vue";
 const props = defineProps({ watch: Object });
 const selected = ref(0);
 const name = computed(() =>

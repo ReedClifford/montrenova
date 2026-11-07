@@ -382,7 +382,7 @@ const deleteInvestor = async (investor) => {
 
 const changeAnalyticsYear = () => {
     router.get(
-        route("investor.dashboard"),
+        route("investor.dashboard") + "#" + activeTab.value,
         {
             year: selectedAnalyticsYear.value,
         },
@@ -947,9 +947,9 @@ const yearlyChartOptions = computed(() => ({
         <main
             class="mx-auto max-w-none px-3 py-4 pb-28 sm:px-6 sm:py-6 sm:pb-28 lg:pb-6 lg:pl-[284px] lg:pr-8"
         >
-            <PreorderBalanceNote :money="preorderMoney" />
+            <PreorderBalanceNote v-if="activeTab === 'overview'" :money="preorderMoney" />
             <div
-                v-if="!permissions.can_edit"
+                v-if="!permissions.can_edit && activeTab === 'overview'"
                 class="mb-5 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3"
             >
                 <p class="text-sm font-semibold text-indigo-900">
