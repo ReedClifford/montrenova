@@ -21,7 +21,7 @@ class PublicWatchController extends Controller
             'type' => ['nullable', 'in:all,available,preorder'],
         ]);
         $search = trim($filters['search'] ?? '');
-        $type = $filters['type'] ?? 'available';
+        $type = $filters['type'] ?? 'all';
         $featuredWatches = Watch::query()
             ->with(['primaryImage', 'images'])
             ->withCount('images')

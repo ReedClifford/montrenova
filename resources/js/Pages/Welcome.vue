@@ -7,7 +7,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
     collectionSearch: { type: String, default: "" },
-    collectionType: { type: String, default: "available" },
+    collectionType: { type: String, default: "all" },
     canLogin: {
         type: Boolean,
         default: true,
@@ -111,7 +111,7 @@ watch(
 const savedCollection = readCollection();
 const sameCollection = savedCollection?.url?.split('#')[0] === window.location.pathname + window.location.search;
 const watchSort = ref(sameCollection ? savedCollection.sort || 'newest' : 'newest');
-if (sameCollection && savedCollection.filter) activeWatchFilter.value = savedCollection.filter;
+if (sameCollection && savedCollection.filter && !['All', 'Available', 'Preorder'].includes(savedCollection.filter)) activeWatchFilter.value = savedCollection.filter;
 let stopCollectionMemory;
 onMounted(() => {
  stopCollectionMemory = router.on('before', () => saveCollection({url: window.location.pathname + window.location.search + '#collection', scroll: window.scrollY, sort: watchSort.value, filter: activeWatchFilter.value}));
@@ -795,7 +795,7 @@ const filteredAndSortedWatches = computed(() => {
         });
     }
 
-    if (watchSort.value === 'newest' && props.collectionType === 'all') {
+    if (props.collectionType === 'all') {
         collection.sort((a,b) => Number(a.status === 'preorder') - Number(b.status === 'preorder'));
     }
     return collection;
@@ -1259,7 +1259,7 @@ const productBadges = (watch) => {
 
                     <form class="collection-search" role="search" @submit.prevent="searchCollection()">
                         <label for="collection-search">Find your next timepiece</label>
-                        <div><input id="collection-search" v-model="collectionSearchInput" type="search" maxlength="100" placeholder="Search brand, model or reference…" /><button type="submit" :disabled="collectionSearching">{{ collectionSearching ? 'Searching…' : 'Search collection' }}</button><button v-if="collectionSearch || collectionType !== 'available'" type="button" @click="collectionSearchInput=''; searchCollection('available')">Clear</button></div>
+                        <div><input id="collection-search" v-model="collectionSearchInput" type="search" maxlength="100" placeholder="Search brand, model or reference…" /><button type="submit" :disabled="collectionSearching">{{ collectionSearching ? 'Searching…' : 'Search collection' }}</button><button v-if="collectionSearch || collectionType !== 'all'" type="button" @click="collectionSearchInput=''; searchCollection('all')">Clear</button></div>
                         <p v-if="collectionSearch" role="status">{{ availableCount }} {{ availableCount === 1 ? 'match' : 'matches' }} for “{{ collectionSearch }}” across the collection.</p>
                     </form>
                     <div class="mn-filter-bar animated-in" :aria-busy="collectionSearching">

@@ -13,16 +13,31 @@ class CollectionBrowsingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_collection_defaults_to_available_and_all_keeps_available_first(): void
+    public function test_collection_defaults_to_all_and_keeps_available_first(): void
     {
         $stock = $this->stock('On hand');
         $listing = $this->listing('New preorder');
         $this->get('/')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('collectionType', 'available')->where('watches.total', 1)
-            ->where('watches.data.0.id', $stock->id));
+            ->where('collectionType', 'all')->where('watches.total', 2)
+            ->where('watches.data.0.id', $stock->id)->where('watches.data.1.id', 'preorder-'.$listing->id));
         $this->get('/?type=all')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('collectionType', 'all')->where('watches.total', 2)
             ->where('watches.data.0.id', $stock->id)->where('watches.data.1.id', 'preorder-'.$listing->id));
+    }
+
+    public function test_default_collection_keeps_available_stock_ahead_of_preorders_across_pages(): void
+    {
+        $listing = $this->listing('Preorder');
+        for ($i = 0; $i < 21; $i++) {
+            $stock = $this->stock('Available '.$i);
+            $stock->update(['created_at' => now()->subMonth()]);
+        }
+        $this->get('/')->assertInertia(fn (Assert $page) => $page
+            ->where('collectionType', 'all')->where('watches.total', 22)
+            ->has('watches.data', 20)->where('watches.data', fn ($items) => collect($items)->every(fn ($item) => $item['status'] === 'available')));
+        $this->get('/?page=2')->assertInertia(fn (Assert $page) => $page
+            ->has('watches.data', 2)->where('watches.data.0.status', 'available')
+            ->where('watches.data.1.id', 'preorder-'.$listing->id));
     }
 
     private function stock(string $name, string $status = 'available'): Watch
