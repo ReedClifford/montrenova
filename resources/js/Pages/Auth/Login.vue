@@ -3,6 +3,9 @@ import Checkbox from "@/Components/Checkbox.vue";
 import InputError from "@/Components/InputError.vue";
 import MontreLogo from "@/Components/MontreLogo.vue";
 import { Head, Link, useForm } from "@inertiajs/vue3";
+import { ref } from "vue";
+const showPassword = ref(false);
+const capsLock = ref(false);
 
 defineProps({
     canResetPassword: {
@@ -28,7 +31,7 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Admin Login | Montre Nova" />
+    <Head title="Sign in | Montre Nova" />
 
     <div class="min-h-screen bg-[#050505] text-white">
         <div class="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
@@ -55,7 +58,7 @@ const submit = () => {
                         <p
                             class="mb-5 text-xs font-medium uppercase tracking-[0.36em] text-zinc-500"
                         >
-                            Admin Portal
+                            Your workspace
                         </p>
 
                         <h2
@@ -138,12 +141,11 @@ const submit = () => {
                             <h2
                                 class="text-3xl font-semibold tracking-tight text-white"
                             >
-                                Sign in to dashboard
+                                Sign in to your workspace
                             </h2>
 
                             <p class="mt-3 text-sm leading-6 text-zinc-400">
-                                Access your Montre Nova inventory and stock
-                                management system.
+                                Access your inventory, orders or investor dashboard with your assigned account.
                             </p>
                         </div>
 
@@ -157,13 +159,17 @@ const submit = () => {
                         <form @submit.prevent="submit" class="space-y-5">
                             <div>
                                 <label
-                                    class="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-zinc-500"
+                                    for="login-email" class="mb-2 block text-xs font-medium uppercase tracking-[0.18em] text-zinc-500"
                                 >
                                     Email Address
                                 </label>
 
                                 <input
                                     v-model="form.email"
+                                    id="login-email"
+                                    name="email"
+                                    required
+                                    :aria-invalid="!!form.errors.email"
                                     type="email"
                                     autocomplete="username"
                                     autofocus
@@ -182,7 +188,7 @@ const submit = () => {
                                     class="mb-2 flex items-center justify-between gap-4"
                                 >
                                     <label
-                                        class="block text-xs font-medium uppercase tracking-[0.18em] text-zinc-500"
+                                        for="login-password" class="block text-xs font-medium uppercase tracking-[0.18em] text-zinc-500"
                                     >
                                         Password
                                     </label>
@@ -198,11 +204,18 @@ const submit = () => {
 
                                 <input
                                     v-model="form.password"
-                                    type="password"
+                                    id="login-password"
+                                    name="password"
+                                    required
+                                    :type="showPassword ? 'text' : 'password'"
+                                    :aria-invalid="!!form.errors.password"
+                                    @keydown="capsLock=!!$event.getModifierState?.('CapsLock')"
+                                    @blur="capsLock=false"
                                     autocomplete="current-password"
                                     class="block w-full rounded-2xl border border-white/10 bg-[#050505] px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-white/40 focus:ring-2 focus:ring-white/10"
                                     placeholder="Enter your password"
                                 />
+                                <div class="mt-2 flex min-h-[40px] items-center justify-between gap-3"><p v-if="capsLock" class="text-xs text-amber-200" role="status">Caps Lock is on</p><button type="button" class="ml-auto min-h-[40px] px-1 text-xs text-zinc-400 hover:text-white" :aria-pressed="showPassword" @click="showPassword=!showPassword">{{ showPassword ? 'Hide password' : 'Show password' }}</button></div>
 
                                 <InputError
                                     class="mt-2"
@@ -236,7 +249,7 @@ const submit = () => {
 
                         <div class="mt-7 border-t border-white/10 pt-6">
                             <p class="text-center text-sm text-zinc-500">
-                                Need an admin account?
+                                <Link :href="route('welcome') + '#collection'" class="inline-flex min-h-[44px] items-center text-zinc-400 hover:text-white">← Back to the collection</Link>
                                 <!-- <Link
                                     :href="route('register')"
                                     class="font-medium text-white transition hover:text-zinc-300"

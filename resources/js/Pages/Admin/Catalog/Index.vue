@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
+import Modal from "@/Components/Modal.vue";
 import { Head, Link, router, useForm } from "@inertiajs/vue3";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
@@ -15,6 +16,7 @@ const search = ref(props.filters?.search || "");
 const fileInput = ref(null);
 const photoError = ref("");
 const deletingId = ref(null);
+const deleteCandidate = ref(null);
 const watches = computed(() => props.catalogWatches?.data || []);
 const visibleCount = computed(
     () => watches.value.filter((watch) => Boolean(watch.is_visible)).length,
@@ -127,12 +129,16 @@ function submit() {
 }
 
 function deleteWatch(watch) {
-    if (!window.confirm(`Delete ${watch.model_name}? This cannot be undone.`))
-        return;
+    deleteCandidate.value = watch;
+}
+function confirmDelete() {
+    const watch = deleteCandidate.value;
+    if (!watch) return;
     if (deletingId.value !== null) return;
     deletingId.value = watch.id;
     router.delete(route("admin.catalog.destroy", watch.id), {
         preserveScroll: true,
+        onSuccess: () => (deleteCandidate.value = null),
         onFinish: () => {
             deletingId.value = null;
         },
@@ -696,6 +702,9 @@ onBeforeUnmount(() => {
                 </section>
             </div>
         </Teleport>
+        <Modal :show="!!deleteCandidate" :closeable="deletingId === null" label="Delete catalog listing" max-width="md" @close="deleteCandidate=null">
+            <div class="bg-[#121215] p-6 text-zinc-300 sm:p-8"><p class="text-xs uppercase tracking-widest text-amber-200/70">Catalog listing</p><h2 class="mt-3 text-xl font-semibold text-white">Delete {{ deleteCandidate?.model_name }}?</h2><p class="mt-4 text-sm leading-7 text-zinc-400">This removes the listing and its photo from the catalog. This action cannot be undone. You can hide the listing instead if you may need it later.</p><div class="mt-6 flex flex-wrap justify-end gap-3"><button type="button" class="min-h-[44px] rounded-lg border border-white/15 px-4 py-2 text-sm" :disabled="deletingId !== null" @click="deleteCandidate=null">Keep listing</button><button type="button" class="min-h-[44px] rounded-lg bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-300" :disabled="deletingId !== null" @click="confirmDelete">{{ deletingId !== null ? 'Deleting…' : 'Delete listing' }}</button></div></div>
+        </Modal>
     </AuthenticatedLayout>
 </template>
 

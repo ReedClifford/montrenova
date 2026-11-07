@@ -4,6 +4,7 @@ import { Head, router, useForm } from "@inertiajs/vue3";
 import { computed, ref, watch, onMounted, onBeforeUnmount } from "vue";
 
 const props = defineProps({
+    preorderMoney: { type: Object, default: () => ({customer_deposits:0,supplier_spend:0}) },
     money: {
         type: Object,
         default: () => ({
@@ -734,6 +735,9 @@ const deleteExpense = (expense) => {
     <Head title="Dashboard | Montre Nova" />
 
     <AuthenticatedLayout title="Dashboard">
+        <div v-if="preorderMoney.customer_deposits || preorderMoney.supplier_spend" class="mb-5 rounded-2xl border border-amber-200/15 bg-amber-200/5 p-4 text-sm leading-7 text-amber-100/80">
+            Cash includes ₱{{ Number(preorderMoney.customer_deposits).toLocaleString('en-PH', {minimumFractionDigits:2}) }} in unfulfilled customer deposits and deducts ₱{{ Number(preorderMoney.supplier_spend).toLocaleString('en-PH', {minimumFractionDigits:2}) }} in pending supplier spending. These are excluded from sales and profit until fulfillment.
+        </div>
         <div
             class="mn-dashboard min-w-0 w-full max-w-full space-y-5 pb-10 sm:space-y-7"
         >

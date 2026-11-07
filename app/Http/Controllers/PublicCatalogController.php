@@ -60,15 +60,6 @@ class PublicCatalogController extends Controller
             'totalCatalogWatches' => $catalogSource->count(),
             'canLogin' => Route::has('login'),
 
-            'catalogDebug' => [
-                'database_catalog_watch_count' => CatalogWatch::query()->count(),
-                'visible_catalog_watch_count' => CatalogWatch::query()
-                    ->where('is_visible', true)
-                    ->count(),
-                'catalog_source_count' => $catalogSource->count(),
-                'filtered_watch_count' => $filteredWatches->count(),
-                'selected_category' => $selectedCategory ?: 'all',
-            ],
         ]);
     }
 

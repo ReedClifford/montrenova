@@ -1,4 +1,5 @@
 <script setup>
+import PublicHeader from "@/Components/PublicHeader.vue";
 import MontreLogo from "@/Components/MontreLogo.vue";
 
 import { Head, Link } from "@inertiajs/vue3";
@@ -658,49 +659,7 @@ onBeforeUnmount(() => {
 
         <!-- HEADER -->
 
-        <header
-            class="mn-product-header fixed inset-x-0 top-0 z-[90] backdrop-blur-2xl"
-        >
-            <div
-                class="mn-product-nav-inner mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8"
-            >
-                <Link
-                    :href="route('welcome')"
-                    class="flex min-w-0 items-center rounded-xl transition duration-300 hover:opacity-80 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-                >
-                    <MontreLogo />
-                </Link>
-
-                <Link
-                    :href="route('welcome')"
-                    class="mn-product-home group inline-flex h-10 w-10 items-center justify-center border border-white/15 text-zinc-200 transition duration-300 hover:bg-white hover:text-black focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2.5"
-                    aria-label="Back to home"
-                >
-                    <svg
-                        viewBox="0 0 24 24"
-                        class="h-4 w-4 transition duration-300 group-hover:-translate-y-0.5 group-hover:scale-110"
-                        aria-hidden="true"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-                        <path d="M3 10.5 12 3l9 7.5" />
-
-                        <path d="M5 10v10h14V10" />
-
-                        <path d="M9 20v-6h6v6" />
-                    </svg>
-
-                    <span
-                        class="hidden text-xs font-bold uppercase tracking-[0.12em] sm:inline"
-                    >
-                        Home
-                    </span>
-                </Link>
-            </div>
-        </header>
+        <PublicHeader position="fixed" />
 
         <main class="relative z-10 pt-[4.75rem] pb-8 lg:pb-14">
             <!-- PRODUCT HERO -->
@@ -1221,8 +1180,6 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /* Montre Nova | Product detail design aligned with the dark marble storefront */
-
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 
 .mn-product-page {
     --mn-ink: #09090b;

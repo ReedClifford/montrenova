@@ -6,6 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class Expense extends Model
 {
+    protected static function booted(): void
+    {
+        $guard = function (Expense $expense) {
+            if ($expense->preorder_id) throw \Illuminate\Validation\ValidationException::withMessages([
+                'preorder' => 'This expense belongs to a cancelled preorder and cannot be edited or deleted.',
+            ]);
+        };
+        static::updating($guard);
+        static::deleting($guard);
+    }
+
     protected $fillable = [
         'title',
         'category',

@@ -119,9 +119,12 @@ class InvestorDashboardController extends Controller
             - $totalWatchCapital
             - $totalExpenses;
 
+        $preorderMoney = \App\Services\PreorderAccounting::summary($startDate);
+        $currentOnHandMoney += $preorderMoney['cash_adjustment'];
+
         $currentFundValue =
             $currentOnHandMoney
-            + $inventoryCapital;
+            + $inventoryCapital + $preorderMoney['supplier_spend'] - $preorderMoney['customer_deposits'];
 
         /*
         |--------------------------------------------------------------------------
@@ -764,6 +767,7 @@ $activityYears = $soldActivityYears
         return Inertia::render(
             'Investor/Dashboard',
             [
+                'preorderMoney' => $preorderMoney,
                 'permissions' => [
                     'can_edit' =>
                         $request->user()->role
@@ -897,6 +901,8 @@ $activityYears = $soldActivityYears
 
                 'expenses' =>
                     $expenseRecords,
+
+                'expenseBreakdown' => \App\Services\InvestorExpenseBreakdown::records($expenses, $startDate),
 
                 'startDate' =>
                     $startDate->format('Y-m-d'),

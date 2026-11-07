@@ -1,4 +1,5 @@
 <script setup>
+import PublicHeader from "@/Components/PublicHeader.vue";
 import MontreLogo from "@/Components/MontreLogo.vue";
 
 import { Head, Link, useForm } from "@inertiajs/vue3";
@@ -178,48 +179,7 @@ const submit = () => {
         >
             <!-- HEADER -->
 
-            <header
-                class="mn-unified-header flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/25 px-4 py-3 backdrop-blur-xl sm:px-5"
-            >
-                <Link href="/" class="inline-flex min-w-0 items-center">
-                    <MontreLogo />
-                </Link>
-
-                <div class="flex items-center gap-2">
-                    <Link
-                        href="/"
-                        aria-label="Back to home"
-                        class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-black transition hover:bg-zinc-200 sm:h-auto sm:w-auto sm:px-4 sm:py-2"
-                    >
-                        <!-- Mobile home icon -->
-
-                        <svg
-                            class="h-5 w-5 sm:hidden"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2.2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            aria-hidden="true"
-                        >
-                            <path d="M3 10.5 12 3l9 7.5" />
-
-                            <path d="M5 10v10h14V10" />
-
-                            <path d="M9 20v-6h6v6" />
-                        </svg>
-
-                        <!-- Desktop text -->
-
-                        <span
-                            class="hidden text-xs font-black uppercase tracking-[0.12em] sm:inline"
-                        >
-                            Back Home
-                        </span>
-                    </Link>
-                </div>
-            </header>
+            <PublicHeader position="static" />
 
             <main
                 class="grid flex-1 gap-5 py-7 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:py-10"
@@ -351,11 +311,17 @@ const submit = () => {
 
                         <form class="space-y-5" @submit.prevent="submit">
                             <div>
-                                <label class="mn-label">Buyer Name</label>
+                                <label class="mn-label" for="warranty-buyer-name">Buyer Name</label>
 
                                 <div class="relative">
                                     <input
                                         v-model="form.buyer_name"
+                                        id="warranty-buyer-name"
+                                        name="buyer_name"
+                                        required
+                                        maxlength="255"
+                                        :aria-invalid="!!form.errors.buyer_name"
+                                        :aria-describedby="form.errors.buyer_name ? 'warranty-buyer-error' : undefined"
                                         type="text"
                                         class="mn-input"
                                         placeholder="Enter buyer name"
@@ -365,6 +331,8 @@ const submit = () => {
 
                                 <p
                                     v-if="form.errors.buyer_name"
+                                    id="warranty-buyer-error"
+                                    role="alert"
                                     class="mt-2 text-sm text-red-300"
                                 >
                                     {{ form.errors.buyer_name }}
@@ -372,7 +340,7 @@ const submit = () => {
                             </div>
 
                             <div>
-                                <label class="mn-label">
+                                <label class="mn-label" for="warranty-serial-number">
                                     Serial Number
 
                                     <span class="text-zinc-600"
@@ -382,6 +350,10 @@ const submit = () => {
 
                                 <input
                                     v-model="form.serial_number"
+                                    id="warranty-serial-number"
+                                    name="serial_number"
+                                    maxlength="255"
+                                    :aria-invalid="!!form.errors.serial_number"
                                     type="text"
                                     class="mn-input uppercase tracking-[0.08em]"
                                     placeholder="Optional: enter serial number"
@@ -424,7 +396,7 @@ const submit = () => {
 
                     <!-- RESULT -->
 
-                    <div v-if="warrantyRecords.length" class="space-y-4">
+                    <div v-if="warrantyRecords.length" class="space-y-4" role="region" aria-label="Warranty results" aria-live="polite">
                         <div
                             class="flex flex-wrap items-center justify-between gap-2 px-1"
                         >
@@ -705,7 +677,6 @@ const submit = () => {
 </template>
 
 <style scoped>
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 
 .mn-label {
     margin-bottom: 0.55rem;

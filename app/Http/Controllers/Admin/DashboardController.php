@@ -101,6 +101,8 @@ class DashboardController extends Controller
         $netProfit = $grossProfit - $totalExpenses;
 
         $currentOnhandMoney = $startingCash + $totalSales - $totalCapitalSpent - $totalExpenses;
+        $preorderMoney = \App\Services\PreorderAccounting::summary();
+        $currentOnhandMoney += $preorderMoney['cash_adjustment'];
 
         $now = now();
 
@@ -159,6 +161,7 @@ class DashboardController extends Controller
             ->get();
 
         return Inertia::render('Dashboard', [
+            'preorderMoney' => $preorderMoney,
             'money' => [
                 'starting_cash' => $startingCash,
 

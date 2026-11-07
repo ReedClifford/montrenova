@@ -12,6 +12,10 @@ use App\Http\Controllers\Admin\CatalogWatchController;
 use App\Http\Controllers\PublicCatalogController;
 use App\Http\Controllers\InvestorDashboardController;
 use App\Http\Controllers\Investor2DashboardController;
+use App\Http\Controllers\Admin\PreorderController;
+use App\Http\Controllers\PublicPreorderController;
+
+Route::get('/preorders/{listing}', [PublicPreorderController::class, 'show'])->name('public.preorders.show');
 /*
 |--------------------------------------------------------------------------
 | Public Routes
@@ -79,6 +83,15 @@ Route::middleware('auth')->group(function () {
 */
 
 Route::middleware(['auth', 'verified','role:admin'])->group(function () {
+    Route::get('/admin/preorders', [PreorderController::class, 'index'])->name('admin.preorders.index');
+    Route::post('/admin/preorder-listings', [PreorderController::class, 'storeListing'])->name('admin.preorder-listings.store');
+    Route::patch('/admin/preorder-listings/{listing}', [PreorderController::class, 'updateListing'])->name('admin.preorder-listings.update');
+    Route::post('/admin/preorders', [PreorderController::class, 'store'])->name('admin.preorders.store');
+    Route::get('/admin/preorders/{preorder}', [PreorderController::class, 'show'])->name('admin.preorders.show');
+    Route::patch('/admin/preorders/{preorder}', [PreorderController::class, 'update'])->name('admin.preorders.update');
+    Route::post('/admin/preorders/{preorder}/entries', [PreorderController::class, 'entry'])->name('admin.preorders.entries.store');
+    Route::post('/admin/preorders/{preorder}/fulfill', [PreorderController::class, 'fulfill'])->name('admin.preorders.fulfill');
+    Route::get('/admin/preorder-entries/{entry}/proof', [PreorderController::class, 'proof'])->name('admin.preorders.proof');
     /*
     |--------------------------------------------------------------------------
     | Watch Redirect Routes

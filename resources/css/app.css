@@ -1,3 +1,128 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    html {
+        scroll-padding-top: 90px;
+        -webkit-text-size-adjust: 100%;
+    }
+    body {
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+    }
+    button,
+    a,
+    input,
+    select,
+    textarea {
+        -webkit-tap-highlight-color: transparent;
+    }
+    button:disabled {
+        cursor: not-allowed;
+    }
+    :where(a, button, input, select, textarea, summary):focus-visible {
+        outline: 2px solid #b69765;
+        outline-offset: 3px;
+    }
+    :where(input, textarea)::placeholder {
+        opacity: 0.8;
+    }
+    :where(main, [role="main"]):focus {
+        outline: none;
+    }
+    @media (max-width: 640px) {
+        input:not([type="checkbox"]):not([type="radio"]),
+        select,
+        textarea {
+            font-size: 16px !important;
+        }
+        :where(button, [role="button"]) {
+            touch-action: manipulation;
+        }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        html,
+        html:focus-within {
+            scroll-behavior: auto !important;
+        }
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
+}
+
+@layer components {
+    .collection-search {
+        margin: 24px 0;
+        padding: 20px;
+        border: 1px solid rgb(255 255 255 / 0.12);
+        border-radius: 14px;
+        background: rgb(255 255 255 / 0.025);
+    }
+    .collection-search > label {
+        display: block;
+        margin-bottom: 10px;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        color: #a1a1aa;
+    }
+    .collection-search > div {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .collection-search input {
+        flex: 1;
+        min-width: 0;
+        border: 1px solid #ffffff20;
+        border-radius: 9px;
+        padding: 12px 14px;
+        background: #09090b;
+        color: #f4f4f5;
+        font-size: 14px;
+    }
+    .collection-search button {
+        min-height: 46px;
+        padding: 10px 18px;
+        border-radius: 9px;
+        background: #e4d1ac;
+        color: #21190e;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    .collection-search button + button {
+        background: transparent;
+        color: #c3b59d;
+        border: 1px solid #ffffff20;
+    }
+    .collection-search button:disabled {
+        opacity: 0.5;
+    }
+    .collection-search > p {
+        margin-top: 10px;
+        color: #a1a1aa;
+        font-size: 12px;
+    }
+    @media (max-width: 600px) {
+        .collection-search {
+            padding: 16px;
+        }
+        .collection-search > div {
+            flex-wrap: wrap;
+        }
+        .collection-search input {
+            flex-basis: 100%;
+        }
+        .collection-search button {
+            flex: 1;
+        }
+    }
+}

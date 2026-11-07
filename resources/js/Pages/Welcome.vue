@@ -4,6 +4,8 @@ import { Head, Link, router } from "@inertiajs/vue3";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
+    collectionSearch: { type: String, default: "" },
+    collectionType: { type: String, default: "all" },
     canLogin: {
         type: Boolean,
         default: true,
@@ -54,23 +56,56 @@ const props = defineProps({
     },
 });
 
-const isInitialLoading = ref(true);
-const isNavigating = ref(false);
-const loadingLabel = ref("Preparing the collection");
-const showMontreLoader = computed(
-    () => isInitialLoading.value || isNavigating.value,
-);
-const markHeroReady = () => {
-    isInitialLoading.value = false;
-};
-let removeStartListener = null;
-let removeFinishListener = null;
-let initialLoadingFallback = null;
 const isMobileCtaOpen = ref(false);
 const activeSection = ref("");
 const activeBestSellerIndex = ref(0);
 const isNavScrolled = ref(false);
-const activeWatchFilter = ref("All");
+const activeWatchFilter = ref(
+    props.collectionType === "preorder"
+        ? "Preorder"
+        : props.collectionType === "available"
+          ? "Available"
+          : "All",
+);
+const collectionSearchInput = ref(props.collectionSearch);
+const collectionSearching = ref(false);
+function searchCollection(type = props.collectionType) {
+    activeWatchFilter.value =
+        type === "all" ? "All" : type === "preorder" ? "Preorder" : "Available";
+    router.get(
+        route("welcome") + "#collection",
+        {
+            search: collectionSearchInput.value.trim() || undefined,
+            type: type === "all" ? undefined : type,
+        },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            only: ["watches", "collectionSearch", "collectionType"],
+            onStart: () => (collectionSearching.value = true),
+            onFinish: () => (collectionSearching.value = false),
+        },
+    );
+}
+function selectCollectionFilter(filter) {
+    if (["All", "Available", "Preorder"].includes(filter))
+        searchCollection(filter.toLowerCase());
+    else activeWatchFilter.value = filter;
+}
+watch(
+    () => props.collectionSearch,
+    (value) => (collectionSearchInput.value = value),
+);
+watch(
+    () => props.collectionType,
+    (value) =>
+        (activeWatchFilter.value =
+            value === "preorder"
+                ? "Preorder"
+                : value === "available"
+                  ? "Available"
+                  : "All"),
+);
 const watchSort = ref("newest");
 
 let sectionObserver = null;
@@ -83,20 +118,6 @@ const toggleMobileCta = () => {
 
 const closeMobileCta = () => {
     isMobileCtaOpen.value = false;
-};
-
-// Inertia's router lifecycle handles all internal page visits, including
-// pagination and data refreshes. No arbitrary 1.2-second loading overlay.
-const preparePageOpen = (event = null) => {
-    if (
-        event?.metaKey ||
-        event?.ctrlKey ||
-        event?.shiftKey ||
-        event?.altKey ||
-        event?.button === 1
-    )
-        return;
-    loadingLabel.value = "Opening collection";
 };
 
 const toCollectionArray = (collection) => {
@@ -158,7 +179,9 @@ const hasFeaturedFlag = (watch) => {
 };
 
 const isAvailableWatch = (watch) => {
-    return String(watch?.status || "available").toLowerCase() === "available";
+    return ["available", "preorder"].includes(
+        String(watch?.status || "available").toLowerCase(),
+    );
 };
 
 const isSoldWatch = (watch) => {
@@ -406,16 +429,6 @@ const sectionNavClass = (sectionId, variant = "desktop") => {
 };
 
 onMounted(() => {
-    // Hide the first-load mark once the main promotional image has resolved;
-    // fallback avoids a stuck overlay if an asset fails or never fires load.
-    initialLoadingFallback = window.setTimeout(markHeroReady, 6500);
-    removeStartListener = router.on("start", () => {
-        loadingLabel.value = "Preparing your next page";
-        isNavigating.value = true;
-    });
-    removeFinishListener = router.on("finish", () => {
-        isNavigating.value = false;
-    });
     const sectionIds = [
         "collection",
         "catalog",
@@ -464,9 +477,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-    if (initialLoadingFallback) window.clearTimeout(initialLoadingFallback);
-    if (removeStartListener) removeStartListener();
-    if (removeFinishListener) removeFinishListener();
     if (sectionObserver) {
         sectionObserver.disconnect();
     }
@@ -738,7 +748,7 @@ const watchFilterOptions = computed(() => {
         }
     });
 
-    return ["All", ...unique.slice(0, 7)];
+    return ["All", "Available", "Preorder", ...unique.slice(0, 7)];
 });
 
 const filteredAndSortedWatches = computed(() => {
@@ -747,6 +757,9 @@ const filteredAndSortedWatches = computed(() => {
 
     if (filter !== "all") {
         collection = collection.filter((watch) => {
+            if (["available", "preorder"].includes(filter)) {
+                return String(watch.status).toLowerCase() === filter;
+            }
             const brand = String(watch?.brand || "").toLowerCase();
             const category = String(watch?.category || "").toLowerCase();
             return brand.includes(filter) || category.includes(filter);
@@ -874,6 +887,10 @@ const statusBadge = (watch) => {
     const status = String(watch?.status || "available").toLowerCase();
 
     const badges = {
+        preorder: {
+            label: "Preorder",
+            className: "border-amber-400/20 bg-amber-400/10 text-amber-200",
+        },
         available: {
             label: "Available",
             className:
@@ -1094,9 +1111,7 @@ const productBadges = (watch) => {
                                 :src="watchImage(activeBestSellerWatch)"
                                 :alt="`Featured Montre Nova timepiece ${activeBestSellerIndex + 1}`"
                                 class="hero-full-main-image"
-                                @load="markHeroReady"
                                 @error="
-                                    markHeroReady();
                                     handleImageError($event);
                                 "
                             />
@@ -1212,12 +1227,11 @@ const productBadges = (watch) => {
                     <div class="mn-collection-head animated-in">
                         <div>
                             <div class="mn-collection-title-row">
-                                <h2>Available Watches</h2>
+                                <h2>Watch Collection</h2>
                                 <span>{{ availableCount }} watches</span>
                             </div>
                             <p class="mn-collection-intro">
-                                On-hand pieces with actual photos, clear
-                                references, and transparent pricing.
+                                Explore on-hand pieces and preorder models, with clear references and transparent pricing.
                             </p>
                         </div>
 
@@ -1229,10 +1243,12 @@ const productBadges = (watch) => {
                         </p>
                     </div>
 
-                    <div
-                        v-if="watches.length"
-                        class="mn-filter-bar animated-in"
-                    >
+                    <form class="collection-search" role="search" @submit.prevent="searchCollection()">
+                        <label for="collection-search">Find your next timepiece</label>
+                        <div><input id="collection-search" v-model="collectionSearchInput" type="search" maxlength="100" placeholder="Search brand, model or reference…" /><button type="submit" :disabled="collectionSearching">{{ collectionSearching ? 'Searching…' : 'Search collection' }}</button><button v-if="collectionSearch || collectionType !== 'all'" type="button" @click="collectionSearchInput=''; searchCollection('all')">Clear</button></div>
+                        <p v-if="collectionSearch" role="status">{{ availableCount }} {{ availableCount === 1 ? 'match' : 'matches' }} for “{{ collectionSearch }}” across the collection.</p>
+                    </form>
+                    <div class="mn-filter-bar animated-in" :aria-busy="collectionSearching">
                         <div class="mn-filter-scroll">
                             <button
                                 v-for="filter in watchFilterOptions"
@@ -1244,7 +1260,8 @@ const productBadges = (watch) => {
                                         ? 'is-active'
                                         : ''
                                 "
-                                @click="activeWatchFilter = filter"
+                                :aria-pressed="activeWatchFilter === filter"
+                                @click="selectCollectionFilter(filter)"
                             >
                                 {{ filter }}
                             </button>
@@ -1301,12 +1318,11 @@ const productBadges = (watch) => {
                                     watch, index
                                 ) in filteredAndSortedWatches"
                                 :key="watch.id"
-                                :href="route('public.watches.show', watch.id)"
+                                :href="watch.url || route('public.watches.show', watch.id)"
                                 class="mn-watch-card group"
                                 :class="isSold(watch) ? 'opacity-65' : ''"
                                 :style="{ animationDelay: `${index * 45}ms` }"
                                 :aria-label="`View details for ${watchFullName(watch)}${watchReference(watch)}`"
-                                @click="preparePageOpen"
                             >
                                 <div class="mn-watch-media">
                                     <img
@@ -1363,6 +1379,7 @@ const productBadges = (watch) => {
                                     </div>
 
                                     <div class="mn-watch-price-row">
+                                        <p v-if="watch.status === 'preorder'" class="text-xs text-amber-200/80">20% down payment required</p>
                                         <div>
                                             <p class="mn-watch-price">
                                                 {{ peso(finalPrice(watch)) }}
@@ -1434,12 +1451,10 @@ const productBadges = (watch) => {
                     </template>
 
                     <div v-else class="mn-empty-state">
-                        <p>AVAILABLE NOW</p>
-                        <h3>No available watches yet.</h3>
-                        <p>
-                            Stocks will appear here once they are marked as
-                            available and visible from the admin dashboard.
-                        </p>
+                        <p>THE COLLECTION</p>
+                        <h3>{{ collectionSearch || collectionType !== 'all' ? 'No matching timepieces.' : 'New pieces are on their way.' }}</h3>
+                        <p>{{ collectionSearch || collectionType !== 'all' ? 'Try another model or reference, or clear the filters to explore more pieces.' : 'Tell us the model you have in mind and we’ll help you source it.' }}</p>
+                        <button v-if="collectionSearch || collectionType !== 'all'" type="button" class="mn-solid-button" @click="collectionSearchInput=''; searchCollection('all')">Explore all watches</button>
                         <button
                             type="button"
                             class="mn-solid-button"
@@ -1468,7 +1483,6 @@ const productBadges = (watch) => {
                         <Link
                             :href="route('public.catalog')"
                             class="mn-outline-button"
-                            @click="preparePageOpen"
                         >
                             Full Catalog
                         </Link>
@@ -1855,24 +1869,6 @@ const productBadges = (watch) => {
             </div>
         </footer>
 
-        <!-- GLOBAL MONTRE NOVA LOADING (INITIAL HERO + INERTIA VISITS) -->
-        <Transition name="mn-loading-fade">
-            <div
-                v-if="showMontreLoader"
-                class="mn-loading-screen"
-                role="status"
-                aria-live="polite"
-                :aria-label="loadingLabel"
-            >
-                <div class="mn-loading-content">
-                    <div class="mn-loading-monogram">MN</div>
-                    <div class="mn-loading-rule"><span></span></div>
-                    <p class="mn-loading-name">MONTRE NOVA</p>
-                    <p class="mn-loading-caption">{{ loadingLabel }}</p>
-                </div>
-            </div>
-        </Transition>
-
         <!-- MOBILE MESSENGER FLOATING BUTTON -->
         <button
             type="button"
@@ -1899,7 +1895,6 @@ const productBadges = (watch) => {
 </template>
 
 <style scoped>
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 :global(html) {
     scroll-behavior: smooth;
 }

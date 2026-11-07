@@ -1,6 +1,7 @@
 <script setup>
 import { Link, usePage } from "@inertiajs/vue3";
-import { computed, onBeforeUnmount, watch, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, watch, ref } from "vue";
+import { lockBodyScroll } from "@/Utils/scrollLock";
 
 const props = defineProps({
     title: { type: String, default: "Dashboard" },
@@ -23,6 +24,13 @@ const navigation = computed(() => [
         shortLabel: "Stocks",
         href: route("admin.watches.index"),
         path: "/admin/watches",
+        icon: "watch",
+    },
+    {
+        label: "Preorders",
+        shortLabel: "Preorders",
+        href: route("admin.preorders.index"),
+        path: "/admin/preorders",
         icon: "watch",
     },
     {
@@ -82,25 +90,46 @@ const toggleMobileSidebar = () => {
 const handleKeydown = (event) => {
     if (event.key === "Escape" && showingMobileSidebar.value)
         closeMobileSidebar();
+    if (event.key === "Tab" && showingMobileSidebar.value) {
+        const drawer = document.querySelector('[aria-label="Navigation menu"]');
+        const elements = [
+            ...(drawer?.querySelectorAll("button:not([disabled]),a[href]") ||
+                []),
+        ];
+        const first = elements[0],
+            last = elements[elements.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first?.focus();
+        }
+    }
 };
 
-let previousOverflow = "";
-watch(showingMobileSidebar, (open) => {
+let releaseDrawerScroll = null;
+let drawerReturnFocus = null;
+watch(showingMobileSidebar, async (open) => {
     if (typeof document === "undefined") return;
     if (open) {
-        previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
+        drawerReturnFocus = document.activeElement;
+        releaseDrawerScroll = lockBodyScroll();
         document.addEventListener("keydown", handleKeydown);
+        await nextTick();
+        document.querySelector('[aria-label="Close menu"]')?.focus();
     } else {
-        document.body.style.overflow = previousOverflow;
+        releaseDrawerScroll?.();
+        releaseDrawerScroll = null;
         document.removeEventListener("keydown", handleKeydown);
+        if (drawerReturnFocus?.isConnected)
+            drawerReturnFocus.focus({ preventScroll: true });
     }
 });
 watch(() => page.url, closeMobileSidebar);
 onBeforeUnmount(() => {
     if (typeof document !== "undefined") {
-        if (showingMobileSidebar.value)
-            document.body.style.overflow = previousOverflow;
+        if (showingMobileSidebar.value) releaseDrawerScroll?.();
         document.removeEventListener("keydown", handleKeydown);
     }
 });
@@ -482,15 +511,15 @@ onBeforeUnmount(() => {
                     </div>
                     <div class="flex shrink-0 items-center gap-2">
                         <Link
-                            :href="route('admin.watches.create')"
+                            :href="route('welcome')"
                             class="mn-add-button"
-                            aria-label="Add Watch"
+                            aria-label="Preview public website" target="_blank" rel="noopener noreferrer"
                             ><span
                                 class="text-xl leading-none"
                                 aria-hidden="true"
-                                >+</span
+                                >↗</span
                             ><span class="hidden sm:inline"
-                                >Add watch</span
+                                >View website</span
                             ></Link
                         >
                         <button
@@ -518,7 +547,7 @@ onBeforeUnmount(() => {
             class="mn-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0b0b0e]/95 px-1.5 pt-2 backdrop-blur-xl lg:hidden"
             aria-label="Quick navigation"
         >
-            <div class="mx-auto grid max-w-xl grid-cols-5 gap-1">
+            <div class="mx-auto grid max-w-xl grid-cols-6 gap-1">
                 <Link
                     v-for="item in navigation"
                     :key="item.label"

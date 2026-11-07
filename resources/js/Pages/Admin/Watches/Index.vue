@@ -2877,7 +2877,7 @@ const clearReservation = (watch) => {
                                 </div>
                             </div>
 
-                            <div class="mt-5 grid grid-cols-2 gap-2">
+                            <div class="mt-5 grid grid-cols-2 gap-2"><Link v-if="watch.status === 'sold'" :href="route('admin.preorders.index', {source_watch_id:watch.id})" class="mn-action-btn border-amber-500/20 text-amber-200">Preorder listing</Link>
                                 <button
                                     v-if="watch.status !== 'sold'"
                                     type="button"
@@ -3246,7 +3246,7 @@ const clearReservation = (watch) => {
                                     </div>
                                 </div>
 
-                                <div class="mt-3 grid grid-cols-2 gap-2">
+                                <div class="mt-3 grid grid-cols-2 gap-2"><Link v-if="watch.status === 'sold'" :href="route('admin.preorders.index', {source_watch_id:watch.id})" class="mn-action-btn border-amber-500/20 text-amber-200">Preorder listing</Link>
                                     <button
                                         type="button"
                                         class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-zinc-200 transition active:scale-[0.99]"
@@ -3761,7 +3761,7 @@ const clearReservation = (watch) => {
                                     <td class="px-6 py-5">
                                         <div
                                             class="flex flex-wrap justify-end gap-2"
-                                        >
+                                        ><Link v-if="watch.status === 'sold'" :href="route('admin.preorders.index', {source_watch_id:watch.id})" class="mn-action-btn border-amber-500/20 text-amber-200">Preorder listing</Link>
                                             <button
                                                 v-if="watch.status !== 'sold'"
                                                 type="button"

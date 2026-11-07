@@ -1,4 +1,5 @@
 <script setup>
+import PublicHeader from "@/Components/PublicHeader.vue";
 import MontreLogo from "@/Components/MontreLogo.vue";
 
 import { Head, Link, router } from "@inertiajs/vue3";
@@ -211,9 +212,7 @@ const changeCategory = (category = "all") => {
             replace: true,
 
             onFinish: () => {
-                window.setTimeout(() => {
-                    isCatalogLoading.value = false;
-                }, 180);
+                isCatalogLoading.value = false;
             },
         },
     );
@@ -423,26 +422,6 @@ const resultSummary = computed(() => {
 
     return `${count} ${active} ${count === 1 ? "piece" : "pieces"}`;
 });
-
-const rawWatchType = computed(() => {
-    if (Array.isArray(props.watches)) {
-        return "array";
-    }
-
-    if (props.watches === null) {
-        return "null";
-    }
-
-    return typeof props.watches;
-});
-
-const rawWatchKeys = computed(() => {
-    if (!props.watches || typeof props.watches !== "object") {
-        return [];
-    }
-
-    return Object.keys(props.watches).slice(0, 10);
-});
 </script>
 
 <template>
@@ -479,49 +458,7 @@ const rawWatchKeys = computed(() => {
 
         <!-- HEADER -->
 
-        <header
-            class="mn-unified-header fixed inset-x-0 top-0 z-[90] border-b border-white/10 bg-black/82 shadow-xl shadow-black/30 backdrop-blur-2xl"
-        >
-            <div
-                class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8"
-            >
-                <Link
-                    :href="route('welcome')"
-                    class="flex min-w-0 items-center rounded-xl transition duration-300 hover:opacity-80 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-                >
-                    <MontreLogo />
-                </Link>
-
-                <Link
-                    :href="route('welcome')"
-                    class="group inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-zinc-300 shadow-lg shadow-black/20 transition duration-300 hover:-translate-y-0.5 hover:border-white/35 hover:bg-white hover:text-black hover:shadow-xl hover:shadow-white/15 active:scale-[0.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:h-auto sm:w-auto sm:gap-2 sm:px-4 sm:py-2.5"
-                    aria-label="Back to home"
-                >
-                    <svg
-                        viewBox="0 0 24 24"
-                        class="h-4 w-4 transition duration-300 group-hover:-translate-y-0.5 group-hover:scale-110"
-                        aria-hidden="true"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-                        <path d="M3 10.5 12 3l9 7.5" />
-
-                        <path d="M5 10v10h14V10" />
-
-                        <path d="M9 20v-6h6v6" />
-                    </svg>
-
-                    <span
-                        class="hidden text-xs font-bold uppercase tracking-[0.12em] sm:inline"
-                    >
-                        Home
-                    </span>
-                </Link>
-            </div>
-        </header>
+        <PublicHeader position="fixed" />
 
         <!-- LOADING BAR -->
 
@@ -805,86 +742,14 @@ const rawWatchKeys = computed(() => {
                     </div>
                 </template>
 
-                <!-- EMPTY / DEBUG STATE -->
-
                 <div v-else class="empty-state">
-                    <div class="placeholder-logo mx-auto">
-                        <span>MN</span>
+                    <p class="section-kicker">The catalog</p>
+                    <h2 class="mt-4 text-xl font-semibold text-white">No pieces in this selection yet.</h2>
+                    <p class="mx-auto mt-3 max-w-md text-sm leading-7 text-zinc-400">Explore another category or tell us which model you’d like us to source.</p>
+                    <div class="mt-6 flex flex-wrap justify-center gap-3">
+                        <button v-if="activeCategory !== 'all'" type="button" class="primary-button px-6 py-3 text-sm" @click="changeCategory('all')">Browse all models</button>
+                        <button type="button" class="primary-button px-6 py-3 text-sm" @click="openInquiry()">Ask about a model</button>
                     </div>
-
-                    <h2 class="mt-6 text-xl font-black text-white">
-                        No catalog watches received.
-                    </h2>
-
-                    <p
-                        class="mx-auto mt-3 max-w-md text-sm leading-7 text-zinc-500"
-                    >
-                        The page loaded, but the frontend did not receive usable
-                        watch records yet.
-                    </p>
-
-                    <div
-                        class="mx-auto mt-6 max-w-xl rounded-2xl border border-white/10 bg-black/35 p-4 text-left text-xs leading-6 text-zinc-400"
-                    >
-                        <p
-                            class="font-black uppercase tracking-[0.18em] text-white"
-                        >
-                            Data Check
-                        </p>
-
-                        <div class="mt-3 grid gap-2 sm:grid-cols-2">
-                            <p>
-                                Raw prop type:
-
-                                <span class="text-white">
-                                    {{ rawWatchType }}
-                                </span>
-                            </p>
-
-                            <p>
-                                Parsed cards:
-
-                                <span class="text-white">
-                                    {{ catalogWatches.length }}
-                                </span>
-                            </p>
-
-                            <p>
-                                Total from controller:
-
-                                <span class="text-white">
-                                    {{ totalCatalogWatches }}
-                                </span>
-                            </p>
-
-                            <p>
-                                DB count:
-
-                                <span class="text-white">
-                                    {{
-                                        catalogDebug?.database_watch_count ??
-                                        "not sent"
-                                    }}
-                                </span>
-                            </p>
-                        </div>
-
-                        <p v-if="rawWatchKeys.length" class="mt-3">
-                            Prop keys:
-
-                            <span class="text-white">
-                                {{ rawWatchKeys.join(", ") }}
-                            </span>
-                        </p>
-                    </div>
-
-                    <button
-                        type="button"
-                        class="primary-button mt-6 px-6 py-3 text-sm"
-                        @click="openInquiry()"
-                    >
-                        Ask Availability
-                    </button>
                 </div>
             </section>
         </main>
@@ -1500,7 +1365,6 @@ const rawWatchKeys = computed(() => {
 }
 
 /* Montre Nova design system — dark marble, Manrope and restrained monochrome. */
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 .mn-subpage {
     --mn-bg: #080809;
     --mn-surface: #111113;

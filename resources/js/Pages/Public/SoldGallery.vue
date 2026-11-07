@@ -1,9 +1,10 @@
 <script setup>
+import PublicHeader from "@/Components/PublicHeader.vue";
 import MontreLogo from "@/Components/MontreLogo.vue";
 
 import { Head, Link, router } from "@inertiajs/vue3";
 
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, onBeforeUnmount } from "vue";
 
 const props = defineProps({
     soldWatches: {
@@ -36,6 +37,7 @@ const search = ref(props.filters.search || "");
 const messengerUsername = "montrenova";
 
 let searchTimeout = null;
+onBeforeUnmount(() => clearTimeout(searchTimeout));
 
 const watches = computed(() => props.soldWatches?.data || []);
 
@@ -189,41 +191,7 @@ watch(search, () => {
 
         <!-- NAVBAR -->
 
-        <header
-            class="mn-unified-header sticky top-0 z-50 border-b border-white/10 bg-[#050505]/90 backdrop-blur-xl"
-        >
-            <div
-                class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8"
-            >
-                <Link href="/" class="flex items-center">
-                    <MontreLogo />
-                </Link>
-
-                <div class="flex items-center gap-2">
-                    <Link
-                        href="/#collection"
-                        class="hidden rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white sm:inline-flex"
-                    >
-                        Collection
-                    </Link>
-
-                    <Link
-                        href="/warranty-check"
-                        class="hidden rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:border-white/30 hover:bg-white/[0.06] hover:text-white sm:inline-flex"
-                    >
-                        Warranty Check
-                    </Link>
-
-                    <button
-                        type="button"
-                        class="rounded-full bg-white px-4 py-2 text-xs font-black text-black transition hover:bg-zinc-200"
-                        @click="openSimilarInquiry()"
-                    >
-                        Source Watch
-                    </button>
-                </div>
-            </div>
-        </header>
+        <PublicHeader position="sticky" />
 
         <main class="relative z-10">
             <!-- HERO -->
@@ -589,7 +557,6 @@ watch(search, () => {
 }
 
 /* Montre Nova design system — dark marble, Manrope and restrained monochrome. */
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 .mn-subpage {
     --mn-bg: #080809;
     --mn-surface: #111113;

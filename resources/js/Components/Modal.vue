@@ -1,83 +1,75 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { lockBodyScroll } from "@/Utils/scrollLock";
 const props = defineProps({
-    show: {
-        type: Boolean,
-        default: false,
-    },
-    maxWidth: {
-        type: String,
-        default: '2xl',
-    },
-    closeable: {
-        type: Boolean,
-        default: true,
-    },
+    show: { type: Boolean, default: false },
+    maxWidth: { type: String, default: "2xl" },
+    closeable: { type: Boolean, default: true },
+    label: { type: String, default: "" },
 });
-
-const emit = defineEmits(['close']);
+const emit = defineEmits(["close"]);
 const dialog = ref();
-const showSlot = ref(props.show);
-
-watch(
-    () => props.show,
-    () => {
-        if (props.show) {
-            document.body.style.overflow = 'hidden';
-            showSlot.value = true;
-
-            dialog.value?.showModal();
-        } else {
-            document.body.style.overflow = '';
-
-            setTimeout(() => {
-                dialog.value?.close();
-                showSlot.value = false;
-            }, 200);
-        }
-    },
-);
-
-const close = () => {
-    if (props.closeable) {
-        emit('close');
+const showSlot = ref(false);
+const accessibleLabel = ref("Dialog");
+let releaseScroll = null;
+let returnFocus = null;
+async function syncDialog() {
+    if (props.show) {
+        if (!dialog.value?.open) returnFocus = document.activeElement;
+        showSlot.value = true;
+        await nextTick();
+        if (!props.show) return;
+        if (!releaseScroll) releaseScroll = lockBodyScroll();
+        accessibleLabel.value =
+            props.label ||
+            dialog.value?.querySelector("h1,h2,h3")?.textContent?.trim() ||
+            "Dialog";
+        if (!dialog.value?.open) dialog.value?.showModal();
+        const field = dialog.value?.querySelector(
+            '[autofocus], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])',
+        );
+        field?.focus({ preventScroll: true });
+    } else {
+        dialog.value?.close();
+        releaseScroll?.();
+        releaseScroll = null;
+        showSlot.value = false;
+        if (returnFocus?.isConnected)
+            returnFocus.focus({ preventScroll: true });
+        returnFocus = null;
     }
-};
-
-const closeOnEscape = (e) => {
-    if (e.key === 'Escape') {
-        e.preventDefault();
-
-        if (props.show) {
-            close();
-        }
-    }
-};
-
-onMounted(() => document.addEventListener('keydown', closeOnEscape));
-
+}
+function close() {
+    if (props.closeable) emit("close");
+}
+function onCancel(event) {
+    event.preventDefault();
+    close();
+}
+watch(() => props.show, syncDialog, { flush: "post" });
+onMounted(syncDialog);
 onUnmounted(() => {
-    document.removeEventListener('keydown', closeOnEscape);
-
-    document.body.style.overflow = '';
+    releaseScroll?.();
 });
-
-const maxWidthClass = computed(() => {
-    return {
-        sm: 'sm:max-w-sm',
-        md: 'sm:max-w-md',
-        lg: 'sm:max-w-lg',
-        xl: 'sm:max-w-xl',
-        '2xl': 'sm:max-w-2xl',
-    }[props.maxWidth];
-});
+const maxWidthClass = computed(
+    () =>
+        ({
+            sm: "sm:max-w-sm",
+            md: "sm:max-w-md",
+            lg: "sm:max-w-lg",
+            xl: "sm:max-w-xl",
+            "2xl": "sm:max-w-2xl",
+        })[props.maxWidth],
+);
 </script>
 
 <template>
     <dialog
         class="z-50 m-0 min-h-full min-w-full overflow-y-auto bg-transparent backdrop:bg-transparent"
         ref="dialog"
+        :aria-label="accessibleLabel"
+        :aria-busy="!closeable"
+        @cancel="onCancel"
     >
         <div
             class="fixed inset-0 z-50 overflow-y-auto px-4 py-6 sm:px-0"
@@ -97,7 +89,7 @@ const maxWidthClass = computed(() => {
                     @click="close"
                 >
                     <div
-                        class="absolute inset-0 bg-gray-500 opacity-75"
+                        class="absolute inset-0 bg-black/75 backdrop-blur-sm"
                     />
                 </div>
             </Transition>

@@ -3,17 +3,25 @@
 namespace App\Http\Controllers;
 
 use App\Models\CatalogWatch;
+use App\Models\PreorderListing;
 use App\Models\Watch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class PublicWatchController extends Controller
 {
-    public function welcome()
+    public function welcome(Request $request)
     {
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'type' => ['nullable', 'in:all,available,preorder'],
+        ]);
+        $search = trim($filters['search'] ?? '');
+        $type = $filters['type'] ?? 'all';
         $featuredWatches = Watch::query()
             ->with(['primaryImage', 'images'])
             ->withCount('images')
@@ -40,17 +48,35 @@ class PublicWatchController extends Controller
                 ->first();
         }
 
-        $watches = Watch::query()
-            ->with(['primaryImage'])
-            ->withCount('images')
+        $stockRows = DB::table('watches')
+            ->selectRaw("id, created_at, display_order, 'stock' as kind")
             ->whereRaw('LOWER(TRIM(status)) = ?', ['available'])
-            ->where('is_visible', true)
+            ->where('is_visible', true);
+        $preorderRows = DB::table('preorder_listings')
+            ->selectRaw("id, created_at, 0 as display_order, 'preorder' as kind")
+            ->where('is_visible', true);
+        if ($search !== '') {
+            $term = '%'.$search.'%';
+            $stockRows->where(fn ($query) => $query->where('brand', 'like', $term)
+                ->orWhere('model_name', 'like', $term)->orWhere('reference_number', 'like', $term)->orWhere('category', 'like', $term));
+            $preorderRows->where(fn ($query) => $query->where('watch_snapshot->brand', 'like', $term)
+                ->orWhere('watch_snapshot->model_name', 'like', $term)
+                ->orWhere('watch_snapshot->reference_number', 'like', $term)->orWhere('watch_snapshot->category', 'like', $term));
+        }
+        $watches = DB::query()->fromSub($stockRows->unionAll($preorderRows), 'collection')
+            ->when($type !== 'all', fn ($query) => $query->where('kind', $type === 'available' ? 'stock' : 'preorder'))
             ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
             ->orderBy('display_order')
+            ->orderByDesc('created_at')
             ->latest('id')
             ->paginate(20)
-            ->withQueryString()
-            ->through(fn ($watch) => $this->publicWatchCard($watch));
+            ->withQueryString();
+        $rows = $watches->getCollection();
+        $stocks = Watch::with('primaryImage')->withCount('images')
+            ->whereIn('id', $rows->where('kind', 'stock')->pluck('id'))->get()->keyBy('id');
+        $preorders = PreorderListing::whereIn('id', $rows->where('kind', 'preorder')->pluck('id'))->get()->keyBy('id');
+        $watches->through(fn ($row) => $row->kind === 'preorder'
+            ? $preorders[$row->id]->publicCard() : $this->publicWatchCard($stocks[$row->id]));
 
         $soldCount = Watch::query()
             ->whereRaw('LOWER(TRIM(status)) = ?', ['sold'])
@@ -168,6 +194,8 @@ class PublicWatchController extends Controller
             ->all();
 
         return Inertia::render('Welcome', [
+            'collectionSearch' => $search,
+            'collectionType' => $type,
             'canLogin' => Route::has('login'),
             'canRegister' => false,
             'featuredWatch' => $featuredWatch

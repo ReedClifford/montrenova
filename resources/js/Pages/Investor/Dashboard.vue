@@ -1,5 +1,8 @@
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import InvestorNavigation from "@/Components/InvestorNavigation.vue";
+import InvestorExpenseBreakdown from "@/Components/InvestorExpenseBreakdown.vue";
+import PreorderBalanceNote from "@/Components/PreorderBalanceNote.vue";
+import { computed, onMounted, onBeforeUnmount, ref, watch } from "vue";
 
 import VueApexCharts from "vue3-apexcharts";
 import Swal from "sweetalert2";
@@ -8,6 +11,8 @@ import "sweetalert2/dist/sweetalert2.min.css";
 import { Head, router, useForm, usePage } from "@inertiajs/vue3";
 
 const props = defineProps({
+    expenseBreakdown: { type: Array, default: () => [] },
+    preorderMoney: { type: Object, default: () => ({}) },
     permissions: {
         type: Object,
         required: true,
@@ -56,7 +61,28 @@ const props = defineProps({
 
 const page = usePage();
 
-const activeTab = ref("overview");
+const validTabs = ["overview", "analytics", "investors", "watches", "expenses"];
+const activeTab = ref(
+    typeof window !== "undefined" &&
+        validTabs.includes(window.location.hash.slice(1))
+        ? window.location.hash.slice(1)
+        : "overview",
+);
+function selectDashboardTab(tab) {
+    activeTab.value = tab;
+    window.history.replaceState(
+        window.history.state,
+        "",
+        window.location.pathname + window.location.search + "#" + tab,
+    );
+    window.scrollTo({ top: 0, behavior: "auto" });
+}
+const restoreTab = () => {
+    const tab = window.location.hash.slice(1);
+    if (validTabs.includes(tab)) activeTab.value = tab;
+};
+onMounted(() => window.addEventListener("hashchange", restoreTab));
+onBeforeUnmount(() => window.removeEventListener("hashchange", restoreTab));
 const editingInvestorId = ref(null);
 
 const selectedAnalyticsYear = ref(
@@ -177,8 +203,8 @@ const tabs = computed(() => [
     {
         key: "expenses",
         label: "Expenses",
-        description: "Operating costs",
-        count: props.expenses.length,
+        description: "Itemized expenses & supplier costs",
+        count: props.expenseBreakdown.length,
     },
 ]);
 
@@ -853,7 +879,7 @@ const yearlyChartOptions = computed(() => ({
 </script>
 
 <template>
-    <Head title="Second Term Investment Dashboard" />
+    <Head title="Investment 1 Dashboard" />
 
     <div
         class="mn-dashboard min-h-screen overflow-x-hidden bg-[#f5f7fb] text-slate-900"
@@ -873,11 +899,11 @@ const yearlyChartOptions = computed(() => ({
                     </p>
 
                     <h1 class="mt-1 truncate text-lg font-bold sm:text-2xl">
-                        Investment 2 Dashboard
+                        Investment 1 Dashboard
                     </h1>
 
                     <p class="mt-1 hidden text-sm text-slate-500 sm:block">
-                        Second investment capital, profitability and investor
+                        First investment capital, profitability and investor
                         performance overview
                     </p>
                 </div>
@@ -921,6 +947,7 @@ const yearlyChartOptions = computed(() => ({
         <main
             class="mx-auto max-w-none px-3 py-4 pb-28 sm:px-6 sm:py-6 sm:pb-28 lg:pb-6 lg:pl-[284px] lg:pr-8"
         >
+            <PreorderBalanceNote :money="preorderMoney" />
             <div
                 v-if="!permissions.can_edit"
                 class="mb-5 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3"
@@ -935,300 +962,7 @@ const yearlyChartOptions = computed(() => ({
                 </p>
             </div>
 
-            <!-- NAVIGATION -->
-            <div
-                class="mn-sidebar-nav fixed inset-x-0 bottom-0 z-50 mb-0 overflow-hidden border-t border-slate-200 bg-white/95 shadow-[0_-12px_35px_rgba(15,23,42,0.10)] backdrop-blur-xl lg:inset-y-0 lg:left-0 lg:right-auto lg:w-[252px] lg:rounded-none lg:border-y-0 lg:border-l-0 lg:bg-white lg:shadow-sm"
-            >
-                <!-- DESKTOP SIDEBAR -->
-                <div class="hidden h-full flex-col lg:flex">
-                    <div class="border-b border-slate-100 px-5 py-5">
-                        <div class="flex items-center gap-3">
-                            <div
-                                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-600 text-sm font-black text-white shadow-lg shadow-indigo-200/70"
-                            >
-                                MN
-                            </div>
-
-                            <div class="min-w-0">
-                                <p
-                                    class="truncate text-sm font-bold tracking-tight text-slate-950"
-                                >
-                                    Montre Nova
-                                </p>
-
-                                <p
-                                    class="mt-0.5 text-[11px] font-medium text-slate-400"
-                                >
-                                    Investor Portal
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex-1 overflow-y-auto px-4 py-5">
-                        <p
-                            class="px-3 text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400"
-                        >
-                            Workspace
-                        </p>
-
-                        <nav class="mt-3 space-y-1.5">
-                            <button
-                                v-for="tab in tabs"
-                                :key="tab.key"
-                                type="button"
-                                class="group relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border px-3 py-3 text-left transition duration-200"
-                                :class="
-                                    activeTab === tab.key
-                                        ? 'border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-violet-50 text-indigo-700 shadow-sm shadow-indigo-100/60'
-                                        : 'border-transparent text-slate-500 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900'
-                                "
-                                @click="activeTab = tab.key"
-                            >
-                                <span
-                                    class="absolute inset-y-2 left-0 w-1 rounded-r-full bg-gradient-to-b from-indigo-500 to-violet-500 transition"
-                                    :class="
-                                        activeTab === tab.key
-                                            ? 'opacity-100'
-                                            : 'opacity-0'
-                                    "
-                                ></span>
-
-                                <span
-                                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition"
-                                    :class="
-                                        activeTab === tab.key
-                                            ? 'border-white bg-white text-indigo-600 shadow-sm'
-                                            : 'border-slate-200 bg-white text-slate-400 group-hover:border-indigo-100 group-hover:text-indigo-600'
-                                    "
-                                >
-                                    <svg
-                                        v-if="tab.key === 'overview'"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        class="h-5 w-5"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="1.8"
-                                            d="M4 13h6V4H4v9Zm10 7h6V11h-6v9ZM4 20h6v-4H4v4Zm10-12h6V4h-6v4Z"
-                                        />
-                                    </svg>
-
-                                    <svg
-                                        v-else-if="tab.key === 'analytics'"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        class="h-5 w-5"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="1.8"
-                                            d="M4 19V9m5 10V5m5 14v-7m5 7V3"
-                                        />
-                                    </svg>
-
-                                    <svg
-                                        v-else-if="tab.key === 'investors'"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        class="h-5 w-5"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="1.8"
-                                            d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m7-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87m-2-12a4 4 0 0 1 0 7.75"
-                                        />
-                                    </svg>
-
-                                    <svg
-                                        v-else-if="tab.key === 'watches'"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        class="h-5 w-5"
-                                    >
-                                        <circle
-                                            cx="12"
-                                            cy="12"
-                                            r="6"
-                                            stroke-width="1.8"
-                                        />
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="1.8"
-                                            d="M9 2h6l1 4H8l1-4Zm0 20h6l1-4H8l1 4Zm3-13v3l2 1"
-                                        />
-                                    </svg>
-
-                                    <svg
-                                        v-else
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        class="h-5 w-5"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="1.8"
-                                            d="M6 2h9l3 3v17H6V2Zm3 6h6m-6 4h6m-6 4h4"
-                                        />
-                                    </svg>
-                                </span>
-
-                                <span class="min-w-0 flex-1">
-                                    <span
-                                        class="block truncate text-sm font-semibold"
-                                    >
-                                        {{ tab.label }}
-                                    </span>
-
-                                    <span
-                                        class="mt-0.5 block truncate text-[11px] font-medium"
-                                        :class="
-                                            activeTab === tab.key
-                                                ? 'text-indigo-400'
-                                                : 'text-slate-400'
-                                        "
-                                    >
-                                        {{ tab.description }}
-                                    </span>
-                                </span>
-
-                                <span
-                                    v-if="tab.count !== undefined"
-                                    class="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-bold"
-                                    :class="
-                                        activeTab === tab.key
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'bg-slate-100 text-slate-500'
-                                    "
-                                >
-                                    {{ tab.count }}
-                                </span>
-
-                                <svg
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    class="h-4 w-4 shrink-0 transition"
-                                    :class="
-                                        activeTab === tab.key
-                                            ? 'translate-x-0 text-indigo-400 opacity-100'
-                                            : '-translate-x-1 text-slate-300 opacity-0 group-hover:translate-x-0 group-hover:opacity-100'
-                                    "
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="1.8"
-                                        d="m9 18 6-6-6-6"
-                                    />
-                                </svg>
-                            </button>
-                        </nav>
-                    </div>
-
-                    <div class="border-t border-slate-100 p-4">
-                        <div
-                            class="overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-3.5"
-                        >
-                            <div class="flex items-center gap-3">
-                                <div
-                                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-sm font-bold text-white shadow-sm shadow-indigo-200"
-                                >
-                                    {{
-                                        currentUser?.name
-                                            ?.charAt(0)
-                                            ?.toUpperCase() ?? "U"
-                                    }}
-                                </div>
-
-                                <div class="min-w-0 flex-1">
-                                    <p
-                                        class="truncate text-xs font-bold text-slate-900"
-                                    >
-                                        {{ currentUser?.name }}
-                                    </p>
-
-                                    <p
-                                        class="mt-0.5 text-[10px] font-semibold capitalize text-indigo-500"
-                                    >
-                                        {{ currentUser?.role }} access
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div class="my-3 h-px bg-indigo-100"></div>
-
-                            <div
-                                class="flex items-center justify-between gap-3"
-                            >
-                                <span
-                                    class="text-[10px] font-medium text-slate-400"
-                                >
-                                    Reporting since
-                                </span>
-
-                                <span
-                                    class="text-[10px] font-bold text-slate-600"
-                                >
-                                    {{ formatDate(startDate) }}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- MOBILE NAVIGATION -->
-                <div class="mn-mobile-navigation p-1.5 lg:hidden">
-                    <nav class="grid grid-cols-5 gap-1">
-                        <button
-                            v-for="tab in tabs"
-                            :key="tab.key"
-                            type="button"
-                            class="min-w-0 flex flex-col items-center justify-center gap-1 rounded-xl border px-1 py-2 text-[10px] font-semibold transition sm:flex-row sm:gap-2 sm:rounded-2xl sm:px-3.5 sm:py-2.5 sm:text-sm"
-                            :class="
-                                activeTab === tab.key
-                                    ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm shadow-indigo-200'
-                                    : 'border-transparent bg-white text-slate-500 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900'
-                            "
-                            @click="activeTab = tab.key"
-                        >
-                            <span
-                                class="h-1.5 w-1.5 shrink-0 rounded-full sm:h-2 sm:w-2"
-                                :class="
-                                    activeTab === tab.key
-                                        ? 'bg-white'
-                                        : 'bg-slate-300'
-                                "
-                            ></span>
-
-                            {{ tab.label }}
-
-                            <span
-                                v-if="tab.count !== undefined"
-                                class="hidden rounded-full px-1.5 py-0.5 text-[10px] font-bold sm:inline-flex"
-                                :class="
-                                    activeTab === tab.key
-                                        ? 'bg-white/20 text-white'
-                                        : 'bg-slate-100 text-slate-500'
-                                "
-                            >
-                                {{ tab.count }}
-                            </span>
-                        </button>
-                    </nav>
-                </div>
-            </div>
+            <InvestorNavigation :tabs="tabs" :active="activeTab" :user="currentUser" :start-date="startDate" title="Investment 1 workspace" @select="selectDashboardTab" />
 
             <!-- OVERVIEW -->
             <div v-if="activeTab === 'overview'" class="space-y-4 sm:space-y-6">
@@ -1573,6 +1307,7 @@ const yearlyChartOptions = computed(() => ({
                             <p class="mt-3 text-xl font-bold text-red-700">
                                 {{ formatCurrency(summary.total_expenses) }}
                             </p>
+                            <button type="button" @click="selectDashboardTab('expenses')" class="mt-3 min-h-[44px] text-sm font-semibold text-amber-600 underline underline-offset-4">View full breakdown →</button>
                         </article>
 
                         <article
@@ -3251,120 +2986,11 @@ const yearlyChartOptions = computed(() => ({
             </section>
 
             <!-- EXPENSES -->
-            <section
+            <InvestorExpenseBreakdown
                 v-else-if="activeTab === 'expenses'"
-                class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-            >
-                <div class="border-b border-slate-200 px-5 py-5 sm:px-6">
-                    <h2 class="text-xl font-bold text-slate-950">Expenses</h2>
-
-                    <p class="mt-1 text-sm text-slate-500">
-                        Expenses created from
-                        {{ formatDate(startDate) }}
-                        onwards.
-                    </p>
-                </div>
-
-                <div
-                    v-if="expenses.length === 0"
-                    class="px-6 py-14 text-center text-slate-600"
-                >
-                    No expense records found.
-                </div>
-
-                <div v-else class="mn-table-scroll overflow-x-auto">
-                    <table
-                        class="mn-responsive-table min-w-full divide-y divide-slate-200"
-                    >
-                        <thead class="bg-slate-50">
-                            <tr>
-                                <th
-                                    class="px-5 py-3 text-left text-xs font-semibold uppercase text-slate-500"
-                                >
-                                    Expense
-                                </th>
-
-                                <th
-                                    class="px-5 py-3 text-left text-xs font-semibold uppercase text-slate-500"
-                                >
-                                    Category
-                                </th>
-
-                                <th
-                                    class="px-5 py-3 text-left text-xs font-semibold uppercase text-slate-500"
-                                >
-                                    Date
-                                </th>
-
-                                <th
-                                    class="px-5 py-3 text-right text-xs font-semibold uppercase text-slate-500"
-                                >
-                                    Amount
-                                </th>
-                            </tr>
-                        </thead>
-
-                        <tbody class="divide-y divide-slate-100">
-                            <tr
-                                v-for="expense in expenses"
-                                :key="expense.id"
-                                class="hover:bg-slate-50"
-                            >
-                                <td class="px-5 py-4">
-                                    <p class="font-semibold text-slate-950">
-                                        {{ expense.title }}
-                                    </p>
-
-                                    <p
-                                        v-if="expense.notes"
-                                        class="mt-1 max-w-md text-xs text-slate-500"
-                                    >
-                                        {{ expense.notes }}
-                                    </p>
-                                </td>
-
-                                <td class="px-5 py-4 text-sm text-slate-600">
-                                    {{ expense.category || "Uncategorized" }}
-                                </td>
-
-                                <td
-                                    class="whitespace-nowrap px-5 py-4 text-sm text-slate-600"
-                                >
-                                    {{
-                                        formatDate(
-                                            expense.spent_at ||
-                                                expense.created_at,
-                                        )
-                                    }}
-                                </td>
-
-                                <td
-                                    class="whitespace-nowrap px-5 py-4 text-right font-bold text-red-600"
-                                >
-                                    {{ formatCurrency(expense.amount) }}
-                                </td>
-                            </tr>
-                        </tbody>
-
-                        <tfoot class="bg-slate-50">
-                            <tr>
-                                <td
-                                    colspan="3"
-                                    class="px-5 py-4 text-right font-bold text-slate-800"
-                                >
-                                    Total Expenses
-                                </td>
-
-                                <td
-                                    class="px-5 py-4 text-right font-bold text-red-600"
-                                >
-                                    {{ formatCurrency(summary.total_expenses) }}
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </section>
+                :records="expenseBreakdown"
+                :start-date="startDate"
+            />
         </main>
     </div>
 </template>
