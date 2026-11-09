@@ -79,11 +79,34 @@ class PreorderTest extends TestCase
                 ->where('order.balance', 16000)->has('order.transactions', 1)
                 ->where('order.transactions.0.type', 'payment')
                 ->missing('order.cost')->missing('order.notes')->missing('order.contact')
-                ->missing('order.customer_name')->missing('order.tracking_token')
+                ->where('order.customer_name', $order->customer_name)->missing('order.tracking_token')
                 ->missing('order.transactions.0.reference')->missing('order.transactions.0.proof_path'));
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
         $this->get(route('public.preorders.track', Str::random(64)))->assertNotFound();
         $this->get('/track/preorders/'.$order->id)->assertNotFound();
+    }
+
+    public function test_admin_can_update_and_clear_eta_on_the_existing_tracking_link(): void
+    {
+        $order = $this->order();
+        $order->update(['tracking_token' => Str::random(64)]);
+        $trackingUrl = route('public.preorders.track', $order->tracking_token);
+        $editUrl = route('admin.preorders.eta.update', $order);
+
+        $this->patch($editUrl, ['estimated_arrival' => '2027-01-15'])->assertRedirect('/login');
+        $this->admin();
+        $this->patch($editUrl, ['estimated_arrival' => '2027-02-30'])->assertSessionHasErrors('estimated_arrival');
+        $this->patch($editUrl, ['estimated_arrival' => '2027-01-15', 'status' => 'fulfilled'])->assertSessionHasNoErrors();
+        $this->assertSame('awaiting_deposit', $order->fresh()->status);
+        $this->get($trackingUrl)->assertInertia(fn (Assert $page) => $page
+            ->where('order.estimated_arrival', '2027-01-15'));
+
+        $this->patch($editUrl, ['estimated_arrival' => null])->assertSessionHasNoErrors();
+        $this->get($trackingUrl)->assertInertia(fn (Assert $page) => $page
+            ->where('order.estimated_arrival', null));
+
+        $order->update(['status' => 'cancelled']);
+        $this->patch($editUrl, ['estimated_arrival' => '2027-01-16'])->assertSessionHasErrors('estimated_arrival');
     }
 
     public function test_only_admin_can_create_and_reset_tracking_links_and_old_links_are_revoked(): void

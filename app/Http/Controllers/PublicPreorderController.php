@@ -17,6 +17,7 @@ class PublicPreorderController extends Controller
         return Inertia::render('Public/PreorderTracking', ['order' => [
             'reference' => 'MN-PO-'.str_pad((string) $order->id, 5, '0', STR_PAD_LEFT),
             'status' => $order->status,
+            'customer_name' => $order->customer_name,
             'watch_name' => trim(($watch['brand'] ?? '').' '.($watch['model_name'] ?? '')),
             'watch_reference' => $watch['reference_number'] ?? null,
             'image' => $watch['primary_image_url'] ?? null,

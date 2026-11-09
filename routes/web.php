@@ -92,6 +92,7 @@ Route::middleware(['auth', 'verified','role:admin'])->group(function () {
     Route::get('/admin/preorders/{preorder}', [PreorderController::class, 'show'])->name('admin.preorders.show');
     Route::post('/admin/preorders/{preorder}/tracking', [PreorderController::class, 'tracking'])->name('admin.preorders.tracking');
     Route::patch('/admin/preorders/{preorder}', [PreorderController::class, 'update'])->name('admin.preorders.update');
+    Route::patch('/admin/preorders/{preorder}/eta', [PreorderController::class, 'updateEta'])->name('admin.preorders.eta.update');
     Route::post('/admin/preorders/{preorder}/entries', [PreorderController::class, 'entry'])->name('admin.preorders.entries.store');
     Route::post('/admin/preorders/{preorder}/fulfill', [PreorderController::class, 'fulfill'])->name('admin.preorders.fulfill');
     Route::get('/admin/preorder-entries/{entry}/proof', [PreorderController::class, 'proof'])->name('admin.preorders.proof');

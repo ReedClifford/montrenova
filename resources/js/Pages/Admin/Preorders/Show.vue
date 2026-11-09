@@ -61,6 +61,19 @@ const entry = useForm({
 });
 const transition = useForm({ status: "", cancellation_reason: "" });
 const fulfillment = useForm({ serial_number: "" });
+const eta = useForm({ estimated_arrival: "" });
+function openEta() {
+    eta.defaults("estimated_arrival", props.order.estimated_arrival || "");
+    eta.reset();
+    eta.clearErrors();
+    dialog.value = "eta";
+}
+function saveEta() {
+    eta.patch(route("admin.preorders.eta.update", props.order.id), {
+        preserveScroll: true,
+        onSuccess: () => (dialog.value = null),
+    });
+}
 const cleanDialog = ref("");
 const activeFormData = () =>
     JSON.stringify(
@@ -80,11 +93,16 @@ const activeFormData = () =>
     );
 const { confirmDiscard } = useUnsavedChanges({
     dirty: () =>
-        ["entry", "status", "fulfill"].includes(dialog.value) &&
-        Boolean(cleanDialog.value) &&
-        activeFormData() !== cleanDialog.value,
+        dialog.value === "eta"
+            ? eta.isDirty
+            : ["entry", "status", "fulfill"].includes(dialog.value) &&
+              Boolean(cleanDialog.value) &&
+              activeFormData() !== cleanDialog.value,
     busy: () =>
-        entry.processing || transition.processing || fulfillment.processing,
+        entry.processing ||
+        transition.processing ||
+        fulfillment.processing ||
+        eta.processing,
 });
 async function closeDialog() {
     if (!busy.value && (await confirmDiscard())) dialog.value = null;
@@ -167,6 +185,7 @@ const busy = computed(
         entry.processing ||
         transition.processing ||
         fulfillment.processing ||
+        eta.processing ||
         tracking.processing,
 );
 </script>
@@ -208,8 +227,8 @@ const busy = computed(
                         <h2>Customer tracking</h2>
                         <p class="muted" style="margin: 12px 0">
                             Share this private link directly with the customer.
-                            Anyone with the link can view the order status and
-                            payment summary.
+                            Anyone with the link can view the customer name,
+                            order status, and payment summary.
                         </p>
                         <template v-if="trackingUrl">
                             <input
@@ -230,8 +249,8 @@ const busy = computed(
                                     target="_blank"
                                     rel="noreferrer"
                                     class="button"
-                                    >Preview customer view <UiIcon name="eye" /></a
-                                >
+                                    >Preview customer view <UiIcon name="eye"
+                                /></a>
                                 <button @click="dialog = 'resetTracking'">
                                     Reset link
                                 </button>
@@ -286,6 +305,14 @@ const busy = computed(
                                         "To be confirmed"
                                     }}
                                 </p>
+                                <button
+                                    v-if="!closed"
+                                    type="button"
+                                    class="mt-2"
+                                    @click="openEta"
+                                >
+                                    Edit ETA
+                                </button>
                             </div>
                             <div>
                                 <p class="muted">
@@ -558,6 +585,38 @@ const busy = computed(
         </div>
         <Modal :show="dialog !== null" :closeable="!busy" @close="closeDialog"
             ><div class="po dialog">
+                <form v-if="dialog === 'eta'" @submit.prevent="saveEta">
+                    <h2>Edit estimated arrival</h2>
+                    <p class="form-hint">
+                        This date appears on the customer’s tracking page. Leave
+                        it blank if the ETA is still to be confirmed.
+                    </p>
+                    <FormFeedback :errors="eta.errors" />
+                    <label class="mt-4">
+                        Estimated arrival
+                        <input
+                            v-model="eta.estimated_arrival"
+                            type="date"
+                            :disabled="eta.processing"
+                        />
+                    </label>
+                    <div class="actions">
+                        <button
+                            type="button"
+                            :disabled="eta.processing"
+                            @click="closeDialog"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="submit"
+                            class="primary"
+                            :disabled="eta.processing"
+                        >
+                            {{ eta.processing ? "Saving…" : "Save ETA" }}
+                        </button>
+                    </div>
+                </form>
                 <form
                     v-if="dialog === 'resetTracking'"
                     @submit.prevent="generateTracking"

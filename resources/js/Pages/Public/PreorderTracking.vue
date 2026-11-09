@@ -11,9 +11,10 @@ const money = (n) =>
     }).format(Number(n || 0));
 const date = (value) =>
     value
-        ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium" }).format(
-              new Date(value),
-          )
+        ? new Intl.DateTimeFormat("en-PH", {
+              dateStyle: "medium",
+              timeZone: "Asia/Manila",
+          }).format(new Date(value))
         : "To be confirmed";
 const steps = [
     ["awaiting_deposit", "Awaiting deposit"],
@@ -66,6 +67,9 @@ const messenger = computed(
                 Private customer tracking · {{ order.reference }}
             </p>
             <h1>Your preorder</h1>
+            <p class="break-words">
+                Preorder for <strong>{{ order.customer_name }}</strong>
+            </p>
             <p class="muted">
                 Last updated {{ date(order.updated_at) }}. Keep this link
                 private.
@@ -178,8 +182,8 @@ const messenger = computed(
                 target="_blank"
                 rel="noreferrer"
                 class="tracking-contact"
-                >Ask about this preorder on Messenger <UiIcon name="chat" /></a
-            >
+                >Ask about this preorder on Messenger <UiIcon name="chat"
+            /></a>
         </main>
     </div>
 </template>

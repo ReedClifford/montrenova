@@ -208,6 +208,21 @@ class PreorderController extends Controller
         return back()->with('success', 'Order status updated.');
     }
 
+    public function updateEta(Request $request, Preorder $preorder)
+    {
+        $data = $request->validate([
+            'estimated_arrival' => ['present', 'nullable', 'date_format:Y-m-d'],
+        ]);
+
+        DB::transaction(function () use ($preorder, $data) {
+            $order = Preorder::lockForUpdate()->findOrFail($preorder->id);
+            $this->check(! in_array($order->status, ['fulfilled', 'cancelled'], true), 'estimated_arrival', 'Only active preorders can have their estimated arrival changed.');
+            $order->update($data);
+        });
+
+        return back()->with('success', 'Estimated arrival updated.');
+    }
+
     public function fulfill(Request $request, Preorder $preorder)
     {
         $data = $request->validate(['serial_number' => ['required', 'string', 'max:255']]);
