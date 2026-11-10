@@ -35,12 +35,19 @@ const money = (n) =>
     }).format(Number(n || 0));
 const name = (w) =>
     [w?.brand, w?.model_name, w?.reference_number].filter(Boolean).join(" ");
-const listing = useForm({
+const listingDefaults = {
     source_watch_id: "",
+    brand: "",
+    model_name: "",
+    reference_number: "",
+    description: "",
+    photos: [],
     price: "",
     estimated_arrival: "",
     is_visible: true,
-});
+};
+const listing = useForm(listingDefaults);
+const listingMode = ref("sold");
 const editing = ref(null);
 const order = useForm({
     preorder_listing_id: "",
@@ -94,7 +101,8 @@ const queueHelp = {
 };
 function openListing(item = null) {
     editing.value = item;
-    listing.reset();
+    listingMode.value = sources.value.length ? "sold" : "manual";
+    listing.defaults(listingDefaults).reset();
     listing.clearErrors();
     if (item) {
         listing.price = item.price;
@@ -113,11 +121,43 @@ function saveListing() {
         },
     };
     if (editing.value)
-        listing.patch(
-            route("admin.preorder-listings.update", editing.value.id),
-            options,
-        );
-    else listing.post(route("admin.preorder-listings.store"), options);
+        listing
+            .transform(({ price, estimated_arrival, is_visible }) => ({
+                price,
+                estimated_arrival,
+                is_visible,
+            }))
+            .patch(
+                route("admin.preorder-listings.update", editing.value.id),
+                options,
+            );
+    else
+        listing
+            .transform(
+                ({
+                    source_watch_id,
+                    brand,
+                    model_name,
+                    reference_number,
+                    description,
+                    photos,
+                    price,
+                    estimated_arrival,
+                }) => {
+                    const terms = { price, estimated_arrival };
+                    return listingMode.value === "manual"
+                        ? {
+                              ...terms,
+                              brand,
+                              model_name,
+                              reference_number,
+                              description,
+                              photos,
+                          }
+                        : { ...terms, source_watch_id };
+                },
+            )
+            .post(route("admin.preorder-listings.store"), options);
 }
 function openOrder(item = null) {
     order.reset();
@@ -278,7 +318,7 @@ onMounted(() => {
                         {{
                             filters.queue || filters.search
                                 ? "Try another queue or clear your search to see more orders."
-                                : "Publish a sold watch, then create an order after your Messenger conversation."
+                                : "Publish a watch listing, then create an order after your Messenger conversation."
                         }}
                     </p>
                 </div>
@@ -325,7 +365,9 @@ onMounted(() => {
                                 )
                             }}</strong>
                         </div>
-                        <span aria-hidden="true"><UiIcon name="chevron-right" /></span>
+                        <span aria-hidden="true"
+                            ><UiIcon name="chevron-right"
+                        /></span>
                     </div>
                 </Link>
                 <nav
@@ -355,8 +397,7 @@ onMounted(() => {
             <section v-else class="panel">
                 <h2>Preorder watch listings</h2>
                 <p class="muted">
-                    Photos and specifications are copied from sold watches.
-                    Existing sales stay intact.
+                    Choose a sold watch or enter the details of a new model.
                 </p>
                 <div v-if="!listings.length" class="empty">
                     Publish your first watch to make it available for preorder.
@@ -416,13 +457,9 @@ onMounted(() => {
                         {{
                             editing
                                 ? "Edit preorder listing"
-                                : "Publish a sold watch for preorder"
+                                : "Publish a watch for preorder"
                         }}
                     </h2>
-                    <p class="muted">
-                        The original sale and customer warranty will stay
-                        intact.
-                    </p>
                     <form @submit.prevent="saveListing">
                         <p class="form-hint">
                             Fields marked required must be completed. Arrival
@@ -430,7 +467,75 @@ onMounted(() => {
                         </p>
                         <FormFeedback :errors="listing.errors" />
                         <div class="grid">
-                            <template v-if="!editing"
+                            <label v-if="!editing" class="span-2">
+                                Listing source
+                                <select v-model="listingMode">
+                                    <option value="sold">
+                                        Copy a sold watch
+                                    </option>
+                                    <option value="manual">
+                                        Enter watch details
+                                    </option>
+                                </select>
+                            </label>
+                            <template
+                                v-if="!editing && listingMode === 'manual'"
+                            >
+                                <label
+                                    >Brand
+                                    <input
+                                        v-model="listing.brand"
+                                        required
+                                        maxlength="255"
+                                /></label>
+                                <label
+                                    >Model
+                                    <input
+                                        v-model="listing.model_name"
+                                        required
+                                        maxlength="255"
+                                /></label>
+                                <label
+                                    >Reference number (optional)
+                                    <input
+                                        v-model="listing.reference_number"
+                                        maxlength="255"
+                                /></label>
+                                <label class="span-2"
+                                    >Description (optional)
+                                    <textarea
+                                        v-model="listing.description"
+                                        rows="3"
+                                        maxlength="5000"
+                                    />
+                                </label>
+                                <label class="span-2"
+                                    >Reference photos (optional)
+                                    <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        multiple
+                                        @change="
+                                            listing.photos = Array.from(
+                                                $event.target.files,
+                                            )
+                                        "
+                                    />
+                                    <small
+                                        >Up to 5 photos, 5 MB each. The first
+                                        photo is the cover.</small
+                                    >
+                                    <small
+                                        v-if="listing.photos.length"
+                                        class="block"
+                                        >{{
+                                            listing.photos.length
+                                        }}
+                                        selected</small
+                                    >
+                                </label>
+                            </template>
+                            <template v-if="!editing && listingMode === 'sold'"
                                 ><label class="span-2"
                                     >Find a sold model
                                     <div class="row">

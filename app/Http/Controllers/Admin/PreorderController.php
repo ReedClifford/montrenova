@@ -11,6 +11,7 @@ use App\Models\Watch;
 use App\Services\PreorderAccounting;
 use App\Services\PreorderFollowUps;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -45,7 +46,7 @@ class PreorderController extends Controller
             'soldWatches' => Watch::where('status', 'sold')->when($request->query('source_search'), fn ($q, $term) => $q
                 ->where(fn ($q) => $q->where('model_name', 'like', '%'.mb_substr($term, 0, 100).'%')
                     ->orWhere('reference_number', 'like', '%'.mb_substr($term, 0, 100).'%')))
-                ->whereNotIn('id', PreorderListing::select('source_watch_id'))->latest()->limit(50)
+                ->whereNotIn('id', PreorderListing::whereNotNull('source_watch_id')->select('source_watch_id'))->latest()->limit(50)
                 ->get(['id', 'brand', 'model_name', 'reference_number', 'selling_price']),
             'filters' => ['search' => $search, 'source_search' => $request->query('source_search', ''), 'queue' => $queue],
             'summary' => PreorderAccounting::summary(),
@@ -55,13 +56,35 @@ class PreorderController extends Controller
     public function storeListing(Request $request)
     {
         $data = $request->validate([
-            'source_watch_id' => ['required', 'integer', 'exists:watches,id', 'unique:preorder_listings,source_watch_id'],
+            'source_watch_id' => ['nullable', 'integer', 'exists:watches,id', 'unique:preorder_listings,source_watch_id'],
+            'brand' => ['required_without:source_watch_id', 'nullable', 'string', 'max:255'],
+            'model_name' => ['required_without:source_watch_id', 'nullable', 'string', 'max:255'],
+            'reference_number' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:5000'],
+            'photos' => ['nullable', 'array', 'max:5'],
+            'photos.*' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'price' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:9999999999.99'],
             'estimated_arrival' => ['nullable', 'string', 'max:255'],
         ]);
         $copied = [];
         try {
             DB::transaction(function () use ($data, &$copied) {
+                $listing = Arr::only($data, ['source_watch_id', 'price', 'estimated_arrival']);
+                if (empty($data['source_watch_id'])) {
+                    $snapshot = Arr::only($data, ['brand', 'model_name', 'reference_number', 'description']);
+                    $snapshot['images'] = [];
+                    $snapshot['sections'] = [];
+                    foreach ($data['photos'] ?? [] as $photo) {
+                        $path = $photo->store('preorders', 'public');
+                        $this->check((bool) $path, 'photos', 'Could not save the watch photo.');
+                        $copied[] = $path;
+                        $snapshot['images'][] = ['path' => $path];
+                    }
+                    PreorderListing::create($listing + ['watch_snapshot' => $snapshot]);
+
+                    return;
+                }
+
                 $watch = Watch::with(['images', 'sections'])->lockForUpdate()->findOrFail($data['source_watch_id']);
                 $this->check($watch->status === 'sold', 'source_watch_id', 'Choose a sold watch.');
                 $snapshot = $watch->only(['brand', 'model_name', 'reference_number', 'condition', 'category', 'description',
@@ -79,7 +102,7 @@ class PreorderController extends Controller
                 }
                 $snapshot['primary_image_url'] = $snapshot['images'][0]['image_url'] ?? null;
                 $snapshot['sections'] = $watch->sections->map->only(['title', 'content'])->all();
-                PreorderListing::create($data + ['watch_snapshot' => $snapshot]);
+                PreorderListing::create($listing + ['watch_snapshot' => $snapshot]);
             });
         } catch (\Throwable $error) {
             Storage::disk('public')->delete($copied);

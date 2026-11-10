@@ -316,6 +316,48 @@ class PreorderTest extends TestCase
         $this->assertDatabaseCount('preorder_entries', 1);
     }
 
+    public function test_manual_listing_can_be_published_and_fulfilled_without_a_sold_source(): void
+    {
+        $this->admin();
+        Storage::fake('public');
+        $sold = $this->listing()->sourceWatch->replicate(['slug']);
+        $sold->slug = (string) Str::uuid();
+        $sold->save();
+
+        $this->post(route('admin.preorder-listings.store'), ['price' => 20000])
+            ->assertSessionHasErrors(['brand', 'model_name']);
+        $photo = UploadedFile::fake()->createWithContent('reference.png', base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jA5sAAAAASUVORK5CYII='
+        ));
+        $details = ['brand' => 'Seiko', 'model_name' => 'New model', 'price' => 20000];
+        $this->post(route('admin.preorder-listings.store'), $details + ['photos' => [$photo]])
+            ->assertSessionHasNoErrors();
+        $this->post(route('admin.preorder-listings.store'), array_replace($details, ['model_name' => 'Another model']))
+            ->assertSessionHasNoErrors();
+        $listing = PreorderListing::whereNull('source_watch_id')->oldest('id')->firstOrFail();
+        $path = $listing->watch_snapshot['images'][0]['path'];
+        Storage::disk('public')->assertExists($path);
+        $this->get(route('public.preorders.show', $listing))->assertInertia(fn (Assert $page) => $page
+            ->where('watch.model_name', 'New model')->has('watch.images', 1));
+        $this->get(route('admin.preorders.index'))->assertInertia(fn (Assert $page) => $page
+            ->where('soldWatches.0.id', $sold->id));
+
+        $this->post(route('admin.preorders.store'), [
+            'preorder_listing_id' => $listing->id, 'customer_name' => 'New Buyer',
+            'contact' => 'Messenger', 'total_price' => 20000, 'deposit_percentage' => 20,
+        ])->assertSessionHasNoErrors();
+        $order = Preorder::where('preorder_listing_id', $listing->id)->firstOrFail();
+        $this->entry($order, 'payment', 20000)->assertSessionHasNoErrors();
+        $this->patch(route('admin.preorders.update', $order), ['status' => 'ordered'])->assertSessionHasNoErrors();
+        $this->entry($order, 'cost', 13000)->assertSessionHasNoErrors();
+        $this->patch(route('admin.preorders.update', $order), ['status' => 'arrived'])->assertSessionHasNoErrors();
+        $this->post(route('admin.preorders.fulfill', $order), ['serial_number' => 'MANUAL-NEW'])->assertSessionHasNoErrors();
+        $sale = $order->fresh()->fulfilledWatch;
+        $this->assertSame('New model', $sale->model_name);
+        $this->assertEquals(20000, $sale->sold_price);
+        Storage::disk('public')->assertExists($sale->images()->firstOrFail()->image_path);
+    }
+
     public function test_fulfillment_records_one_sale_with_all_costs_and_preserves_cash(): void
     {
         $this->admin();
