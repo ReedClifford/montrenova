@@ -28,69 +28,49 @@ const money = (value) =>
     }).format(Number(value || 0));
 </script>
 <template>
-    <div class="watch-tile-shell">
-        <Link
-            :href="item.url"
-            class="watch-tile"
-            :aria-label="`View ${name}${item.reference_number ? ', ' + item.reference_number : ''}`"
-        >
-            <div class="tile-photo">
-                <img
-                    v-if="item.card_image && !broken"
-                    :src="item.card_image"
-                    :alt="name"
-                    loading="lazy"
-                    @error="broken = true"
-                />
-                <div v-else class="tile-placeholder">MN</div>
-                <span class="tile-status">{{
-                    item.status_label || statusLabel
-                }}</span>
+    <article class="watch-tile">
+        <div class="tile-photo">
+            <img
+                v-if="item.card_image && !broken"
+                :src="item.card_image"
+                :alt="name"
+                loading="lazy"
+                @error="broken = true"
+            />
+            <div v-else class="tile-placeholder">MN</div>
+            <span class="tile-status">{{ item.status_label || statusLabel }}</span>
+        </div>
+        <div class="tile-body">
+            <p class="tile-brand">{{ item.brand || "Montre Nova" }}</p>
+            <h3 :title="item.model_name">{{ item.model_name }}</h3>
+            <p class="tile-reference" :title="item.reference_number">
+                {{ item.reference_number || "Reference upon request" }}
+            </p>
+            <div class="tile-terms">
+                <p v-if="preorder">20% DP required to confirm</p>
             </div>
-            <div class="tile-body">
-                <p class="tile-brand">{{ item.brand || "Montre Nova" }}</p>
-                <h3 :title="item.model_name">{{ item.model_name }}</h3>
-                <p class="tile-reference" :title="item.reference_number">
-                    {{ item.reference_number || "Reference upon request" }}
-                </p>
-                <div class="tile-terms">
-                    <p v-if="preorder">20% DP required to confirm</p>
+            <div class="tile-footer">
+                <div class="tile-prices">
+                    <p class="tile-price">
+                        {{ Number(item.card_price) > 0 ? money(item.card_price) : "Price upon request" }}
+                    </p>
+                    <p v-if="Number(item.card_original_price) > Number(item.card_price)" class="tile-original">
+                        {{ money(item.card_original_price) }}
+                    </p>
                 </div>
-                <div class="tile-footer">
-                    <div class="tile-prices">
-                        <p class="tile-price">{{ Number(item.card_price) > 0 ? money(item.card_price) : "Price upon request" }}</p>
-                        <p
-                            v-if="
-                                Number(item.card_original_price) >
-                                Number(item.card_price)
-                            "
-                            class="tile-original"
-                        >
-                            {{ money(item.card_original_price) }}
-                        </p>
-                    </div>
-                    <span class="tile-view" aria-hidden="true"
-                        >View watch <span><UiIcon name="eye" /></span></span
-                    >
+                <div class="tile-actions">
+                    <Link :href="item.url" class="tile-view" :aria-label="`View ${name}`">
+                        View watch <UiIcon name="eye" aria-hidden="true" />
+                    </Link>
+                    <WatchShortlistButton class="tile-compare" :watch-id="item.id" :watch-name="name" />
                 </div>
             </div>
-        </Link>
-        <WatchShortlistButton class="tile-compare" :watch-id="item.id" :watch-name="name" />
-    </div>
+        </div>
+    </article>
 </template>
 <style scoped>
-.watch-tile-shell {
-    min-width: 0;
-    display: flex;
-    position: relative;
-}
-.tile-compare {
-    position: absolute;
-    inset-inline-end: 8px;
-    inset-block-start: 42px;
-}
-
 .watch-tile {
+    position: relative;
     container-type: inline-size;
     display: flex;
     flex-direction: column;
@@ -107,7 +87,7 @@ const money = (value) =>
 .watch-tile:hover {
     border-color: #ffffff59;
 }
-.watch-tile:focus-visible {
+.watch-tile:has(.tile-view:focus-visible) {
     outline: 2px solid #d6bd8f;
     outline-offset: 3px;
 }
@@ -221,26 +201,52 @@ const money = (value) =>
     margin-top: 5px;
     overflow-wrap: anywhere;
 }
+.tile-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+}
 .tile-view {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    justify-content: center;
+    gap: 6px;
     min-height: 44px;
-    padding: 10px 12px;
+    padding: 6px 8px;
     border: 1px solid #ffffff2e;
     border-radius: 5px;
-    font-size: 10px;
+    background: #ffffff0a;
+    color: inherit;
+    font-size: 11px;
+    text-decoration: none;
     white-space: nowrap;
 }
-.tile-view span {
-    font-size: 14px;
+.tile-view::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+.tile-view:hover {
+    background: #ffffff12;
+}
+.tile-compare {
+    position: relative;
+    z-index: 1;
+    min-height: 44px;
+}
+@container (min-width: 195px) {
+    .tile-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 @media (min-width: 640px) {
-    @container (min-width: 245px) {
+    @container (min-width: 310px) {
         .tile-footer {
             grid-template-columns: minmax(0, 1fr) auto;
             align-items: center;
+        }
+        .tile-actions {
+            grid-template-columns: auto auto;
         }
         .tile-prices {
             display: flex;
