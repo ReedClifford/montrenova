@@ -48,6 +48,8 @@ Route::post('/warranty-check', [PublicWarrantyController::class, 'check'])
 Route::get('/catalog', [PublicCatalogController::class, 'index'])
     ->name('public.catalog');
 
+Route::get('/compare', [PublicWatchController::class, 'compare'])->name('public.watches.compare');
+
 Route::get('/watches/{watch}', [PublicWatchController::class, 'show'])
     ->name('public.watches.show');
 

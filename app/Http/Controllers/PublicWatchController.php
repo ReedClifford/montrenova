@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CatalogWatch;
 use App\Models\PreorderListing;
 use App\Models\Watch;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
@@ -18,7 +19,7 @@ class PublicWatchController extends Controller
     {
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
-            'type' => ['nullable', 'in:all,available,preorder'],
+            'type' => ['nullable', 'in:all,available,preorder,sold'],
         ]);
         $search = trim($filters['search'] ?? '');
         $type = $filters['type'] ?? 'all';
@@ -50,22 +51,27 @@ class PublicWatchController extends Controller
 
         $stockRows = DB::table('watches')
             ->selectRaw("id, created_at, display_order, 'stock' as kind")
-            ->whereRaw('LOWER(TRIM(status)) = ?', ['available'])
-            ->where('is_visible', true);
+            ->whereRaw($type === 'sold' || ($type === 'all' && $search !== '')
+                ? "LOWER(TRIM(status)) IN ('available', 'sold')"
+                : "LOWER(TRIM(status)) = 'available'")
+            ->where('is_visible', true)
+            ->selectRaw("LOWER(TRIM(status)) as availability");
         $preorderRows = DB::table('preorder_listings')
-            ->selectRaw("id, created_at, 0 as display_order, 'preorder' as kind")
+            ->selectRaw("id, created_at, 0 as display_order, 'preorder' as kind, 'preorder' as availability")
             ->where('is_visible', true);
         if ($search !== '') {
             $term = '%'.$search.'%';
             $stockRows->where(fn ($query) => $query->where('brand', 'like', $term)
-                ->orWhere('model_name', 'like', $term)->orWhere('reference_number', 'like', $term)->orWhere('category', 'like', $term));
+                ->orWhere('model_name', 'like', $term)->orWhere('reference_number', 'like', $term)->orWhere('category', 'like', $term)
+                ->orWhere(fn (Builder $query) => $this->matchReference($query, 'reference_number', $search)));
             $preorderRows->where(fn ($query) => $query->where('watch_snapshot->brand', 'like', $term)
                 ->orWhere('watch_snapshot->model_name', 'like', $term)
-                ->orWhere('watch_snapshot->reference_number', 'like', $term)->orWhere('watch_snapshot->category', 'like', $term));
+                ->orWhere('watch_snapshot->reference_number', 'like', $term)->orWhere('watch_snapshot->category', 'like', $term)
+                ->orWhere(fn (Builder $query) => $this->matchReference($query, 'watch_snapshot->reference_number', $search)));
         }
         $watches = DB::query()->fromSub($stockRows->unionAll($preorderRows), 'collection')
-            ->when($type !== 'all', fn ($query) => $query->where('kind', $type === 'available' ? 'stock' : 'preorder'))
-            ->orderByRaw("CASE WHEN kind = 'stock' THEN 0 ELSE 1 END")
+            ->when($type !== 'all', fn ($query) => $query->where('availability', $type))
+            ->orderByRaw("CASE availability WHEN 'available' THEN 0 WHEN 'preorder' THEN 1 ELSE 2 END")
             ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
             ->orderBy('display_order')
             ->orderByDesc('created_at')
@@ -219,7 +225,7 @@ class PublicWatchController extends Controller
     public function show(Watch $watch)
     {
         abort_unless(
-            strtolower(trim((string) $watch->status)) === 'available' && (bool) $watch->is_visible,
+            in_array(strtolower(trim((string) $watch->status)), ['available', 'sold'], true) && (bool) $watch->is_visible,
             404
         );
 
@@ -240,10 +246,13 @@ class PublicWatchController extends Controller
             ->where('is_visible', true)
             ->orderByRaw('
                 CASE
-                    WHEN category = ? THEN 0
-                    ELSE 1
+                    WHEN reference_number = ? THEN 0
+                    WHEN brand = ? AND category = ? THEN 1
+                    WHEN brand = ? THEN 2
+                    WHEN category = ? THEN 3
+                    ELSE 4
                 END
-            ', [$watch->category])
+            ', [$watch->reference_number, $watch->brand, $watch->category, $watch->brand, $watch->category])
             ->orderByDesc('is_featured')
             ->orderByRaw('CASE WHEN display_order IS NULL OR display_order = 0 THEN 1 ELSE 0 END')
             ->orderBy('display_order')
@@ -308,7 +317,8 @@ class PublicWatchController extends Controller
                         ->orWhere('model_name', 'like', "%{$search}%")
                         ->orWhere('reference_number', 'like', "%{$search}%")
                         ->orWhere('category', 'like', "%{$search}%")
-                        ->orWhere('condition', 'like', "%{$search}%");
+                        ->orWhere('condition', 'like', "%{$search}%")
+                        ->orWhere(fn ($query) => $this->matchReference($query->getQuery(), 'reference_number', $search));
                 });
             })
             ->orderByRaw('COALESCE(date_sold, updated_at, created_at) DESC')
@@ -324,6 +334,45 @@ class PublicWatchController extends Controller
             'soldCount' => Watch::query()
                 ->whereRaw('LOWER(TRIM(status)) = ?', ['sold'])
                 ->count(),
+        ]);
+    }
+
+    private function matchReference(Builder $query, string $column, string $search): void
+    {
+        $reference = strtolower(str_replace(['.', '-', ' ', '/', '_'], '', $search));
+        if ($reference === '' || ! ctype_alnum($reference)) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $expression = $query->getGrammar()->wrap($column);
+        foreach (['.', '-', ' ', '/', '_'] as $separator) {
+            $expression = "REPLACE({$expression}, '{$separator}', '')";
+        }
+
+        $query->whereRaw("LOWER({$expression}) LIKE ?", ['%'.$reference.'%']);
+    }
+
+    public function compare(Request $request)
+    {
+        $ids = $request->validate([
+            'items' => ['nullable', 'array', 'max:3'],
+            'items.*' => ['required', 'string', 'regex:/^(?:preorder-)?[1-9][0-9]{0,17}$/D', 'distinct'],
+        ])['items'] ?? [];
+        $stockIds = collect($ids)->reject(fn ($id) => str_starts_with($id, 'preorder-'));
+        $listingIds = collect($ids)->filter(fn ($id) => str_starts_with($id, 'preorder-'))
+            ->map(fn ($id) => substr($id, 9));
+        $stock = Watch::with('primaryImage')->withCount('images')->whereIn('id', $stockIds)
+            ->where('is_visible', true)->whereIn(DB::raw('LOWER(TRIM(status))'), ['available', 'sold'])->get()
+            ->mapWithKeys(fn (Watch $watch) => [$watch->id => $this->publicWatchCard($watch)
+                + $watch->only(['case_size', 'movement']) + ['warranty_years' => $watch->warrantyYears()]]);
+        $listings = PreorderListing::whereIn('id', $listingIds)->where('is_visible', true)->get()
+            ->mapWithKeys(fn (PreorderListing $listing) => ['preorder-'.$listing->id => $listing->publicCard()]);
+
+        return Inertia::render('Public/WatchCompare', [
+            'watches' => collect($ids)->map(fn ($id) => $stock->get($id) ?? $listings->get($id))->filter()->values(),
+            'requestedItems' => $ids,
         ]);
     }
 
@@ -519,7 +568,8 @@ class PublicWatchController extends Controller
             'discounted_price' => $watch->discounted_price ? (float) $watch->discounted_price : null,
             'sold_price' => (float) ($watch->sold_price ?? 0),
             'price' => $price,
-            'status' => $watch->status ?: 'available',
+            'url' => $watch->is_visible ? route('public.watches.show', $watch) : null,
+            'status' => strtolower(trim((string) $watch->status)) ?: 'available',
             'is_featured' => (bool) $watch->is_featured,
             'display_order' => (int) ($watch->display_order ?? 0),
             'created_at' => $this->formatDateTime($watch->created_at),
@@ -564,8 +614,9 @@ class PublicWatchController extends Controller
             'warranty_years' => $watch->warrantyYears(),
             'selling_price' => (float) ($watch->selling_price ?? 0),
             'discounted_price' => $watch->discounted_price ? (float) $watch->discounted_price : null,
-            'price' => $this->listedPrice($watch),
-            'status' => $watch->status ?: 'available',
+            'price' => strtolower(trim((string) $watch->status)) === 'sold'
+                ? (float) ($watch->sold_price ?? 0) : $this->listedPrice($watch),
+            'status' => strtolower(trim((string) $watch->status)),
             'is_featured' => (bool) $watch->is_featured,
             'display_order' => (int) ($watch->display_order ?? 0),
             'created_at' => $this->formatDateTime($watch->created_at),

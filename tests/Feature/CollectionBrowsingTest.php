@@ -48,7 +48,7 @@ class CollectionBrowsingTest extends TestCase
 
     private function listing(string $name, bool $visible = true): PreorderListing
     {
-        return PreorderListing::create(['source_watch_id' => $this->stock($name, 'sold')->id,
+        return PreorderListing::create(['source_watch_id' => $this->stock('Source for listing', 'sold')->id,
             'price' => 25000, 'is_visible' => $visible,
             'watch_snapshot' => ['brand' => 'Seiko', 'model_name' => $name, 'reference_number' => 'SRPB43', 'images' => []]]);
     }
@@ -77,6 +77,45 @@ class CollectionBrowsingTest extends TestCase
         $this->get('/?type=available')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('collectionType', 'available')->where('watches.total', 1)
             ->where('watches.data.0.status', 'available'));
+    }
+
+    public function test_reference_search_matches_normalized_references_across_public_statuses(): void
+    {
+        $this->stock('Available Tissot')->update(['reference_number' => 'T137.010.11.056.00']);
+        $this->stock('Sold Tissot', 'sold')->update(['reference_number' => 't137-010-11-056-00']);
+        $this->stock('Private sale', 'sold')->update(['is_visible' => false, 'reference_number' => 'T1370101105600']);
+        $this->listing('Preorder Tissot')->update([
+            'watch_snapshot' => ['brand' => 'Tissot', 'model_name' => 'PRX', 'reference_number' => 'T1370101105600'],
+        ]);
+
+        foreach (['T137.010.11.056.00', 't1370101105600'] as $search) {
+            $this->get('/?search='.$search)->assertInertia(fn (Assert $page) => $page
+                ->where('watches.total', 3)
+                ->where('watches.data.0.status', 'available')
+                ->where('watches.data.1.status', 'preorder')
+                ->where('watches.data.2.status', 'sold'));
+        }
+        $this->get('/?type=sold&search=t1370101105600')->assertInertia(fn (Assert $page) => $page
+            ->where('watches.total', 1)->where('watches.data.0.status', 'sold'));
+    }
+
+    public function test_sold_pages_and_comparison_only_show_public_watch_details(): void
+    {
+        $sold = $this->stock('Sold unit', 'sold');
+        $sold->update(['sold_price' => 18000, 'capital_price' => 12000, 'buyer_name' => 'Private Buyer']);
+        $available = $this->stock('Available unit');
+        $hidden = $this->stock('Private sold unit', 'sold');
+        $hidden->update(['is_visible' => false]);
+        $listing = $this->listing('Public preorder');
+
+        $this->get(route('public.watches.show', $sold))->assertInertia(fn (Assert $page) => $page
+            ->component('Public/WatchShow')->where('watch.status', 'sold')->where('watch.price', 18000)
+            ->where('relatedWatches.0.id', $available->id)->missing('watch.buyer_name')->missing('watch.capital_price'));
+        $this->get(route('public.watches.show', $hidden))->assertNotFound();
+        $this->get(route('public.watches.compare', ['items' => [(string) $sold->id, 'preorder-'.$listing->id, (string) $hidden->id]]))
+            ->assertInertia(fn (Assert $page) => $page->component('Public/WatchCompare')
+                ->has('watches', 2)->where('watches.0.status', 'sold')->where('watches.1.status', 'preorder')
+                ->missing('watches.0.buyer_name')->missing('watches.0.capital_price'));
     }
 
     public function test_reference_search_and_no_results_return_clear_filter_state(): void

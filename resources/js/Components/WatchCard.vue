@@ -1,4 +1,5 @@
 <script setup>
+import WatchShortlistButton from "@/Components/WatchShortlistButton.vue";
 import UiIcon from "@/Components/UiIcon.vue";
 import { Link } from "@inertiajs/vue3";
 import { computed, ref, watch } from "vue";
@@ -27,60 +28,74 @@ const money = (value) =>
     }).format(Number(value || 0));
 </script>
 <template>
-    <Link
-        :href="item.url"
-        class="watch-tile"
-        :aria-label="`View ${name}${item.reference_number ? ', ' + item.reference_number : ''}`"
-    >
-        <div class="tile-photo">
-            <img
-                v-if="item.card_image && !broken"
-                :src="item.card_image"
-                :alt="name"
-                loading="lazy"
-                @error="broken = true"
-            />
-            <div v-else class="tile-placeholder">MN</div>
-            <span class="tile-status">{{
-                item.status_label || statusLabel
-            }}</span>
-        </div>
-        <div class="tile-body">
-            <p class="tile-brand">{{ item.brand || "Montre Nova" }}</p>
-            <h3 :title="item.model_name">{{ item.model_name }}</h3>
-            <p class="tile-reference" :title="item.reference_number">
-                {{ item.reference_number || "Reference upon request" }}
-            </p>
-            <div class="tile-terms">
-                <p v-if="preorder">20% DP required to confirm</p>
+    <div class="watch-tile-shell">
+        <Link
+            :href="item.url"
+            class="watch-tile"
+            :aria-label="`View ${name}${item.reference_number ? ', ' + item.reference_number : ''}`"
+        >
+            <div class="tile-photo">
+                <img
+                    v-if="item.card_image && !broken"
+                    :src="item.card_image"
+                    :alt="name"
+                    loading="lazy"
+                    @error="broken = true"
+                />
+                <div v-else class="tile-placeholder">MN</div>
+                <span class="tile-status">{{
+                    item.status_label || statusLabel
+                }}</span>
             </div>
-            <div class="tile-footer">
-                <div class="tile-prices">
-                    <p class="tile-price">{{ money(item.card_price) }}</p>
-                    <p
-                        v-if="
-                            Number(item.card_original_price) >
-                            Number(item.card_price)
-                        "
-                        class="tile-original"
-                    >
-                        {{ money(item.card_original_price) }}
-                    </p>
+            <div class="tile-body">
+                <p class="tile-brand">{{ item.brand || "Montre Nova" }}</p>
+                <h3 :title="item.model_name">{{ item.model_name }}</h3>
+                <p class="tile-reference" :title="item.reference_number">
+                    {{ item.reference_number || "Reference upon request" }}
+                </p>
+                <div class="tile-terms">
+                    <p v-if="preorder">20% DP required to confirm</p>
                 </div>
-                <span class="tile-view" aria-hidden="true"
-                    >View watch <span><UiIcon name="eye" /></span></span
-                >
+                <div class="tile-footer">
+                    <div class="tile-prices">
+                        <p class="tile-price">{{ Number(item.card_price) > 0 ? money(item.card_price) : "Price upon request" }}</p>
+                        <p
+                            v-if="
+                                Number(item.card_original_price) >
+                                Number(item.card_price)
+                            "
+                            class="tile-original"
+                        >
+                            {{ money(item.card_original_price) }}
+                        </p>
+                    </div>
+                    <span class="tile-view" aria-hidden="true"
+                        >View watch <span><UiIcon name="eye" /></span></span
+                    >
+                </div>
             </div>
-        </div>
-    </Link>
+        </Link>
+        <WatchShortlistButton class="tile-compare" :watch-id="item.id" :watch-name="name" />
+    </div>
 </template>
 <style scoped>
+.watch-tile-shell {
+    min-width: 0;
+    display: flex;
+    position: relative;
+}
+.tile-compare {
+    position: absolute;
+    inset-inline-end: 8px;
+    inset-block-start: 42px;
+}
+
 .watch-tile {
     container-type: inline-size;
     display: flex;
     flex-direction: column;
     min-width: 0;
-    height: 100%;
+    width: 100%;
     overflow: hidden;
     border: 1px solid #ffffff21;
     border-radius: 7px;

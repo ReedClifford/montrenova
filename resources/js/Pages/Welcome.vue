@@ -1,4 +1,5 @@
 <script setup>
+import WatchShortlistBar from "@/Components/WatchShortlistBar.vue";
 import UiIcon from "@/Components/UiIcon.vue";
 import WatchCard from "@/Components/WatchCard.vue";
 import { readCollection, saveCollection, consumeCollectionRestore } from "@/Utils/collectionMemory";
@@ -68,13 +69,13 @@ const activeWatchFilter = ref(
         ? "Preorder"
         : props.collectionType === "available"
           ? "Available"
-          : "All",
+          : props.collectionType === "sold" ? "Sold" : "All",
 );
 const collectionSearchInput = ref(props.collectionSearch);
 const collectionSearching = ref(false);
 function searchCollection(type = props.collectionType) {
     activeWatchFilter.value =
-        type === "all" ? "All" : type === "preorder" ? "Preorder" : "Available";
+        type[0].toUpperCase() + type.slice(1);
     router.get(
         route("welcome") + "#collection",
         {
@@ -91,7 +92,7 @@ function searchCollection(type = props.collectionType) {
     );
 }
 function selectCollectionFilter(filter) {
-    if (["All", "Available", "Preorder"].includes(filter))
+    if (["All", "Available", "Preorder", "Sold"].includes(filter))
         searchCollection(filter.toLowerCase());
     else activeWatchFilter.value = filter;
 }
@@ -107,7 +108,7 @@ watch(
                 ? "Preorder"
                 : value === "available"
                   ? "Available"
-                  : "All"),
+                  : value === "sold" ? "Sold" : "All"),
 );
 const savedCollection = readCollection();
 const sameCollection = savedCollection?.url?.split('#')[0] === window.location.pathname + window.location.search;
@@ -760,7 +761,7 @@ const watchFilterOptions = computed(() => {
         }
     });
 
-    return ["All", "Available", "Preorder", ...unique.slice(0, 7)];
+    return ["All", "Available", "Preorder", "Sold", ...unique.slice(0, 7)];
 });
 
 const filteredAndSortedWatches = computed(() => {
@@ -769,7 +770,7 @@ const filteredAndSortedWatches = computed(() => {
 
     if (filter !== "all") {
         collection = collection.filter((watch) => {
-            if (["available", "preorder"].includes(filter)) {
+            if (["available", "preorder", "sold"].includes(filter)) {
                 return String(watch.status).toLowerCase() === filter;
             }
             const brand = String(watch?.brand || "").toLowerCase();
@@ -797,7 +798,8 @@ const filteredAndSortedWatches = computed(() => {
     }
 
     if (props.collectionType === 'all') {
-        collection.sort((a,b) => Number(a.status === 'preorder') - Number(b.status === 'preorder'));
+        const statusOrder = { available: 0, preorder: 1, sold: 2 };
+        collection.sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
     }
     return collection;
 });
@@ -990,6 +992,7 @@ const productBadges = (watch) => {
 </script>
 
 <template>
+    <WatchShortlistBar />
     <Head title="Montre Nova | Curated Timepieces" />
 
     <div
@@ -1328,9 +1331,18 @@ const productBadges = (watch) => {
                             tag="div"
                             class="mn-watch-grid"
                         >
-                            <WatchCard v-for="watch in filteredAndSortedWatches" :key="watch.id" :item="{
- ...watch, url: watch.url || route('public.watches.show', watch.id), card_image: watchImage(watch), card_price: finalPrice(watch), card_original_price: isBelowSrp(watch) ? originalPrice(watch) : null, status_label: watch.status === 'preorder' ? 'PREORDER' : (watch.status || 'available').toUpperCase(),
- }" />
+                            <WatchCard
+                                v-for="watch in filteredAndSortedWatches"
+                                :key="watch.id"
+                                :item="{
+                                    ...watch,
+                                    url: watch.url,
+                                    card_image: watchImage(watch),
+                                    card_price: watch.status === 'sold' ? watch.sold_price : finalPrice(watch),
+                                    card_original_price: watch.status !== 'sold' && isBelowSrp(watch) ? originalPrice(watch) : null,
+                                }"
+                                :status-label="watch.status.toUpperCase()"
+                            />
                         </TransitionGroup>
 
                         <div
@@ -1530,7 +1542,11 @@ const productBadges = (watch) => {
                                     >
                                     <span>{{ soldDateLabel(watch) }}</span>
                                 </div>
+                                <Link v-if="watch.url" :href="watch.url" class="mn-archive-source">
+                                    VIEW WATCH
+                                </Link>
                                 <button
+                                    v-else
                                     type="button"
                                     class="mn-archive-source"
                                     @click="openSimilarInquiry(watch)"

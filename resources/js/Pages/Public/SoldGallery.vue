@@ -420,10 +420,10 @@ watch(search, () => {
                                     </button>
 
                                     <Link
-                                        href="/#collection"
+                                        :href="watch.url || '/#collection'"
                                         class="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-3 text-sm font-bold text-black transition hover:bg-zinc-200"
                                     >
-                                        View Stocks
+                                        {{ watch.url ? "View watch" : "View stock" }}
                                     </Link>
                                 </div>
                             </div>

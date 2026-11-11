@@ -1,4 +1,6 @@
 <script setup>
+import WatchShortlistButton from "@/Components/WatchShortlistButton.vue";
+import WatchShortlistBar from "@/Components/WatchShortlistBar.vue";
 import CollectionBackLink from "@/Components/CollectionBackLink.vue";
 import PublicHeader from "@/Components/PublicHeader.vue";
 import WatchCardCarousel from "@/Components/WatchCardCarousel.vue";
@@ -75,6 +77,7 @@ const selectedImage = computed(() => {
 const hasMultipleImages = computed(() => images.value.length > 1);
 
 const hasDiscount = computed(() => {
+    if (props.watch.status === "sold") return false;
     return (
         Number(props.watch.discounted_price || 0) > 0 &&
         Number(props.watch.selling_price || 0) >
@@ -83,6 +86,7 @@ const hasDiscount = computed(() => {
 });
 
 const finalPrice = computed(() => {
+    if (props.watch.status === "sold") return props.watch.price;
     if (hasDiscount.value) return props.watch.discounted_price;
 
     return props.watch.price || props.watch.selling_price || 0;
@@ -375,6 +379,12 @@ const buyingNotes = computed(() => {
 const defaultInquiryMessage = computed(() => {
     const watch = props.watch;
     const reference = watch.reference_number ? ` (Ref. ${watch.reference_number})` : "";
+    if (!isAvailable.value) {
+        return [
+            `Hi Montre Nova! Can you source ${displayName.value}${reference} or a similar watch?`,
+            route("public.watches.show", watch.id),
+        ].join("\n");
+    }
     return [
         `Hi Montre Nova! I'm interested in ${displayName.value}${reference}. Is this available?`,
         `Listed price: ${peso(finalPrice.value || watch.price)}`,
@@ -613,6 +623,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+    <WatchShortlistBar />
     <Head :title="`${displayName} | Montre Nova`">
         <meta name="description" :content="metaDescription" />
 
@@ -903,7 +914,7 @@ onBeforeUnmount(() => {
                                 <div
                                     class="mt-7 rounded-2xl border border-white/10 bg-black/35 p-5 shadow-xl shadow-black/20"
                                 >
-                                    <p class="micro-label">Asking Price</p>
+                                    <p class="micro-label">{{ isAvailable ? "Asking price" : "Sold price" }}</p>
 
                                     <div
                                         class="mt-3 flex flex-wrap items-end gap-3"
@@ -911,11 +922,11 @@ onBeforeUnmount(() => {
                                         <p
                                             class="mn-product-price text-3xl font-semibold tracking-[-0.045em] text-white sm:text-[2.5rem]"
                                         >
-                                            {{ peso(finalPrice) }}
+                                            {{ finalPrice > 0 ? peso(finalPrice) : "Price upon request" }}
                                         </p>
 
                                         <p
-                                            v-if="hasDiscount"
+                                            v-if="isAvailable && hasDiscount"
                                             class="pb-1 text-sm font-semibold text-zinc-500 line-through"
                                         >
                                             {{ peso(originalPrice) }}
@@ -946,8 +957,11 @@ onBeforeUnmount(() => {
                                     class="primary-action mt-6 w-full"
                                     @click="openMessengerInquiry()"
                                 >
-                                    Inquire on Messenger
+                                    {{ isAvailable ? "Inquire on Messenger" : "Request this model" }}
                                 </button>
+                                <div class="mt-3">
+                                    <WatchShortlistButton :watch-id="watch.id" :watch-name="displayName" />
+                                </div>
                             </div>
 
                             <!-- INLINE SPECS -->
@@ -1004,7 +1018,7 @@ onBeforeUnmount(() => {
                 v-if="carouselWatches.length"
                 class="mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8"
             >
-                <WatchCardCarousel :items="carouselCards" />
+                <WatchCardCarousel :items="carouselCards" :title="isAvailable ? 'Explore more timepieces' : 'Similar watches available now'" />
             </section>
         </main>
 

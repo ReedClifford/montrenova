@@ -1,4 +1,6 @@
 <script setup>
+import WatchShortlistButton from "@/Components/WatchShortlistButton.vue";
+import WatchShortlistBar from "@/Components/WatchShortlistBar.vue";
 import UiIcon from "@/Components/UiIcon.vue";
 import CollectionBackLink from "@/Components/CollectionBackLink.vue";
 import PublicHeader from "@/Components/PublicHeader.vue";
@@ -41,6 +43,7 @@ const specs = computed(() =>
 );
 </script>
 <template>
+    <WatchShortlistBar />
     <Head :title="`${name} · Preorder | Montre Nova`"
         ><meta
             name="description"
@@ -104,6 +107,7 @@ const specs = computed(() =>
                         >Preorder via Messenger
                         <span aria-hidden="true"><UiIcon name="chat" /></span></a
                     >
+                    <div class="mt-3"><WatchShortlistButton :watch-id="watch.id" :watch-name="name" /></div>
                     <p class="caption">
                         Confirm availability, the final price, lead time and
                         payment instructions with our team on Messenger.
