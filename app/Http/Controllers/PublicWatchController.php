@@ -363,10 +363,13 @@ class PublicWatchController extends Controller
         $stockIds = collect($ids)->reject(fn ($id) => str_starts_with($id, 'preorder-'));
         $listingIds = collect($ids)->filter(fn ($id) => str_starts_with($id, 'preorder-'))
             ->map(fn ($id) => substr($id, 9));
-        $stock = Watch::with('primaryImage')->withCount('images')->whereIn('id', $stockIds)
+        $stock = Watch::with(['primaryImage', 'images'])->withCount('images')->whereIn('id', $stockIds)
             ->where('is_visible', true)->whereIn(DB::raw('LOWER(TRIM(status))'), ['available', 'sold'])->get()
             ->mapWithKeys(fn (Watch $watch) => [$watch->id => $this->publicWatchCard($watch)
-                + $watch->only(['case_size', 'movement']) + ['warranty_years' => $watch->warrantyYears()]]);
+                + $watch->only(['case_size', 'movement']) + [
+                    'warranty_years' => $watch->warrantyYears(),
+                    'comparison_fallback_url' => $watch->images->first(fn ($image) => ! $image->is_primary)?->image_url,
+                ]]);
         $listings = PreorderListing::whereIn('id', $listingIds)->where('is_visible', true)->get()
             ->mapWithKeys(fn (PreorderListing $listing) => ['preorder-'.$listing->id => $listing->publicCard()]);
 

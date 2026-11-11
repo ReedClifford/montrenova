@@ -8,11 +8,22 @@ const props = defineProps({ watches: Array, requestedItems: Array });
 const shortlist = useWatchShortlist();
 const differencesOnly = ref(false);
 const updating = ref(false);
+const failedPhotos = ref(new Set());
 const unavailable = computed(() => props.requestedItems.filter(
     (id) => !props.watches.some((watch) => String(watch.id) === id),
 ));
 const statusLabels = { available: "Available", preorder: "Preorder", sold: "Sold" };
 const peso = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" });
+
+function photoUrl(watch) {
+    return [
+        watch.primary_image_url,
+        watch.primary_hd_url,
+        watch.thumbnail_url,
+        watch.comparison_fallback_url,
+        ...(watch.images || []).map((image) => image.image_url),
+    ].find((url) => url && !failedPhotos.value.has(url));
+}
 
 function remove(ids) {
     router.get(route("public.watches.compare"), {
@@ -106,7 +117,13 @@ const rows = computed(() => fields.map(([label, getValue]) => {
                                 <th v-for="watch in watches" :key="watch.id" scope="col" class="align-top">
                                     <Link :href="watch.url" class="block break-words hover:text-[#e5cda5]">
                                         <div class="watch-photo">
-                                            <img v-if="watch.primary_image_url" :src="watch.primary_image_url" alt="" />
+                                            <img
+                                                v-if="photoUrl(watch)"
+                                                :key="photoUrl(watch)"
+                                                :src="photoUrl(watch)"
+                                                alt=""
+                                                @error="failedPhotos.add($event.currentTarget.getAttribute('src'))"
+                                            />
                                             <span v-else aria-hidden="true">MN</span>
                                         </div>
                                         <span class="block text-xs font-medium text-zinc-400">{{ watch.brand }}</span>
@@ -182,19 +199,27 @@ const rows = computed(() => fields.map(([label, getValue]) => {
     font-weight: 550;
 }
 .watch-photo {
+    position: relative;
     display: grid;
-    aspect-ratio: 4 / 3;
+    width: 100%;
+    max-width: 280px;
+    aspect-ratio: 1;
     place-items: center;
-    margin-bottom: 12px;
+    margin: 0 auto 12px;
     overflow: hidden;
     border-radius: 6px;
     background: #222225;
     color: #a1a1aa;
 }
 .watch-photo img {
+    position: absolute;
+    inset: 0;
+    display: block;
     width: 100%;
     height: 100%;
+    padding: clamp(3px, 1vw, 10px);
     object-fit: contain;
+    object-position: center;
 }
 .price-cell {
     color: #f2ddb8;
