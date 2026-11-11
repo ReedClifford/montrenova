@@ -225,6 +225,12 @@ const money = (value) =>
     @container (min-width: 245px) {
         .tile-footer {
             grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+        }
+        .tile-prices {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
     }
 }
