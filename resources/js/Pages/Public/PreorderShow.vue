@@ -25,7 +25,7 @@ const messenger = computed(
     () =>
         "https://m.me/montrenova?text=" +
         encodeURIComponent(
-            `Hi Montre Nova! I would like to preorder ${name.value}${props.watch.reference_number ? " (" + props.watch.reference_number + ")" : ""}.\nListed price: ${money(props.watch.price)}\n20% down payment: ${money(deposit.value)}\nI understand a 20% down payment is required to confirm my order. May I confirm the lead time and payment details?\n${window.location.href}`,
+            `Hi Montre Nova! I would like to preorder ${name.value}${props.watch.reference_number ? " (" + props.watch.reference_number + ")" : ""}.\nListed price: ${money(props.watch.price)}\n20% down payment: ${money(deposit.value)}\nI understand a 20% down payment is required to confirm my order. May I confirm the lead time and payment details?\n${props.watch.url}`,
         ),
 );
 const specs = computed(() =>
@@ -37,7 +37,6 @@ const specs = computed(() =>
         ["Crystal", "crystal"],
         ["Bracelet / strap", "bracelet_or_strap"],
         ["Water resistance", "water_resistance"],
-        ["Box & papers", "box_papers"],
     ].filter(([, key]) => props.watch[key]),
 );
 </script>
@@ -81,7 +80,22 @@ const specs = computed(() =>
                             <strong>Estimated arrival:</strong>
                             {{ watch.estimated_arrival }}
                         </p>
+                        <p v-else>Estimated arrival is confirmed when you inquire.</p>
                     </div>
+                    <dl>
+                        <div v-if="watch.condition">
+                            <dt>Reference condition</dt>
+                            <dd>{{ watch.condition }}</dd>
+                        </div>
+                        <div v-if="watch.box_papers">
+                            <dt>Box &amp; papers</dt>
+                            <dd>{{ watch.box_papers }} · confirm before ordering</dd>
+                        </div>
+                        <div>
+                            <dt>Warranty</dt>
+                            <dd>{{ watch.warranty_years }} {{ watch.warranty_years === 1 ? "year" : "years" }} from handover</dd>
+                        </div>
+                    </dl>
                     <a
                         class="cta"
                         :href="messenger"

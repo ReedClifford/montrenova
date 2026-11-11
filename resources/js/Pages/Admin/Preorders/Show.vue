@@ -11,7 +11,15 @@ import { useUnsavedChanges } from "@/Composables/useUnsavedChanges";
 import { Head, Link, useForm, usePage } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 import "./preorders.css";
-const props = defineProps({ order: Object, trackingUrl: String });
+const props = defineProps({ order: Object, trackingUrl: String, reversals: Array });
+const reversal = useForm({ watch_id: null, reason: "" });
+function undoFulfillment() {
+    reversal.watch_id = props.order.fulfilled_watch_id;
+    reversal.post(route("admin.preorders.undo-fulfillment", props.order.id), {
+        preserveScroll: true,
+        onSuccess: () => reversal.reset(),
+    });
+}
 const tracking = useForm({});
 const trackingCopied = ref(false);
 const trackingCopyError = ref(false);
@@ -567,6 +575,16 @@ const busy = computed(
                                 customer’s warranty starts on the
                                 handover date.
                             </p>
+                            <details class="my-3">
+                                <summary class="cursor-pointer font-semibold">Undo fulfillment</summary>
+                                <form class="mt-2 space-y-2" @submit.prevent="undoFulfillment">
+                                    <p>This returns the preorder to Arrived and reverses the sale and warranty. Recorded payments and costs stay on the order.</p>
+                                    <label for="reversal-reason">Reason for reversal</label>
+                                    <textarea id="reversal-reason" v-model="reversal.reason" class="w-full" maxlength="1000" required />
+                                    <p v-if="reversal.errors.reason" role="alert">{{ reversal.errors.reason }}</p>
+                                    <button type="submit" class="secondary" :disabled="reversal.processing">Confirm reversal</button>
+                                </form>
+                            </details>
                             <Link
                                 :href="route('admin.sales.index')"
                                 class="button"
@@ -596,6 +614,14 @@ const busy = computed(
                 </div>
             </div>
         </div>
+        <section v-if="reversals?.length" class="mx-auto max-w-7xl px-4 pb-6">
+            <h2 class="font-semibold">Fulfillment history</h2>
+            <ul class="mt-2 space-y-2">
+                <li v-for="item in reversals" :key="item.id">
+                    Sale #{{ item.watch_id }} reversed by {{ item.recorded_by || "Former admin" }} on {{ item.created_at }}. {{ item.reason }}
+                </li>
+            </ul>
+        </section>
         <Modal :show="dialog !== null" :closeable="!busy" @close="closeDialog"
             ><div class="po dialog">
                 <form v-if="dialog === 'eta'" @submit.prevent="saveEta">

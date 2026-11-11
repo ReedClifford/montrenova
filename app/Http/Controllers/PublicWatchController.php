@@ -561,6 +561,7 @@ class PublicWatchController extends Controller
             'water_resistance' => $watch->water_resistance,
             'box_papers' => $watch->box_papers,
             'warranty_type' => $watch->warranty_type,
+            'warranty_years' => $watch->warrantyYears(),
             'selling_price' => (float) ($watch->selling_price ?? 0),
             'discounted_price' => $watch->discounted_price ? (float) $watch->discounted_price : null,
             'price' => $this->listedPrice($watch),

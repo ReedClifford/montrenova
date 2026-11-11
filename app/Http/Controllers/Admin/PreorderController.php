@@ -140,6 +140,10 @@ class PreorderController extends Controller
     {
         return Inertia::render('Admin/Preorders/Show', [
             'order' => $preorder->load(['listing', 'entries']),
+            'reversals' => DB::table('preorder_fulfillment_reversals as reversals')
+                ->leftJoin('users', 'users.id', '=', 'reversals.recorded_by')
+                ->where('reversals.preorder_id', $preorder->id)->latest('reversals.id')
+                ->get(['reversals.id', 'reversals.watch_id', 'reversals.reason', 'reversals.created_at', 'users.name as recorded_by']),
             'trackingUrl' => $preorder->tracking_token
                 ? route('public.preorders.track', $preorder->tracking_token) : null,
         ]);
@@ -282,6 +286,43 @@ class PreorderController extends Controller
         });
 
         return back()->with('success', 'Preorder fulfilled. Sale, profit and warranty are now recorded.');
+    }
+
+    public function undoFulfillment(Request $request, Preorder $preorder)
+    {
+        $data = $request->validate([
+            'watch_id' => ['required', 'integer'],
+            'reason' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $watchId = DB::transaction(function () use ($request, $preorder, $data) {
+            $order = Preorder::lockForUpdate()->findOrFail($preorder->id);
+            $this->check($order->status === 'fulfilled' && (int) $order->fulfilled_watch_id === (int) $data['watch_id'],
+                'reason', 'This fulfillment has changed. Refresh the order before trying again.');
+
+            $watch = Watch::lockForUpdate()->findOrFail($order->fulfilled_watch_id);
+            $this->check($watch->status === 'sold', 'reason', 'The linked watch is no longer marked sold.');
+
+            DB::table('preorder_fulfillment_reversals')->insert([
+                'preorder_id' => $order->id,
+                'recorded_by' => $request->user()->id,
+                'watch_id' => $watch->id,
+                'reason' => $data['reason'],
+                'sale_snapshot' => json_encode($watch->only(['brand', 'model_name', 'serial_number', 'date_sold', 'sold_price', 'capital_price'])
+                    + ['fulfilled_at' => $order->fulfilled_at], JSON_THROW_ON_ERROR),
+                'created_at' => now(),
+            ]);
+
+            $order->update(['status' => 'arrived', 'fulfilled_watch_id' => null, 'fulfilled_at' => null]);
+            PreorderListing::where('source_watch_id', $watch->id)->update(['source_watch_id' => null]);
+            $watch->delete();
+
+            return $watch->id;
+        });
+
+        rescue(fn () => Storage::disk('public')->deleteDirectory('watches/'.$watchId));
+
+        return back()->with('success', 'Fulfillment reversed. The preorder is back to Arrived.');
     }
 
     public function proof(PreorderEntry $entry)

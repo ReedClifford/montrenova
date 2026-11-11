@@ -17,6 +17,9 @@ class Watch extends Model
                     'preorder' => 'Financial and warranty details are locked for fulfilled preorders.',
                 ]);
             }
+            if ($watch->isDirty('status') && $watch->status === 'sold') {
+                $watch->sale_cycle = (int) $watch->getOriginal('sale_cycle') + 1;
+            }
         });
         static::deleting(fn (Watch $watch) => $watch->assertPreorderDeletionAllowed());
     }
@@ -81,6 +84,7 @@ class Watch extends Model
         'allow_inquiry' => 'boolean',
         'date_acquired' => 'date',
         'date_sold' => 'date',
+        'sale_cycle' => 'integer',
         'reservation_date' => 'date',
         'reservation_deadline' => 'date',
     ];
@@ -94,7 +98,12 @@ class Watch extends Model
 
     public function warrantyYears(): int
     {
-        return strcasecmp(trim((string) $this->brand), 'Tissot') === 0 ? 2 : 1;
+        return self::warrantyYearsForBrand($this->brand);
+    }
+
+    public static function warrantyYearsForBrand(?string $brand): int
+    {
+        return strcasecmp(trim((string) $brand), 'Tissot') === 0 ? 2 : 1;
     }
 
     public function fulfilledPreorder(): HasOne
@@ -108,6 +117,11 @@ class Watch extends Model
             && $this->date_sold !== null
             && $this->sold_price > 0
             && ! ($this->fulfilled_preorder_exists ?? $this->fulfilledPreorder()->exists());
+    }
+
+    public function warrantyExpiresOn(): ?string
+    {
+        return $this->date_sold?->copy()->addYears($this->warrantyYears())->toDateString();
     }
 
     public function images(): HasMany

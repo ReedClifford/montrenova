@@ -4,27 +4,44 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Expense;
+use App\Models\SaleInvoice;
 use App\Models\Watch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class SalesController extends Controller
 {
     public function receipt(Watch $watch): Response
     {
-        abort_unless($watch->canIssueSaleReceipt(), 404);
+        $invoice = DB::transaction(function () use ($watch) {
+            $watch = Watch::lockForUpdate()->findOrFail($watch->id);
+            abort_unless($watch->canIssueSaleReceipt(), 404);
+
+            $reference = 'MN-SALE-'.str_pad((string) $watch->id, 5, '0', STR_PAD_LEFT);
+            $number = SaleInvoice::where('watch_id', $watch->id)->exists()
+                ? $reference.'-'.$watch->sale_cycle : $reference;
+
+            return SaleInvoice::firstOrCreate(['watch_id' => $watch->id, 'sale_cycle' => $watch->sale_cycle], [
+                'number' => $number,
+                'customer_token' => Str::random(64),
+                'snapshot' => $watch->only(['brand', 'model_name', 'buyer_name', 'reference_number', 'serial_number', 'sold_price'])
+                    + [
+                        'date_sold' => $watch->date_sold->toDateString(),
+                        'warranty_expires_on' => $watch->warrantyExpiresOn(),
+                    ],
+            ]);
+        });
 
         return response()->view('sales.receipt', [
-            'watch' => $watch,
-            'reference' => 'MN-SALE-'.str_pad((string) $watch->id, 5, '0', STR_PAD_LEFT),
-        ], 200, [
-            'Cache-Control' => 'private, no-store, max-age=0',
-            'X-Robots-Tag' => 'noindex, nofollow, noarchive',
-            'Referrer-Policy' => 'no-referrer',
-        ]);
+            'reference' => $invoice->number,
+            'issuedOn' => $invoice->created_at->format('M j, Y'),
+            'watch' => $invoice->snapshot,
+            'customerUrl' => route('public.sales.purchase', $invoice->customer_token),
+        ], 200, SaleInvoice::PRIVATE_HEADERS);
     }
 
     public function index(Request $request)

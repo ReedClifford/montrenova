@@ -373,31 +373,13 @@ const buyingNotes = computed(() => {
 });
 
 const defaultInquiryMessage = computed(() => {
-    return `Hi Montre Nova, I'm interested in this watch:
-
-
-
-
-
-
-
-${displayName.value}
-
-
-
-${props.watch.reference_number ? `Ref. ${props.watch.reference_number}` : ""}
-
-
-
-Price: ${peso(finalPrice.value || props.watch.price)}
-
-
-
-
-
-
-
-Is this still available?`;
+    const watch = props.watch;
+    const reference = watch.reference_number ? ` (Ref. ${watch.reference_number})` : "";
+    return [
+        `Hi Montre Nova! I'm interested in ${displayName.value}${reference}. Is this available?`,
+        `Listed price: ${peso(finalPrice.value || watch.price)}`,
+        route("public.watches.show", watch.id),
+    ].join("\n");
 });
 
 const messengerInquiryUrl = computed(() => {
@@ -940,6 +922,17 @@ onBeforeUnmount(() => {
                                         </p>
                                     </div>
                                 </div>
+
+                                <dl class="mt-4 space-y-2 text-sm text-zinc-300">
+                                    <div v-if="watch.box_papers" class="flex flex-wrap gap-x-2">
+                                        <dt class="font-semibold text-white">Box &amp; papers</dt>
+                                        <dd>{{ watch.box_papers }}</dd>
+                                    </div>
+                                    <div class="flex flex-wrap gap-x-2">
+                                        <dt class="font-semibold text-white">Warranty</dt>
+                                        <dd>{{ watch.warranty_years }} {{ watch.warranty_years === 1 ? "year" : "years" }} from purchase</dd>
+                                    </div>
+                                </dl>
 
                                 <p
                                     v-if="productDescription"

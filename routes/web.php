@@ -14,7 +14,13 @@ use App\Http\Controllers\InvestorDashboardController;
 use App\Http\Controllers\Investor2DashboardController;
 use App\Http\Controllers\Admin\PreorderController;
 use App\Http\Controllers\PublicPreorderController;
+use App\Http\Controllers\PublicPurchaseController;
 use App\Http\Controllers\PreorderReceiptController;
+
+Route::get('/purchase/{token}', [PublicPurchaseController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:60,1')->name('public.sales.purchase');
+Route::get('/purchase/{token}/invoice', [PublicPurchaseController::class, 'invoice'])
+    ->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:60,1')->name('public.sales.invoice');
 
 Route::get('/preorders/{listing}', [PublicPreorderController::class, 'show'])->name('public.preorders.show');
 Route::get('/track/preorders/{token}', [PublicPreorderController::class, 'track'])
@@ -99,6 +105,7 @@ Route::middleware(['auth', 'verified','role:admin'])->group(function () {
     Route::patch('/admin/preorders/{preorder}/eta', [PreorderController::class, 'updateEta'])->name('admin.preorders.eta.update');
     Route::post('/admin/preorders/{preorder}/entries', [PreorderController::class, 'entry'])->name('admin.preorders.entries.store');
     Route::post('/admin/preorders/{preorder}/fulfill', [PreorderController::class, 'fulfill'])->name('admin.preorders.fulfill');
+    Route::post('/admin/preorders/{preorder}/undo-fulfillment', [PreorderController::class, 'undoFulfillment'])->name('admin.preorders.undo-fulfillment');
     Route::get('/admin/preorder-entries/{entry}/proof', [PreorderController::class, 'proof'])->name('admin.preorders.proof');
     /*
     |--------------------------------------------------------------------------

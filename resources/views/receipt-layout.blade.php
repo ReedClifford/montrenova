@@ -38,8 +38,13 @@
             <p class="brand">Montre Nova</p>
             <h1>@yield('receipt-heading')</h1>
             <p class="muted">{{ $reference }}</p>
+            @isset($issuedOn)
+                <p class="muted">Issued {{ $issuedOn }}</p>
+            @endisset
         </div>
-        <button type="button" class="print-action" onclick="window.print()">Print / Save as PDF</button>
+        @section('receipt-action')
+            <button type="button" class="print-action" onclick="window.print()">Print / Save as PDF</button>
+        @show
     </header>
     @yield('receipt-details')
 </main>

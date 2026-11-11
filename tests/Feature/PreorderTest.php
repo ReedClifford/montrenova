@@ -9,6 +9,7 @@ use App\Models\InvestorSetting;
 use App\Models\InvestorSetting2;
 use App\Models\Preorder;
 use App\Models\PreorderListing;
+use App\Models\SaleInvoice;
 use App\Models\User;
 use App\Models\Watch;
 use App\Services\PreorderAccounting;
@@ -408,6 +409,69 @@ class PreorderTest extends TestCase
         $this->assertDatabaseCount('watches', 2);
         $this->entry($order, 'payment', 1)->assertSessionHasErrors('amount');
         $this->delete(route('admin.watches.destroy', $sale))->assertSessionHasErrors('preorder');
+    }
+
+    public function test_reversal_removes_the_sale_and_warranty_but_keeps_the_preorder_ledger(): void
+    {
+        Storage::fake('public');
+        $this->admin();
+        $order = $this->order();
+        $order->update(['tracking_token' => Str::random(64)]);
+        $this->entry($order, 'payment', 20000)->assertSessionHasNoErrors();
+        $this->entry($order, 'cost', 13000)->assertSessionHasNoErrors();
+        $order->update(['status' => 'arrived']);
+        $this->post(route('admin.preorders.fulfill', $order), ['serial_number' => 'REVERSE-ME'])->assertSessionHasNoErrors();
+        $sale = $order->fresh()->fulfilledWatch;
+        $tracking = route('public.preorders.track', $order->tracking_token);
+        $this->get($tracking)->assertInertia(fn (Assert $page) => $page
+            ->where('order.warranty_expires_on', $sale->warrantyExpiresOn()));
+
+        $undo = route('admin.preorders.undo-fulfillment', $order);
+        $this->post($undo, ['watch_id' => $order->listing->source_watch_id, 'reason' => 'Stale'])
+            ->assertSessionHasErrors('reason');
+        $this->post($undo, ['watch_id' => $sale->id, 'reason' => 'Handover entered early'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseMissing('watches', ['id' => $sale->id]);
+        $this->assertDatabaseHas('watches', ['id' => $order->listing->source_watch_id]);
+        $this->assertDatabaseHas('preorders', ['id' => $order->id, 'status' => 'arrived',
+            'fulfilled_watch_id' => null, 'fulfilled_at' => null]);
+        $this->assertDatabaseHas('preorder_fulfillment_reversals', ['preorder_id' => $order->id,
+            'watch_id' => $sale->id, 'reason' => 'Handover entered early']);
+        $this->assertEquals(7000, PreorderAccounting::summary()['cash_adjustment']);
+        $this->get($tracking)->assertInertia(fn (Assert $page) => $page->where('order.warranty_expires_on', null));
+    }
+
+    public function test_issued_invoices_keep_their_details_and_private_purchase_links(): void
+    {
+        $this->admin();
+        $order = $this->order();
+        $sale = $order->listing->sourceWatch;
+        $sale->update(['brand' => 'Tissot']);
+        $saleUrl = route('admin.sales.receipt', $sale);
+        $this->get($saleUrl)->assertOk()->assertSee('₱18,000.00');
+        $invoice = SaleInvoice::where('watch_id', $sale->id)->firstOrFail();
+        $sale->update(['sold_price' => 17000]);
+        $this->get($saleUrl)->assertOk()->assertSee('₱18,000.00')->assertDontSee('₱17,000.00');
+        $this->get(route('public.sales.purchase', $invoice->customer_token))->assertOk()
+            ->assertHeader('Referrer-Policy', 'no-referrer')->assertSee('Jan 1, 2028');
+        $this->get(route('public.sales.invoice', $invoice->customer_token))->assertOk()->assertSee('₱18,000.00');
+        $this->get(route('public.sales.purchase', Str::random(64)))->assertNotFound();
+
+        $this->entry($order, 'payment', 4000)->assertSessionHasNoErrors();
+        $url = route('admin.preorders.receipt', $order);
+        $this->get($url)->assertOk()->assertSee('₱16,000.00');
+        $version = SaleInvoice::where('preorder_id', $order->id)->firstOrFail();
+        $this->entry($order, 'payment', 1000)->assertSessionHasNoErrors();
+        $this->get($url)->assertOk()->assertSee('₱15,000.00');
+        $this->get($url.'?invoice='.$version->number)->assertOk()->assertSee('₱16,000.00');
+        $this->assertDatabaseCount('sale_invoices', 3);
+
+        $sale->update(['status' => 'available']);
+        $sale->update(['status' => 'sold', 'buyer_name' => 'Second Buyer']);
+        $this->get($saleUrl)->assertOk()->assertSee('Second Buyer')->assertSee('₱17,000.00');
+        $this->get(route('public.sales.purchase', $invoice->customer_token))->assertNotFound();
+        $this->assertDatabaseCount('sale_invoices', 4);
     }
 
     public function test_cancellation_keeps_deposit_liability_and_records_cost_only_once(): void

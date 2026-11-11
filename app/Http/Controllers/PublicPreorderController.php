@@ -10,7 +10,7 @@ class PublicPreorderController extends Controller
 {
     public function track(string $token)
     {
-        $order = Preorder::with(['listing', 'entries'])->where('tracking_token', $token)->firstOrFail();
+        $order = Preorder::with(['listing', 'entries', 'fulfilledWatch'])->where('tracking_token', $token)->firstOrFail();
         $watch = $order->listing->watch_snapshot;
         $transactions = $order->entries->whereIn('type', ['payment', 'refund'])->values();
 
@@ -26,6 +26,7 @@ class PublicPreorderController extends Controller
             'required_deposit' => $order->required_deposit,
             'refundable' => $order->refundable,
             'estimated_arrival' => $order->estimated_arrival?->toDateString(),
+            'warranty_expires_on' => $order->status === 'fulfilled' ? $order->fulfilledWatch?->warrantyExpiresOn() : null,
             'updated_at' => collect([$order->updated_at?->toISOString(), ...$transactions->pluck('created_at')->map->toISOString()->all()])->filter()->max(),
             'transactions' => $transactions->map(fn ($entry) => $entry->only(['id', 'type', 'amount', 'paid_at', 'method'])),
         ], 'receiptUrl' => $transactions->contains('type', 'payment')

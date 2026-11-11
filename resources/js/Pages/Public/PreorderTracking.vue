@@ -74,6 +74,11 @@ const messenger = computed(
                 Last updated {{ date(order.updated_at) }}. Keep this link
                 private.
             </p>
+            <section v-if="order.warranty_expires_on" class="tracking-panel">
+                <h2>Warranty and service</h2>
+                <p>Warranty expires {{ date(order.warranty_expires_on) }}.</p>
+                <p class="muted">For service, contact us on Messenger with your preorder reference and a description of the issue.</p>
+            </section>
             <section class="tracking-panel watch-summary">
                 <img
                     v-if="order.image"
