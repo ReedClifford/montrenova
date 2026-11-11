@@ -92,6 +92,11 @@ class Watch extends Model
         'final_public_price',
     ];
 
+    public function warrantyYears(): int
+    {
+        return strcasecmp(trim((string) $this->brand), 'Tissot') === 0 ? 2 : 1;
+    }
+
     public function images(): HasMany
     {
         return $this->hasMany(WatchImage::class)

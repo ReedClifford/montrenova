@@ -100,19 +100,20 @@ const warrantyProgress = (item) => {
     const days = Number(item?.days_left);
     if (item?.days_left == null || !Number.isFinite(days)) return 0;
     if (days <= 0) return 100;
-    return Math.max(
-        0,
-        Math.min(100, Math.round(((365 - Math.min(days, 365)) / 365) * 100)),
-    );
+    const totalDays =
+        (Date.parse(item.warranty_end_date) - Date.parse(item.warranty_start_date)) /
+        86_400_000;
+    if (!Number.isFinite(totalDays) || totalDays <= 0) return 0;
+    return Math.max(0, Math.round(((totalDays - days) / totalDays) * 100));
 };
 const resultTitle = (item) =>
     `${item?.brand || ""} ${item?.model_name || ""}`.trim();
 
 const warrantyItems = [
     {
-        title: "1 Year Coverage",
+        title: "Warranty Coverage",
 
-        description: "Coverage starts from the official purchase date.",
+        description: "From the purchase date, Tissot watches have two years of coverage and other watches have one year.",
     },
 
     {

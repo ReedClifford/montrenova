@@ -86,6 +86,30 @@ class PreorderTest extends TestCase
         $this->get('/track/preorders/'.$order->id)->assertNotFound();
     }
 
+    public function test_preorder_receipt_requires_a_payment_and_uses_the_current_tracking_token(): void
+    {
+        $order = $this->order();
+        $order->update(['tracking_token' => Str::random(64), 'notes' => 'Internal supplier notes']);
+        $adminUrl = route('admin.preorders.receipt', $order);
+        $receiptUrl = route('public.preorders.receipt', $order->tracking_token);
+
+        $this->get($adminUrl)->assertRedirect('/login');
+        $this->get($receiptUrl)->assertNotFound();
+        $this->admin();
+        $this->entry($order, 'payment', 4000)->assertSessionHasNoErrors();
+        $this->entry($order, 'cost', 13000)->assertSessionHasNoErrors();
+        $this->get($adminUrl)->assertOk()->assertSee('₱16,000.00');
+        $this->app['auth']->forgetGuards();
+        $this->get($receiptUrl)->assertOk()
+            ->assertHeader('Referrer-Policy', 'no-referrer')
+            ->assertSee('Preorder payment receipt')->assertSee($order->customer_name)
+            ->assertSee('₱4,000.00')->assertSee('₱16,000.00')
+            ->assertDontSee('₱13,000.00')->assertDontSee('Internal supplier notes');
+
+        $order->update(['tracking_token' => Str::random(64)]);
+        $this->get($receiptUrl)->assertNotFound();
+    }
+
     public function test_admin_can_update_and_clear_eta_on_the_existing_tracking_link(): void
     {
         $order = $this->order();

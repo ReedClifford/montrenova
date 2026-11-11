@@ -14,10 +14,13 @@ use App\Http\Controllers\InvestorDashboardController;
 use App\Http\Controllers\Investor2DashboardController;
 use App\Http\Controllers\Admin\PreorderController;
 use App\Http\Controllers\PublicPreorderController;
+use App\Http\Controllers\PreorderReceiptController;
 
 Route::get('/preorders/{listing}', [PublicPreorderController::class, 'show'])->name('public.preorders.show');
 Route::get('/track/preorders/{token}', [PublicPreorderController::class, 'track'])
     ->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:60,1')->name('public.preorders.track');
+Route::get('/track/preorders/{token}/receipt', [PreorderReceiptController::class, 'track'])
+    ->where('token', '[A-Za-z0-9]{64}')->middleware('throttle:60,1')->name('public.preorders.receipt');
 /*
 |--------------------------------------------------------------------------
 | Public Routes
@@ -90,6 +93,7 @@ Route::middleware(['auth', 'verified','role:admin'])->group(function () {
     Route::patch('/admin/preorder-listings/{listing}', [PreorderController::class, 'updateListing'])->name('admin.preorder-listings.update');
     Route::post('/admin/preorders', [PreorderController::class, 'store'])->name('admin.preorders.store');
     Route::get('/admin/preorders/{preorder}', [PreorderController::class, 'show'])->name('admin.preorders.show');
+    Route::get('/admin/preorders/{preorder}/receipt', [PreorderReceiptController::class, 'admin'])->name('admin.preorders.receipt');
     Route::post('/admin/preorders/{preorder}/tracking', [PreorderController::class, 'tracking'])->name('admin.preorders.tracking');
     Route::patch('/admin/preorders/{preorder}', [PreorderController::class, 'update'])->name('admin.preorders.update');
     Route::patch('/admin/preorders/{preorder}/eta', [PreorderController::class, 'updateEta'])->name('admin.preorders.eta.update');

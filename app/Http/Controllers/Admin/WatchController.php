@@ -296,7 +296,7 @@ class WatchController extends Controller
 
                 $warrantyEndDate = $dateSold
                     ->copy()
-                    ->addYear();
+                    ->addYears($watch->warrantyYears());
 
                 $daysLeft = now()
                     ->startOfDay()
@@ -342,6 +342,8 @@ class WatchController extends Controller
 
                     'warranty_start_date' =>
                         $dateSold->format('Y-m-d'),
+
+                    'warranty_years' => $watch->warrantyYears(),
 
                     'warranty_end_date' =>
                         $warrantyEndDate->format('Y-m-d'),

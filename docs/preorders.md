@@ -12,7 +12,7 @@ Public preorder details also show up to eight randomly selected other published 
 4. After agreeing with the customer, create a **Customer order**. Set the agreed price, customer contact and estimated arrival. The deposit defaults to 20%; an admin can set the agreed percentage. Subsequent listing price changes do not change existing orders.
 5. Use **Record payment** only for money received. Include the date, method, reference and optional private proof. Partial payments accumulate, balance updates automatically, and reaching the required deposit confirms the order.
 6. Mark the order **Ordered**, record paid supplier and direct costs (including shipping), then mark it **Arrived**.
-7. Collect the balance and record every acquisition cost before fulfillment. Enter the actual serial number and confirm handover. Fulfillment creates exactly one new sold watch; the original sold watch remains unchanged. The handover date becomes the sale date and the start of the existing one-year warranty.
+7. Collect the balance and record every acquisition cost before fulfillment. Enter the actual serial number and confirm handover. Fulfillment creates exactly one new sold watch; the original sold watch remains unchanged. The handover date becomes the sale date and the start of the warranty (two years for Tissot and one year for other brands).
 
 Order flow: **Awaiting deposit → Confirmed → Ordered → Arrived → Fulfilled**. Payment state is tracked independently. Fulfillment requires full payment and recorded supplier costs.
 

@@ -45,7 +45,7 @@ class PublicWarrantyController extends Controller
 
         $results = $watches->map(function (Watch $watch) use ($today) {
             $dateSold = Carbon::parse($watch->date_sold)->startOfDay();
-            $warrantyEnd = $dateSold->copy()->addYear();
+            $warrantyEnd = $dateSold->copy()->addYears($watch->warrantyYears());
             $daysLeft = (int) $today->diffInDays($warrantyEnd, false);
 
             $warrantyStatus = $daysLeft < 0

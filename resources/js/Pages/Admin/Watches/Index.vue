@@ -3691,7 +3691,7 @@ const clearReservation = (watch) => {
                                     class="mt-3 max-w-2xl text-sm leading-7 text-zinc-400"
                                 >
                                     Each sold watch automatically receives a
-                                    one-year warranty based on its date sold.
+                                    warranty based on its brand and date sold.
                                 </p>
                             </div>
 
@@ -3917,7 +3917,7 @@ const clearReservation = (watch) => {
                                     </p>
 
                                     <p class="text-xs text-zinc-600">
-                                        1 year coverage
+                                        {{ item.warranty_years }} {{ item.warranty_years === 1 ? "year" : "years" }} coverage
                                     </p>
                                 </div>
 

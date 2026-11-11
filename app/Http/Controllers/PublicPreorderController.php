@@ -28,7 +28,10 @@ class PublicPreorderController extends Controller
             'estimated_arrival' => $order->estimated_arrival?->toDateString(),
             'updated_at' => collect([$order->updated_at?->toISOString(), ...$transactions->pluck('created_at')->map->toISOString()->all()])->filter()->max(),
             'transactions' => $transactions->map(fn ($entry) => $entry->only(['id', 'type', 'amount', 'paid_at', 'method'])),
-        ]])->toResponse(request())->withHeaders([
+        ], 'receiptUrl' => $transactions->contains('type', 'payment')
+            ? route('public.preorders.receipt', $token)
+            : null,
+        ])->toResponse(request())->withHeaders([
             'Cache-Control' => 'private, no-store, max-age=0',
             'X-Robots-Tag' => 'noindex, nofollow, noarchive',
             'Referrer-Policy' => 'no-referrer',

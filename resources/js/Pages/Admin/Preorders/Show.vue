@@ -390,6 +390,19 @@ const busy = computed(
                                 label(order.payment_status)
                             }}</span>
                         </div>
+                        <a
+                            v-if="
+                                order.entries.some(
+                                    (entry) => entry.type === 'payment',
+                                )
+                            "
+                            :href="route('admin.preorders.receipt', order.id)"
+                            target="_blank"
+                            rel="noreferrer"
+                            class="button mt-3"
+                        >
+                            Print / Save payment receipt
+                        </a>
                         <div class="money-row">
                             <span class="muted">Agreed price</span
                             ><strong>{{ money(order.total_price) }}</strong>
@@ -551,7 +564,7 @@ const busy = computed(
                             ><p class="notice">
                                 Fulfilled. Sale #{{ order.fulfilled_watch_id }}
                                 is included in sales and profit reports. The
-                                customer’s one-year warranty starts on the
+                                customer’s warranty starts on the
                                 handover date.
                             </p>
                             <Link

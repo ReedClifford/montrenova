@@ -3,7 +3,7 @@ import UiIcon from "@/Components/UiIcon.vue";
 import { Head } from "@inertiajs/vue3";
 import PublicHeader from "@/Components/PublicHeader.vue";
 import { computed } from "vue";
-const props = defineProps({ order: Object });
+const props = defineProps({ order: Object, receiptUrl: String });
 const money = (n) =>
     new Intl.NumberFormat("en-PH", {
         style: "currency",
@@ -177,6 +177,15 @@ const messenger = computed(
                     </ul>
                 </section>
             </div>
+            <a
+                v-if="receiptUrl"
+                :href="receiptUrl"
+                target="_blank"
+                rel="noreferrer"
+                class="tracking-contact"
+            >
+                Print / Save payment receipt
+            </a>
             <a
                 :href="messenger"
                 target="_blank"
