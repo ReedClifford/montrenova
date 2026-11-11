@@ -7,11 +7,26 @@ use App\Models\Expense;
 use App\Models\Watch;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class SalesController extends Controller
 {
+    public function receipt(Watch $watch): Response
+    {
+        abort_unless($watch->canIssueSaleReceipt(), 404);
+
+        return response()->view('sales.receipt', [
+            'watch' => $watch,
+            'reference' => 'MN-SALE-'.str_pad((string) $watch->id, 5, '0', STR_PAD_LEFT),
+        ], 200, [
+            'Cache-Control' => 'private, no-store, max-age=0',
+            'X-Robots-Tag' => 'noindex, nofollow, noarchive',
+            'Referrer-Policy' => 'no-referrer',
+        ]);
+    }
+
     public function index(Request $request)
     {
         $selectedMonth = $request->input('month', now()->format('Y-m'));
@@ -76,6 +91,7 @@ class SalesController extends Controller
 
         $recentSales = Watch::query()
             ->with('primaryImage')
+            ->withExists('fulfilledPreorder')
             ->where('status', 'sold')
             ->latest('date_sold')
             ->latest()
@@ -104,6 +120,7 @@ class SalesController extends Controller
 
                     'date_sold' => $this->formatDateValue($watch->date_sold),
                     'primary_image' => $watch->primaryImage,
+                    'receipt_url' => $watch->canIssueSaleReceipt() ? route('admin.sales.receipt', $watch) : null,
                 ];
             });
 

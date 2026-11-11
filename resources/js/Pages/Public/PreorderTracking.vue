@@ -184,7 +184,7 @@ const messenger = computed(
                 rel="noreferrer"
                 class="tracking-contact"
             >
-                Print / Save payment receipt
+                View Preorder Sales Invoice
             </a>
             <a
                 :href="messenger"

@@ -875,6 +875,14 @@ const insightCards = computed(() => [
                                     </dd>
                                 </dl></template
                             >
+                            <template v-if="sale.receipt_url" #actions>
+                                <a
+                                    v-if="sale.receipt_url"
+                                    :href="sale.receipt_url"
+                                    target="_blank"
+                                    rel="noopener"
+                                >Invoice</a>
+                            </template>
                         </AdminRecordCard>
 
                         <div
@@ -902,6 +910,7 @@ const insightCards = computed(() => [
                                     <th class="mn-th">Date Sold</th>
                                     <th class="mn-th">Sold Price</th>
                                     <th class="mn-th">Profit</th>
+                                    <th class="mn-th">Invoice</th>
                                 </tr>
                             </thead>
 
@@ -978,11 +987,20 @@ const insightCards = computed(() => [
                                     >
                                         {{ peso(saleProfitAmount(sale)) }}
                                     </td>
+                                    <td class="px-6 py-5">
+                                        <a
+                                            v-if="sale.receipt_url"
+                                            :href="sale.receipt_url"
+                                            target="_blank"
+                                            rel="noopener"
+                                            class="mn-action-btn"
+                                        >Invoice</a>
+                                    </td>
                                 </tr>
 
                                 <tr v-if="!recentSales.length">
                                     <td
-                                        colspan="4"
+                                        colspan="5"
                                         class="px-6 py-16 text-center"
                                     >
                                         <p

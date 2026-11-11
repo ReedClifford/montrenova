@@ -97,6 +97,19 @@ class Watch extends Model
         return strcasecmp(trim((string) $this->brand), 'Tissot') === 0 ? 2 : 1;
     }
 
+    public function fulfilledPreorder(): HasOne
+    {
+        return $this->hasOne(Preorder::class, 'fulfilled_watch_id');
+    }
+
+    public function canIssueSaleReceipt(): bool
+    {
+        return $this->status === 'sold'
+            && $this->date_sold !== null
+            && $this->sold_price > 0
+            && ! ($this->fulfilled_preorder_exists ?? $this->fulfilledPreorder()->exists());
+    }
+
     public function images(): HasMany
     {
         return $this->hasMany(WatchImage::class)

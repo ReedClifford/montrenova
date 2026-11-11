@@ -155,6 +155,7 @@ class WatchController extends Controller
                 'sections',
             ])
             ->withCount('images')
+            ->withExists('fulfilledPreorder')
             ->when(
                 $search,
                 function ($query) use ($search) {
@@ -227,7 +228,11 @@ class WatchController extends Controller
             )
             ->latest()
             ->paginate(10)
-            ->withQueryString();
+            ->withQueryString()
+            ->through(fn (Watch $watch) => $watch->setAttribute(
+                'receipt_url',
+                $watch->canIssueSaleReceipt() ? route('admin.sales.receipt', $watch) : null
+            ));
 
         /*
         |--------------------------------------------------------------------------

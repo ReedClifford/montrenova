@@ -102,7 +102,7 @@ class PreorderTest extends TestCase
         $this->app['auth']->forgetGuards();
         $this->get($receiptUrl)->assertOk()
             ->assertHeader('Referrer-Policy', 'no-referrer')
-            ->assertSee('Preorder payment receipt')->assertSee($order->customer_name)
+            ->assertSee('Preorder Sales Invoice')->assertSee($order->customer_name)
             ->assertSee('₱4,000.00')->assertSee('₱16,000.00')
             ->assertDontSee('₱13,000.00')->assertDontSee('Internal supplier notes');
 

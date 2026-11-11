@@ -401,7 +401,7 @@ const busy = computed(
                             rel="noreferrer"
                             class="button mt-3"
                         >
-                            Print / Save payment receipt
+                            View Preorder Sales Invoice
                         </a>
                         <div class="money-row">
                             <span class="muted">Agreed price</span

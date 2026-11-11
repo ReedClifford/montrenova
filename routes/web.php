@@ -191,6 +191,9 @@ Route::middleware(['auth', 'verified','role:admin'])->group(function () {
     Route::get('/admin/sales', [SalesController::class, 'index'])
         ->name('admin.sales.index');
 
+    Route::get('/admin/sales/{watch}/receipt', [SalesController::class, 'receipt'])
+        ->name('admin.sales.receipt');
+
     /*
     |--------------------------------------------------------------------------
     | Expense Routes

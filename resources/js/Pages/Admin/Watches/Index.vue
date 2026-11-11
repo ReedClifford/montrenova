@@ -2879,6 +2879,13 @@ const clearReservation = (watch) => {
                             </div>
 
                             <div class="mt-5 grid grid-cols-2 gap-2">
+                                <a
+                                    v-if="watch.receipt_url"
+                                    :href="watch.receipt_url"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="mn-action-btn"
+                                >Invoice</a>
                                 <Link
                                     v-if="watch.status === 'sold'"
                                     :href="
@@ -3087,7 +3094,14 @@ const clearReservation = (watch) => {
                                     "
                                     class="primary"
                                     >Preorder listing</Link
-                                ></template
+                                >
+                                    <a
+                                        v-if="watch.receipt_url"
+                                        :href="watch.receipt_url"
+                                        target="_blank"
+                                        rel="noopener"
+                                    >Invoice</a>
+                                </template
                             >
                             <template #details
                                 ><p class="text-zinc-200 font-semibold">
@@ -3528,6 +3542,13 @@ const clearReservation = (watch) => {
                                         <div
                                             class="flex flex-wrap justify-end gap-2"
                                         >
+                                            <a
+                                                v-if="watch.receipt_url"
+                                                :href="watch.receipt_url"
+                                                target="_blank"
+                                                rel="noopener"
+                                                class="mn-action-btn"
+                                            >Invoice</a>
                                             <Link
                                                 v-if="watch.status === 'sold'"
                                                 :href="
