@@ -76,6 +76,7 @@ const money = (value) =>
 </template>
 <style scoped>
 .watch-tile {
+    container-type: inline-size;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -179,16 +180,16 @@ const money = (value) =>
     color: #d6bd8f;
 }
 .tile-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
     gap: 10px;
     margin-top: auto;
     padding-top: 12px;
     border-top: 1px solid #ffffff1f;
 }
 .tile-prices {
-    min-height: 42px;
+    min-height: 44px;
     min-width: 0;
 }
 .tile-price {
@@ -199,9 +200,11 @@ const money = (value) =>
 }
 .tile-original {
     font-size: 10px;
+    line-height: 1.4;
     color: #95959b;
     text-decoration: line-through;
     margin-top: 5px;
+    overflow-wrap: anywhere;
 }
 .tile-view {
     display: flex;
@@ -218,6 +221,13 @@ const money = (value) =>
 .tile-view span {
     font-size: 14px;
 }
+@media (min-width: 640px) {
+    @container (min-width: 245px) {
+        .tile-footer {
+            grid-template-columns: minmax(0, 1fr) auto;
+        }
+    }
+}
 @media (max-width: 639px) {
     .tile-body {
         padding: 12px;
@@ -229,16 +239,8 @@ const money = (value) =>
     .tile-reference {
         font-size: 9px;
     }
-    .tile-footer {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-    }
     .tile-price {
         font-size: 15px;
-    }
-    .tile-view {
-        width: 100%;
     }
     .tile-status {
         top: 8px;
