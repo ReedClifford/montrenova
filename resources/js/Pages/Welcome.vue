@@ -74,6 +74,50 @@ const activeWatchFilter = ref(
 const collectionSearchInput = ref(props.collectionSearch);
 const collectionSearching = ref(false);
 const collectionSection = ref(null);
+const heroImage = ref(null);
+const initialLoading = ref(true);
+const navigationLoading = ref(false);
+let heroLoadTimeout;
+let navigationLoadTimeout;
+let removeNavigationStart;
+let removeNavigationFinish;
+const pendingVisits = new Set();
+
+function finishHeroLoad() {
+    clearTimeout(heroLoadTimeout);
+    initialLoading.value = false;
+}
+
+onMounted(() => {
+    if (!heroImage.value || heroImage.value.complete) {
+        finishHeroLoad();
+    } else {
+        heroLoadTimeout = setTimeout(finishHeroLoad, 4500);
+    }
+
+    removeNavigationStart = router.on("start", ({ detail: { visit } }) => {
+        if (visit.prefetch) return;
+        pendingVisits.add(visit);
+        if (pendingVisits.size === 1) {
+            navigationLoadTimeout = setTimeout(() => {
+                navigationLoading.value = true;
+            }, 180);
+        }
+    });
+    removeNavigationFinish = router.on("finish", ({ detail: { visit } }) => {
+        if (pendingVisits.delete(visit) && !pendingVisits.size) {
+            clearTimeout(navigationLoadTimeout);
+            navigationLoading.value = false;
+        }
+    });
+});
+
+onBeforeUnmount(() => {
+    clearTimeout(heroLoadTimeout);
+    clearTimeout(navigationLoadTimeout);
+    removeNavigationStart?.();
+    removeNavigationFinish?.();
+});
 
 async function scrollToCollection() {
     await nextTick();
@@ -1000,6 +1044,20 @@ const productBadges = (watch) => {
 </script>
 
 <template>
+    <Teleport to="body">
+        <Transition name="mn-loading-fade">
+            <div v-if="initialLoading || navigationLoading" class="mn-loading-screen" role="status">
+                <div class="mn-loading-content">
+                    <div class="mn-loading-monogram" aria-hidden="true">MN</div>
+                    <div class="mn-loading-rule" aria-hidden="true"><span></span></div>
+                    <p class="mn-loading-name">MONTRE NOVA</p>
+                    <p class="mn-loading-caption">
+                        {{ initialLoading ? "Preparing the collection" : "Loading your next page" }}
+                    </p>
+                </div>
+            </div>
+        </Transition>
+    </Teleport>
     <WatchShortlistBar />
     <Head title="Montre Nova | Curated Timepieces" />
 
@@ -1134,10 +1192,13 @@ const productBadges = (watch) => {
                                 @error="handleImageError"
                             />
                             <img
+                                ref="heroImage"
                                 :src="watchImage(activeBestSellerWatch)"
                                 :alt="`Featured Montre Nova timepiece ${activeBestSellerIndex + 1}`"
                                 class="hero-full-main-image"
+                                @load="finishHeroLoad"
                                 @error="
+                                    finishHeroLoad();
                                     handleImageError($event);
                                 "
                             />
