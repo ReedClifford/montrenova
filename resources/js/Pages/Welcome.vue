@@ -5,7 +5,7 @@ import WatchCard from "@/Components/WatchCard.vue";
 import { readCollection, saveCollection, consumeCollectionRestore } from "@/Utils/collectionMemory";
 import MontreLogo from "@/Components/MontreLogo.vue";
 import { Head, Link, router } from "@inertiajs/vue3";
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 
 const props = defineProps({
     collectionSearch: { type: String, default: "" },
@@ -73,6 +73,13 @@ const activeWatchFilter = ref(
 );
 const collectionSearchInput = ref(props.collectionSearch);
 const collectionSearching = ref(false);
+const collectionSection = ref(null);
+
+async function scrollToCollection() {
+    await nextTick();
+    collectionSection.value?.scrollIntoView({ block: "start", behavior: "instant" });
+}
+
 function searchCollection(type = props.collectionType) {
     activeWatchFilter.value =
         type[0].toUpperCase() + type.slice(1);
@@ -86,6 +93,7 @@ function searchCollection(type = props.collectionType) {
             preserveState: true,
             preserveScroll: true,
             only: ["watches", "collectionSearch", "collectionType"],
+            onSuccess: scrollToCollection,
             onStart: () => (collectionSearching.value = true),
             onFinish: () => (collectionSearching.value = false),
         },
@@ -1240,7 +1248,7 @@ const productBadges = (watch) => {
             </section>
 
             <!-- COLLECTION -->
-            <section id="collection" class="mn-journal-section scroll-mt-28">
+            <section id="collection" ref="collectionSection" class="mn-journal-section scroll-mt-28">
                 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="mn-collection-head animated-in">
                         <div>
@@ -1384,6 +1392,7 @@ const productBadges = (watch) => {
                                         :href="paginationUrl(link.url)"
                                         preserve-scroll
                                         preserve-state
+                                        @success="scrollToCollection"
                                         class="mn-page-button"
                                         :class="link.active ? 'is-active' : ''"
                                         >{{
