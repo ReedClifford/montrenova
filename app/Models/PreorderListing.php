@@ -51,7 +51,7 @@ class PreorderListing extends Model
             'price' => (float) $this->price,
             'url' => route('public.preorders.show', $this),
             'estimated_arrival' => $this->estimated_arrival,
-            'warranty_years' => Watch::warrantyYearsForBrand($this->watch_snapshot['brand'] ?? null),
+            'warranty_years' => Watch::DEFAULT_WARRANTY_YEARS,
             'created_at' => $this->created_at?->toISOString(),
         ]);
     }

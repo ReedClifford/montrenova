@@ -454,7 +454,14 @@ class PreorderTest extends TestCase
         $sale->update(['sold_price' => 17000]);
         $this->get($saleUrl)->assertOk()->assertSee('₱18,000.00')->assertDontSee('₱17,000.00');
         $this->get(route('public.sales.purchase', $invoice->customer_token))->assertOk()
-            ->assertHeader('Referrer-Policy', 'no-referrer')->assertSee('Jan 1, 2028');
+            ->assertHeader('Referrer-Policy', 'no-referrer')->assertSee('Jan 1, 2027');
+        $warrantyUrl = route('admin.watches.warranty.update', $sale);
+        $this->patch($warrantyUrl, ['warranty_years' => 3])->assertSessionHasErrors('warranty_years');
+        $this->patch($warrantyUrl, ['warranty_years' => 2])->assertSessionHasNoErrors();
+        $this->get(route('public.sales.purchase', $invoice->customer_token))->assertOk()->assertSee('Jan 1, 2028');
+        $this->post(route('public.warranty-check.check'), ['buyer_name' => 'Original Buyer'])->assertInertia(
+            fn (Assert $page) => $page->where('results.0.warranty_end_date', '2028-01-01')
+        );
         $this->get(route('public.sales.invoice', $invoice->customer_token))->assertOk()->assertSee('₱18,000.00');
         $this->get(route('public.sales.purchase', Str::random(64)))->assertNotFound();
 
@@ -467,8 +474,9 @@ class PreorderTest extends TestCase
         $this->get($url.'?invoice='.$version->number)->assertOk()->assertSee('₱16,000.00');
         $this->assertDatabaseCount('sale_invoices', 3);
 
-        $sale->update(['status' => 'available']);
+        $sale->refresh()->update(['status' => 'available']);
         $sale->update(['status' => 'sold', 'buyer_name' => 'Second Buyer']);
+        $this->assertSame(1, $sale->fresh()->warrantyYears());
         $this->get($saleUrl)->assertOk()->assertSee('Second Buyer')->assertSee('₱17,000.00');
         $this->get(route('public.sales.purchase', $invoice->customer_token))->assertNotFound();
         $this->assertDatabaseCount('sale_invoices', 4);

@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Watch extends Model
 {
+    public const DEFAULT_WARRANTY_YEARS = 1;
+
     protected static function booted(): void
     {
         static::updating(function (Watch $watch) {
@@ -19,6 +21,7 @@ class Watch extends Model
             }
             if ($watch->isDirty('status') && $watch->status === 'sold') {
                 $watch->sale_cycle = (int) $watch->getOriginal('sale_cycle') + 1;
+                $watch->warranty_years = self::DEFAULT_WARRANTY_YEARS;
             }
         });
         static::deleting(fn (Watch $watch) => $watch->assertPreorderDeletionAllowed());
@@ -98,12 +101,8 @@ class Watch extends Model
 
     public function warrantyYears(): int
     {
-        return self::warrantyYearsForBrand($this->brand);
-    }
-
-    public static function warrantyYearsForBrand(?string $brand): int
-    {
-        return strcasecmp(trim((string) $brand), 'Tissot') === 0 ? 2 : 1;
+        return $this->status === 'sold' && (int) $this->warranty_years === 2
+            ? 2 : self::DEFAULT_WARRANTY_YEARS;
     }
 
     public function fulfilledPreorder(): HasOne

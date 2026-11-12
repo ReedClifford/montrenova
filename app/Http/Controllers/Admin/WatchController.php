@@ -254,6 +254,7 @@ class WatchController extends Controller
                 'buyer_name',
                 'sold_price',
                 'date_sold',
+                'warranty_years',
                 'status',
             ])
             ->where('status', 'sold')
@@ -599,6 +600,21 @@ public function markSold(Request $request, Watch $watch)
 
     return back()->with('success', 'Watch marked as sold successfully.');
 }
+
+    public function updateWarranty(Request $request, Watch $watch)
+    {
+        $validated = $request->validate(['warranty_years' => ['required', 'integer', 'in:1,2']]);
+
+        DB::transaction(function () use ($watch, $validated) {
+            $watch = Watch::lockForUpdate()->findOrFail($watch->id);
+            abort_unless($watch->status === 'sold' && $watch->date_sold !== null, 404);
+
+            $watch->warranty_years = (int) $validated['warranty_years'];
+            $watch->save();
+        });
+
+        return back()->with('success', 'Warranty coverage updated.');
+    }
 
     public function reserve(Request $request, Watch $watch)
     {

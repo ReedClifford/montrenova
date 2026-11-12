@@ -138,6 +138,11 @@ const isAvailable = computed(() => {
     );
 });
 
+const warrantyDescription = computed(() => {
+    if (props.watch.status !== "sold") return props.watch.warranty_type;
+    return props.watch.warranty_years === 2 ? "2 years" : "1 year";
+});
+
 const peso = (value) => {
     return new Intl.NumberFormat("en-PH", {
         style: "currency",
@@ -230,7 +235,7 @@ const heroHighlights = computed(() => {
         {
             label: "Warranty",
 
-            value: props.watch.warranty_type,
+            value: warrantyDescription.value,
         },
 
         {
@@ -286,7 +291,7 @@ const specGroups = computed(() => [
         items: [
             { label: "Box / Papers", value: props.watch.box_papers },
 
-            { label: "Warranty", value: props.watch.warranty_type },
+            { label: "Warranty", value: warrantyDescription.value },
         ],
     },
 ]);
@@ -370,7 +375,7 @@ const buyingNotes = computed(() => {
             title: "Warranty",
 
             description:
-                props.watch.warranty_type ||
+                warrantyDescription.value ||
                 "Selected pieces include Montre Card service warranty support.",
         },
     ];

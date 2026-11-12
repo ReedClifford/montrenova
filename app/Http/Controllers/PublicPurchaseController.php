@@ -14,7 +14,7 @@ class PublicPurchaseController extends Controller
         return response()->view('sales.purchase', [
             'reference' => $invoice->number,
             'watch' => $invoice->snapshot,
-            'warrantyExpiresOn' => $invoice->snapshot['warranty_expires_on'],
+            'warrantyExpiresOn' => $invoice->watch->warrantyExpiresOn(),
             'invoiceUrl' => route('public.sales.invoice', $token),
         ], 200, SaleInvoice::PRIVATE_HEADERS);
     }

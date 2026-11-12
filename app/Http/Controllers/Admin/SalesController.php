@@ -31,7 +31,6 @@ class SalesController extends Controller
                 'snapshot' => $watch->only(['brand', 'model_name', 'buyer_name', 'reference_number', 'serial_number', 'sold_price'])
                     + [
                         'date_sold' => $watch->date_sold->toDateString(),
-                        'warranty_expires_on' => $watch->warrantyExpiresOn(),
                     ],
             ]);
         });

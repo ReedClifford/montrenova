@@ -113,7 +113,7 @@ const warrantyItems = [
     {
         title: "Warranty Coverage",
 
-        description: "From the purchase date, Tissot watches have two years of coverage and other watches have one year.",
+        description: "Coverage starts on the purchase date. Most watches have one year, with two years on selected units.",
     },
 
     {

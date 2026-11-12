@@ -145,6 +145,9 @@ Route::middleware(['auth', 'verified','role:admin'])->group(function () {
     Route::patch('/admin/watches/{watch}/mark-sold', [WatchController::class, 'markSold'])
         ->name('admin.watches.mark-sold');
 
+    Route::patch('/admin/watches/{watch}/warranty', [WatchController::class, 'updateWarranty'])
+        ->name('admin.watches.warranty.update');
+
     Route::patch('/admin/watches/{watch}/reserve', [WatchController::class, 'reserve'])
         ->name('admin.watches.reserve');
 

@@ -6,6 +6,7 @@ import EditWatchModal from "./EditWatchModal.vue";
 import DeleteWatchModal from "./DeleteWatchModal.vue";
 import MarkSoldModal from "./MarkSoldModal.vue";
 import ReserveWatchModal from "./ReserveWatchModal.vue";
+import WarrantyDuration from "./WarrantyDuration.vue";
 import { Head, Link, router } from "@inertiajs/vue3";
 import {
     computed,
@@ -3957,6 +3958,7 @@ const clearReservation = (watch) => {
                                 <p class="mt-3 text-xs leading-5 text-zinc-500">
                                     {{ warrantyHelperText(item) }}
                                 </p>
+                                <WarrantyDuration :item="item" />
                             </div>
                         </div>
                     </div>
@@ -4175,6 +4177,7 @@ const clearReservation = (watch) => {
                                             >
                                                 {{ warrantyHelperText(item) }}
                                             </p>
+                                            <WarrantyDuration :item="item" />
                                         </div>
                                     </td>
 
