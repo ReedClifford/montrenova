@@ -34,7 +34,7 @@ class PreorderReceiptController extends Controller
                 return $invoices->where('number', $number)->firstOrFail();
             }
 
-            $order->load(['listing', 'entries']);
+            $order->load(['listing', 'entries', 'items.listing']);
             $transactions = $order->entries->whereIn('type', ['payment', 'refund'])->sortBy('id');
             abort_unless($transactions->contains('type', 'payment'), 404);
 
@@ -44,6 +44,11 @@ class PreorderReceiptController extends Controller
                 'transactions' => $transactions->map(fn ($entry) => $entry->only(['type', 'method', 'amount'])
                     + ['paid_at' => $entry->paid_at?->format('M j, Y')])->values()->all(),
             ];
+            if ($order->items->isNotEmpty()) {
+                $snapshot['watches'] = array_map(fn ($item) => array_intersect_key(
+                    $item, array_flip(['brand', 'model_name', 'reference_number', 'price']),
+                ), $order->watchDetails());
+            }
             $fingerprint = hash('sha256', json_encode($snapshot, JSON_THROW_ON_ERROR));
             $sequence = $invoices->count() + 1;
             $reference = 'MN-PO-'.str_pad((string) $order->id, 5, '0', STR_PAD_LEFT);

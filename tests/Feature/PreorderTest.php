@@ -289,6 +289,142 @@ class PreorderTest extends TestCase
         $this->assertContains('preorder-1', $ids);
     }
 
+    public function test_multi_watch_preorder_records_all_sales_together_and_reverses_them_together(): void
+    {
+        $this->travelTo(now()->setDate(2026, 11, 18));
+        $this->admin();
+        $admin = auth()->user();
+        $first = $this->listing();
+        $first->sourceWatch->update(['date_sold' => today()]);
+        $owners = [
+            'investor.dashboard' => User::factory()->create(['role' => 'owner']),
+            'investor2.dashboard' => User::factory()->create(['role' => 'owner2']),
+        ];
+        $baseline = [];
+        foreach ($owners as $dashboard => $owner) {
+            $baseline[$dashboard] = $this->actingAs($owner)->get(route($dashboard))
+                ->assertOk()->viewData('page')['props']['summary'];
+        }
+        $this->actingAs($admin);
+
+        $this->post(route('admin.preorders.store'), [
+            'items' => [
+                ['preorder_listing_id' => $first->id, 'price' => 20000],
+                ['brand' => 'Tissot', 'model_name' => 'Second watch', 'price' => 30000],
+            ],
+            'customer_name' => 'Bundle Buyer',
+            'contact' => 'Messenger',
+            'deposit_percentage' => 20,
+        ])->assertSessionHasNoErrors();
+        $order = Preorder::sole();
+        $order->update(['tracking_token' => Str::random(64)]);
+        $trackingUrl = route('public.preorders.track', $order->tracking_token);
+        $receiptUrl = route('public.preorders.receipt', $order->tracking_token);
+        $this->assertSame('50000.00', $order->total_price);
+        $manual = $order->items()->with('listing')->get()->last()->listing;
+        $this->assertNull($manual->source_watch_id);
+        $this->get(route('public.preorders.show', $manual))->assertNotFound();
+        $this->assertDatabaseCount('watches', 1);
+
+        $this->entry($order, 'payment', 10000)->assertSessionHasNoErrors();
+        $this->entry($order, 'cost', 32000)->assertSessionHasNoErrors();
+        $this->get($receiptUrl)->assertOk()->assertSee('Second watch')->assertSee('₱40,000.00');
+        $depositInvoice = SaleInvoice::where('preorder_id', $order->id)->sole();
+        foreach ($owners as $dashboard => $owner) {
+            $this->actingAs($owner)->get(route($dashboard))->assertInertia(fn (Assert $page) => $page
+                ->where('summary.net_profit', fn ($value) => (float) $value === (float) $baseline[$dashboard]['net_profit']));
+        }
+        $this->actingAs($admin);
+        $this->patch(route('admin.preorders.update', $order), ['status' => 'ordered'])->assertSessionHasNoErrors();
+        $units = [
+            ['serial_number' => 'BUNDLE-A', 'cost' => 12000],
+            ['serial_number' => 'BUNDLE-B', 'cost' => 20000],
+        ];
+        $url = route('admin.preorders.fulfill', $order);
+        $this->post($url, ['units' => $units])->assertSessionHasErrors('serial_number');
+        $this->patch(route('admin.preorders.update', $order), ['status' => 'arrived'])->assertSessionHasNoErrors();
+        $this->post($url, ['units' => $units])->assertSessionHasErrors('serial_number');
+        $this->entry($order, 'payment', 40000)->assertSessionHasNoErrors();
+        $this->post($url, ['units' => [$units[0]]])->assertSessionHasErrors('units');
+        $this->post($url, ['units' => [$units[0], array_replace($units[1], ['cost' => 1])]])->assertSessionHasErrors('units');
+        $this->assertDatabaseCount('watches', 1);
+        $this->get(route('admin.preorders.receipt', $order))->assertOk()->assertSee('Second watch');
+
+        $this->post($url, ['units' => $units])->assertSessionHasNoErrors();
+        $order->refresh();
+        $ids = $order->items()->pluck('fulfilled_watch_id');
+        $sales = Watch::whereIn('id', $ids)->get();
+        $this->assertCount(2, $sales);
+        $this->assertEquals(18000, $sales->sum('sold_price') - $sales->sum('capital_price'));
+        $this->get(route('admin.sales.index'))->assertInertia(fn (Assert $page) => $page
+            ->where('recentSales', function ($rows) use ($ids) {
+                $bundle = collect($rows)->whereIn('id', $ids);
+
+                return $bundle->count() === 2 && (float) $bundle->sum('profit') === 18000.0
+                    && $bundle->every(fn ($sale) => $sale['receipt_url'] === null);
+            }));
+        $this->get($receiptUrl)->assertOk()->assertSee('Second watch')->assertSee('₱30,000.00')
+            ->assertSee('₱50,000.00')->assertSee('₱0.00')->assertDontSee('₱32,000.00');
+        $this->get($receiptUrl.'?invoice='.$depositInvoice->number)->assertOk()->assertSee('₱40,000.00');
+
+        $this->get(route('public.sold-watches.index'))->assertInertia(fn (Assert $page) => $page
+            ->where('soldWatches.data.0.id', $ids->last())
+            ->where('soldWatches.data.1.id', $ids->first())
+            ->missing('soldWatches.data.0.buyer_name')->missing('soldWatches.data.0.capital_price'));
+        $this->get('/')->assertInertia(fn (Assert $page) => $page
+            ->where('soldWatches.0.id', $ids->last())
+            ->where('soldWatches.1.id', $ids->first())
+            ->where('watches.total', 1));
+        $this->post(route('public.warranty-check.check'), ['buyer_name' => 'Bundle Buyer'])
+            ->assertInertia(fn (Assert $page) => $page->has('results', 2));
+        $this->patch(route('admin.watches.warranty.update', $ids->last()), ['warranty_years' => 2])
+            ->assertSessionHasNoErrors();
+        $this->get($trackingUrl)->assertInertia(fn (Assert $page) => $page
+            ->where('order.watch_warranties.0.expires_on', '2027-11-18')
+            ->where('order.watch_warranties.1.expires_on', '2028-11-18'));
+        foreach ($owners as $dashboard => $owner) {
+            $this->actingAs($owner)->get(route($dashboard))->assertInertia(fn (Assert $page) => $page
+                ->where('summary.gross_profit', fn ($value) => (float) $value === (float) $baseline[$dashboard]['gross_profit'] + 18000)
+                ->where('summary.net_profit', fn ($value) => (float) $value === (float) $baseline[$dashboard]['net_profit'] + 18000)
+                ->where('preorderMoney.customer_deposits', 0)
+                ->where('preorderMoney.supplier_spend', 0));
+        }
+        $this->actingAs($admin);
+        $this->delete(route('admin.watches.destroy', $ids->last()))->assertSessionHasErrors('preorder');
+        $this->post($url, ['units' => $units])->assertSessionHasErrors();
+        $this->post(route('admin.preorders.undo-fulfillment', $order), [
+            'watch_id' => $order->fulfilled_watch_id, 'reason' => 'Handover rescheduled',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('arrived', $order->fresh()->status);
+        $this->assertDatabaseCount('watches', 1);
+        $this->get(route('public.sold-watches.index'))->assertInertia(fn (Assert $page) => $page->has('soldWatches.data', 1));
+        $this->get($trackingUrl)->assertInertia(fn (Assert $page) => $page->has('order.watch_warranties', 0));
+        foreach ($owners as $dashboard => $owner) {
+            $this->actingAs($owner)->get(route($dashboard))->assertInertia(fn (Assert $page) => $page
+                ->where('summary.net_profit', fn ($value) => (float) $value === (float) $baseline[$dashboard]['net_profit'])
+                ->where('preorderMoney.customer_deposits', 50000)
+                ->where('preorderMoney.supplier_spend', 32000));
+        }
+    }
+
+    public function test_order_can_be_created_with_one_manual_watch_and_no_existing_listings(): void
+    {
+        $this->admin();
+        $details = ['customer_name' => 'New Buyer', 'contact' => 'Messenger', 'deposit_percentage' => 20];
+        $this->post(route('admin.preorders.store'), $details + ['items' => [['price' => 20000]]])
+            ->assertSessionHasErrors(['items.0.brand', 'items.0.model_name']);
+        $this->assertDatabaseCount('preorder_listings', 0);
+
+        $this->post(route('admin.preorders.store'), $details + [
+            'items' => [['brand' => 'Seiko', 'model_name' => 'New model', 'reference_number' => 'REF-001', 'price' => 20000]],
+        ])->assertRedirect();
+        $order = Preorder::with('listing')->sole();
+        $this->assertSame('REF-001', $order->listing->watch_snapshot['reference_number']);
+        $this->assertFalse($order->listing->is_visible);
+        $this->assertSame('20000.00', $order->total_price);
+        $this->assertDatabaseCount('watches', 0);
+    }
+
     private function listing(): PreorderListing
     {
         $source = Watch::create(['model_name' => 'Presage', 'brand' => 'Seiko', 'slug' => (string) Str::uuid(),

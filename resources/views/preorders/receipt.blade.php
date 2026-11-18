@@ -6,9 +6,20 @@
 @section('receipt-details')
     <section aria-label="Order details">
         <p><strong>Customer:</strong> {{ $order['customer_name'] }}</p>
-        <p><strong>Watch:</strong> {{ trim(($watch['brand'] ?? '').' '.($watch['model_name'] ?? '')) }}</p>
-        @if (!empty($watch['reference_number']))
-            <p><strong>Watch reference:</strong> {{ $watch['reference_number'] }}</p>
+        @if (isset($watches))
+            <p><strong>Watches in this preorder</strong></p>
+            <ul>
+                @foreach ($watches as $item)
+                    <li>{{ trim(($item['brand'] ?? '').' '.($item['model_name'] ?? '')) }}
+                        @if (!empty($item['reference_number'])) ({{ $item['reference_number'] }}) @endif
+                        · ₱{{ number_format((float) $item['price'], 2) }}</li>
+                @endforeach
+            </ul>
+        @else
+            <p><strong>Watch:</strong> {{ trim(($watch['brand'] ?? '').' '.($watch['model_name'] ?? '')) }}</p>
+            @if (!empty($watch['reference_number']))
+                <p><strong>Watch reference:</strong> {{ $watch['reference_number'] }}</p>
+            @endif
         @endif
         <p><strong>Order status:</strong> {{ ucfirst(str_replace('_', ' ', $order['status'])) }}</p>
     </section>

@@ -15,6 +15,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -30,7 +31,7 @@ class PreorderController extends Controller
         ]);
         $search = mb_substr(trim((string) $request->query('search')), 0, 100);
         $queue = (string) $request->query('queue', '');
-        $orders = PreorderFollowUps::apply(Preorder::with(['listing', 'entries']), $queue)
+        $orders = PreorderFollowUps::apply(Preorder::with(['listing', 'entries', 'items.listing']), $queue)
             ->when($search, fn ($q) => $q->where(fn ($q) => $q
                 ->where('customer_name', 'like', "%{$search}%")->orWhere('contact', 'like', "%{$search}%")));
 
@@ -125,13 +126,49 @@ class PreorderController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'preorder_listing_id' => ['required', 'exists:preorder_listings,id'],
+            'preorder_listing_id' => ['required_without:items', Rule::prohibitedIf($request->has('items')), 'exists:preorder_listings,id'],
+            'items' => ['sometimes', 'required', 'array', 'list', 'min:1', 'max:20'],
+            'items.*' => ['array:preorder_listing_id,brand,model_name,reference_number,price'],
+            'items.*.preorder_listing_id' => ['nullable', 'integer', 'exists:preorder_listings,id'],
+            'items.*.brand' => ['required_without:items.*.preorder_listing_id', 'nullable', 'string', 'max:255'],
+            'items.*.model_name' => ['required_without:items.*.preorder_listing_id', 'nullable', 'string', 'max:255'],
+            'items.*.reference_number' => ['nullable', 'string', 'max:255'],
+            'items.*.price' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:9999999999.99'],
             'customer_name' => ['required', 'string', 'max:255'], 'contact' => ['required', 'string', 'max:255'],
-            'total_price' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:9999999999.99'],
+            'total_price' => ['required_without:items', Rule::prohibitedIf($request->has('items')), 'numeric', 'decimal:0,2', 'min:0.01', 'max:9999999999.99'],
             'deposit_percentage' => ['required', 'numeric', 'decimal:0,2', 'min:1', 'max:100'],
             'estimated_arrival' => ['nullable', 'date'], 'notes' => ['nullable', 'string', 'max:5000'],
         ]);
-        $order = Preorder::create($data);
+        $items = Arr::pull($data, 'items', []);
+        if ($items) {
+            $total = array_sum(array_map(fn ($item) => (int) round($item['price'] * 100), $items));
+            $this->check($total <= 999999999999, 'items', 'The combined price exceeds the supported limit.');
+            $data['total_price'] = $total / 100;
+        }
+        $order = DB::transaction(function () use ($data, $items) {
+            $items = array_map(function (array $item): array {
+                $listingId = $item['preorder_listing_id'] ?? null;
+                if ($listingId === null) {
+                    $listingId = PreorderListing::create([
+                        'watch_snapshot' => Arr::only($item, ['brand', 'model_name', 'reference_number']),
+                        'price' => $item['price'],
+                        'is_visible' => false,
+                    ])->id;
+                }
+
+                return ['preorder_listing_id' => $listingId, 'price' => $item['price']];
+            }, $items);
+            if ($items) {
+                $data['preorder_listing_id'] = $items[0]['preorder_listing_id'];
+            }
+
+            $order = Preorder::create($data);
+            if (count($items) > 1) {
+                $order->items()->createMany($items);
+            }
+
+            return $order;
+        });
 
         return to_route('admin.preorders.show', $order)->with('success', 'Customer preorder created.');
     }
@@ -139,7 +176,7 @@ class PreorderController extends Controller
     public function show(Preorder $preorder)
     {
         return Inertia::render('Admin/Preorders/Show', [
-            'order' => $preorder->load(['listing', 'entries']),
+            'order' => $preorder->load(['listing', 'entries', 'items.listing']),
             'reversals' => DB::table('preorder_fulfillment_reversals as reversals')
                 ->leftJoin('users', 'users.id', '=', 'reversals.recorded_by')
                 ->where('reversals.preorder_id', $preorder->id)->latest('reversals.id')
@@ -252,40 +289,72 @@ class PreorderController extends Controller
 
     public function fulfill(Request $request, Preorder $preorder)
     {
-        $data = $request->validate(['serial_number' => ['required', 'string', 'max:255']]);
-        DB::transaction(function () use ($preorder, $data) {
-            $order = Preorder::lockForUpdate()->findOrFail($preorder->id)->load(['entries', 'listing']);
-            $this->check($order->status === 'arrived', 'serial_number', 'Mark the order as arrived before fulfillment.');
-            $this->check($order->balance <= 0, 'serial_number', 'The remaining balance must be fully paid.');
-            $this->check($order->cost > 0, 'serial_number', 'Record the actual supplier and direct costs first.');
-            $snapshot = $order->listing->watch_snapshot;
-            unset($snapshot['images'], $snapshot['sections'], $snapshot['primary_image_url']);
-            $watch = Watch::create($snapshot + [
-                'slug' => 'preorder-'.$order->id.'-'.Str::uuid(), 'status' => 'sold', 'is_visible' => false,
-                'capital_price' => $order->cost, 'selling_price' => $order->total_price, 'sold_price' => $order->total_price,
-                'date_acquired' => today(), 'date_sold' => today(), 'buyer_name' => $order->customer_name,
-                'serial_number' => $data['serial_number'],
-            ]);
-            // Keep investor date-cutoff attribution consistent with the original order.
-            $watch->created_at = $order->created_at;
-            $watch->save();
-            // Independent files: deleting a fulfilled stock must not remove listing photos.
-            foreach ($order->listing->watch_snapshot['images'] ?? [] as $index => $image) {
-                $path = 'watches/'.$watch->id.'/'.basename($image['path']);
-                if (Storage::disk('public')->copy($image['path'], $path)) {
-                    $watch->images()->create([
-                        'image_path' => $path, 'hd_path' => $path, 'thumbnail_path' => $path,
-                        'sort_order' => $index + 1, 'is_primary' => $index === 0,
-                    ]);
-                }
-            }
-            foreach ($order->listing->watch_snapshot['sections'] ?? [] as $index => $section) {
-                $watch->sections()->create($section + ['sort_order' => $index + 1]);
-            }
-            $order->update(['status' => 'fulfilled', 'fulfilled_watch_id' => $watch->id, 'fulfilled_at' => now()]);
-        });
+        $copied = [];
+        try {
+            DB::transaction(function () use ($request, $preorder, &$copied) {
+                $order = Preorder::lockForUpdate()->findOrFail($preorder->id)->load(['entries', 'listing', 'items.listing']);
+                $this->check($order->status === 'arrived', 'serial_number', 'Confirm all watches are ready for handover first.');
+                $this->check($order->balance <= 0, 'serial_number', 'The remaining balance must be fully paid.');
+                $this->check($order->cost > 0, 'serial_number', 'Record the actual supplier and direct costs first.');
 
-        return back()->with('success', 'Preorder fulfilled. Sale, profit and warranty are now recorded.');
+                if ($order->items->isEmpty()) {
+                    $data = $request->validate(['serial_number' => ['required', 'string', 'max:255']]);
+                    $watch = $this->recordSale($order, $order->listing, $order->total_price, $order->cost, $data['serial_number'], $copied);
+                } else {
+                    $data = $request->validate([
+                        'units' => ['required', 'array', 'list', 'size:'.$order->items->count()],
+                        'units.*.serial_number' => ['required', 'string', 'max:255', 'distinct:ignore_case'],
+                        'units.*.cost' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:9999999999.99'],
+                    ]);
+                    $cost = array_sum(array_map(fn ($unit) => (int) round($unit['cost'] * 100), $data['units']));
+                    $this->check($cost === $order->cents('cost'), 'units', 'The costs assigned to the watches must add up to the recorded direct costs.');
+                    $watch = null;
+                    foreach ($order->items as $index => $item) {
+                        $unit = $data['units'][$index];
+                        $sale = $this->recordSale($order, $item->listing, $item->price, $unit['cost'], $unit['serial_number'], $copied);
+                        $item->update(['fulfilled_watch_id' => $sale->id]);
+                        $watch ??= $sale;
+                    }
+                }
+
+                $order->update(['status' => 'fulfilled', 'fulfilled_watch_id' => $watch->id, 'fulfilled_at' => now()]);
+            });
+        } catch (\Throwable $error) {
+            Storage::disk('public')->delete($copied);
+            throw $error;
+        }
+
+        return back()->with('success', 'Preorder fulfilled. Sales, profit and warranties are now recorded.');
+    }
+
+    private function recordSale(Preorder $order, PreorderListing $listing, string $price, float $cost, string $serial, array &$copied): Watch
+    {
+        $snapshot = $listing->watch_snapshot;
+        unset($snapshot['images'], $snapshot['sections'], $snapshot['primary_image_url']);
+        $watch = Watch::create($snapshot + [
+            'slug' => 'preorder-'.$order->id.'-'.Str::uuid(), 'status' => 'sold', 'is_visible' => false,
+            'capital_price' => $cost, 'selling_price' => $price, 'sold_price' => $price,
+            'date_acquired' => today(), 'date_sold' => today(), 'buyer_name' => $order->customer_name,
+            'serial_number' => $serial,
+        ]);
+        // Keep investor date-cutoff attribution consistent with the original order.
+        $watch->created_at = $order->created_at;
+        $watch->save();
+        // Independent files: deleting a fulfilled stock must not remove listing photos.
+        foreach ($listing->watch_snapshot['images'] ?? [] as $index => $image) {
+            $path = 'watches/'.$watch->id.'/'.basename($image['path']);
+            if (Storage::disk('public')->copy($image['path'], $path)) {
+                $copied[] = $path;
+                $watch->images()->create([
+                    'image_path' => $path, 'hd_path' => $path, 'thumbnail_path' => $path,
+                    'sort_order' => $index + 1, 'is_primary' => $index === 0,
+                ]);
+            }
+        }
+        foreach ($listing->watch_snapshot['sections'] ?? [] as $index => $section) {
+            $watch->sections()->create($section + ['sort_order' => $index + 1]);
+        }
+        return $watch;
     }
 
     public function undoFulfillment(Request $request, Preorder $preorder)
@@ -295,32 +364,41 @@ class PreorderController extends Controller
             'reason' => ['required', 'string', 'max:1000'],
         ]);
 
-        $watchId = DB::transaction(function () use ($request, $preorder, $data) {
-            $order = Preorder::lockForUpdate()->findOrFail($preorder->id);
+        $watchIds = DB::transaction(function () use ($request, $preorder, $data) {
+            $order = Preorder::lockForUpdate()->findOrFail($preorder->id)->load('items');
             $this->check($order->status === 'fulfilled' && (int) $order->fulfilled_watch_id === (int) $data['watch_id'],
                 'reason', 'This fulfillment has changed. Refresh the order before trying again.');
 
-            $watch = Watch::lockForUpdate()->findOrFail($order->fulfilled_watch_id);
-            $this->check($watch->status === 'sold', 'reason', 'The linked watch is no longer marked sold.');
+            $ids = $order->items->isEmpty() ? [$order->fulfilled_watch_id] : $order->items->pluck('fulfilled_watch_id')->all();
+            $watches = Watch::lockForUpdate()->findMany($ids);
+            $this->check($watches->count() === count($ids) && $watches->every(fn ($watch) => $watch->status === 'sold'),
+                'reason', 'The linked sales have changed. Refresh the order before trying again.');
 
-            DB::table('preorder_fulfillment_reversals')->insert([
-                'preorder_id' => $order->id,
-                'recorded_by' => $request->user()->id,
-                'watch_id' => $watch->id,
-                'reason' => $data['reason'],
-                'sale_snapshot' => json_encode($watch->only(['brand', 'model_name', 'serial_number', 'date_sold', 'sold_price', 'capital_price'])
-                    + ['fulfilled_at' => $order->fulfilled_at], JSON_THROW_ON_ERROR),
-                'created_at' => now(),
-            ]);
+            foreach ($watches as $watch) {
+                DB::table('preorder_fulfillment_reversals')->insert([
+                    'preorder_id' => $order->id,
+                    'recorded_by' => $request->user()->id,
+                    'watch_id' => $watch->id,
+                    'reason' => $data['reason'],
+                    'sale_snapshot' => json_encode($watch->only(['brand', 'model_name', 'serial_number', 'date_sold', 'sold_price', 'capital_price'])
+                        + ['fulfilled_at' => $order->fulfilled_at], JSON_THROW_ON_ERROR),
+                    'created_at' => now(),
+                ]);
+            }
 
             $order->update(['status' => 'arrived', 'fulfilled_watch_id' => null, 'fulfilled_at' => null]);
-            PreorderListing::where('source_watch_id', $watch->id)->update(['source_watch_id' => null]);
-            $watch->delete();
+            $order->items()->update(['fulfilled_watch_id' => null]);
+            PreorderListing::whereIn('source_watch_id', $ids)->update(['source_watch_id' => null]);
+            foreach ($watches as $watch) {
+                $watch->delete();
+            }
 
-            return $watch->id;
+            return $ids;
         });
 
-        rescue(fn () => Storage::disk('public')->deleteDirectory('watches/'.$watchId));
+        foreach ($watchIds as $id) {
+            rescue(fn () => Storage::disk('public')->deleteDirectory('watches/'.$id));
+        }
 
         return back()->with('success', 'Fulfillment reversed. The preorder is back to Arrived.');
     }

@@ -107,7 +107,7 @@ class SalesController extends Controller
 
         $recentSales = Watch::query()
             ->with('primaryImage')
-            ->withExists('fulfilledPreorder')
+            ->withExists(['fulfilledPreorder', 'fulfilledPreorderItem'])
             ->where('status', 'sold')
             ->latest('date_sold')
             ->latest()

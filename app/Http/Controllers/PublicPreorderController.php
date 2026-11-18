@@ -10,7 +10,8 @@ class PublicPreorderController extends Controller
 {
     public function track(string $token)
     {
-        $order = Preorder::with(['listing', 'entries', 'fulfilledWatch'])->where('tracking_token', $token)->firstOrFail();
+        $order = Preorder::with(['listing', 'entries', 'fulfilledWatch', 'items.listing', 'items.fulfilledWatch'])
+            ->where('tracking_token', $token)->firstOrFail();
         $watch = $order->listing->watch_snapshot;
         $transactions = $order->entries->whereIn('type', ['payment', 'refund'])->values();
 
@@ -19,6 +20,18 @@ class PublicPreorderController extends Controller
             'status' => $order->status,
             'customer_name' => $order->customer_name,
             'watch_name' => trim(($watch['brand'] ?? '').' '.($watch['model_name'] ?? '')),
+            'watches' => array_map(fn ($item) => [
+                'name' => trim(($item['brand'] ?? '').' '.($item['model_name'] ?? '')),
+                'reference' => $item['reference_number'] ?? null,
+                'price' => $item['price'],
+            ], $order->watchDetails()),
+            'watch_warranties' => $order->status === 'fulfilled' && $order->items->isNotEmpty()
+                ? $order->items->map(fn ($item) => [
+                    'name' => trim(($item->fulfilledWatch?->brand ?? '').' '.($item->fulfilledWatch?->model_name ?? '')),
+                    'reference' => $item->fulfilledWatch?->reference_number,
+                    'expires_on' => $item->fulfilledWatch?->warrantyExpiresOn(),
+                ])->all()
+                : [],
             'watch_reference' => $watch['reference_number'] ?? null,
             'image' => $watch['primary_image_url'] ?? null,
             'total_price' => (float) $order->total_price,

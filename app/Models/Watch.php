@@ -14,7 +14,7 @@ class Watch extends Model
     {
         static::updating(function (Watch $watch) {
             if ($watch->isDirty(['status', 'capital_price', 'sold_price', 'date_sold', 'buyer_name', 'serial_number', 'created_at'])
-                && Preorder::where('fulfilled_watch_id', $watch->id)->exists()) {
+                && Preorder::linkedToWatches([$watch->id])->exists()) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'preorder' => 'Financial and warranty details are locked for fulfilled preorders.',
                 ]);
@@ -29,7 +29,7 @@ class Watch extends Model
 
     public function assertPreorderDeletionAllowed(): void
     {
-        if (Preorder::where('fulfilled_watch_id', $this->id)->exists()
+        if (Preorder::linkedToWatches([$this->id])->exists()
             || PreorderListing::where('source_watch_id', $this->id)->exists()) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'preorder' => 'This watch is linked to a preorder. Hide it instead of deleting it.',
@@ -115,7 +115,13 @@ class Watch extends Model
         return $this->status === 'sold'
             && $this->date_sold !== null
             && $this->sold_price > 0
-            && ! ($this->fulfilled_preorder_exists ?? $this->fulfilledPreorder()->exists());
+            && ! ($this->fulfilled_preorder_exists ?? $this->fulfilledPreorder()->exists())
+            && ! ($this->fulfilled_preorder_item_exists ?? $this->fulfilledPreorderItem()->exists());
+    }
+
+    public function fulfilledPreorderItem(): HasOne
+    {
+        return $this->hasOne(PreorderItem::class, 'fulfilled_watch_id');
     }
 
     public function warrantyExpiresOn(): ?string

@@ -50,19 +50,22 @@ const listing = useForm(listingDefaults);
 const listingMode = ref("sold");
 const editing = ref(null);
 const order = useForm({
-    preorder_listing_id: "",
     customer_name: "",
     contact: "",
-    total_price: "",
     deposit_percentage: 20,
     estimated_arrival: "",
     notes: "",
+    items: [],
 });
-const deposit = computed(
+const orderTotal = computed(
     () =>
-        (Number(order.total_price || 0) *
-            Number(order.deposit_percentage || 0)) /
-        100,
+        order.items.reduce(
+            (sum, item) => sum + Math.round(Number(item.price || 0) * 100),
+            0,
+        ) / 100,
+);
+const deposit = computed(
+    () => (orderTotal.value * Number(order.deposit_percentage || 0)) / 100,
 );
 const cleanDialog = ref("");
 const dialogData = () =>
@@ -159,20 +162,47 @@ function saveListing() {
             )
             .post(route("admin.preorder-listings.store"), options);
 }
+function orderItem(listing = null) {
+    return {
+        source: listing || props.listings.length ? "listing" : "manual",
+        preorder_listing_id: listing?.id || "",
+        brand: "",
+        model_name: "",
+        reference_number: "",
+        price: listing?.price || "",
+    };
+}
 function openOrder(item = null) {
     order.reset();
     order.clearErrors();
-    if (item) {
-        order.preorder_listing_id = item.id;
-        order.total_price = item.price;
-    }
+    order.items = [orderItem(item)];
     dialog.value = "order";
     cleanDialog.value = dialogData();
 }
-function selectListing() {
-    order.total_price =
-        props.listings.find((l) => l.id == order.preorder_listing_id)?.price ||
+function selectListing(item) {
+    item.price =
+        props.listings.find((l) => l.id == item.preorder_listing_id)?.price ||
         "";
+}
+function submitOrder() {
+    order
+        .transform(({ items, ...details }) => ({
+            ...details,
+            items: items.map(
+                ({
+                    source,
+                    preorder_listing_id,
+                    brand,
+                    model_name,
+                    reference_number,
+                    price,
+                }) =>
+                    source === "manual"
+                        ? { brand, model_name, reference_number, price }
+                        : { preorder_listing_id, price },
+            ),
+        }))
+        .post(route("admin.preorders.store"));
 }
 function findSources() {
     router.get(
@@ -213,11 +243,7 @@ onMounted(() => {
                 </div>
                 <div class="row">
                     <button @click="openListing()">+ Publish a watch</button
-                    ><button
-                        class="primary"
-                        @click="openOrder()"
-                        :disabled="!listings.length"
-                    >
+                    ><button class="primary" @click="openOrder()">
                         + Customer order
                     </button>
                 </div>
@@ -334,6 +360,9 @@ onMounted(() => {
                         <h2>{{ o.customer_name }}</h2>
                         <p class="muted">
                             {{ name(o.listing.watch_snapshot) }}
+                            <span v-if="o.items?.length > 1">
+                                · +{{ o.items.length - 1 }} more</span
+                            >
                         </p>
                         <div class="row" style="margin-top: 8px">
                             <span class="badge">{{
@@ -620,35 +649,103 @@ onMounted(() => {
                 <template v-else
                     ><p class="eyebrow">Customer order</p>
                     <h2>Create a preorder</h2>
-                    <form
-                        @submit.prevent="
-                            order.post(route('admin.preorders.store'))
-                        "
-                    >
+                    <form @submit.prevent="submitOrder()">
                         <p class="form-hint">
                             Watch, customer, contact, price and deposit are
                             required. Notes stay private to the admin.
                         </p>
                         <FormFeedback :errors="order.errors" />
                         <div class="grid">
-                            <label class="span-2"
-                                >Watch<select
-                                    v-model="order.preorder_listing_id"
-                                    @change="selectListing"
-                                    required
-                                >
-                                    <option disabled value="">
-                                        Choose a preorder listing
-                                    </option>
-                                    <option
-                                        v-for="l in listings"
-                                        :key="l.id"
-                                        :value="l.id"
+                            <fieldset
+                                v-for="(item, index) in order.items"
+                                :key="index"
+                                class="span-2 grid"
+                            >
+                                <legend>Watch {{ index + 1 }}</legend>
+                                <label class="span-2">
+                                    Watch source
+                                    <select v-model="item.source">
+                                        <option
+                                            value="listing"
+                                            :disabled="!listings.length"
+                                        >
+                                            Choose existing listing
+                                        </option>
+                                        <option value="manual">
+                                            Enter watch details
+                                        </option>
+                                    </select>
+                                </label>
+                                <label v-if="item.source === 'listing'"
+                                    >Preorder listing<select
+                                        v-model="item.preorder_listing_id"
+                                        @change="selectListing(item)"
+                                        required
                                     >
-                                        {{ name(l.watch_snapshot) }}
-                                    </option>
-                                </select></label
-                            ><label
+                                        <option disabled value="">
+                                            Choose a preorder listing
+                                        </option>
+                                        <option
+                                            v-for="l in listings"
+                                            :key="l.id"
+                                            :value="l.id"
+                                        >
+                                            {{ name(l.watch_snapshot) }}
+                                        </option>
+                                    </select></label
+                                >
+                                <template v-else>
+                                    <p class="span-2 muted">
+                                        These details will appear on the
+                                        customer’s tracking page and receipt.
+                                    </p>
+                                    <label
+                                        >Brand
+                                        <input
+                                            v-model="item.brand"
+                                            required
+                                            maxlength="255"
+                                    /></label>
+                                    <label
+                                        >Model
+                                        <input
+                                            v-model="item.model_name"
+                                            required
+                                            maxlength="255"
+                                    /></label>
+                                    <label
+                                        >Reference number (optional)
+                                        <input
+                                            v-model="item.reference_number"
+                                            maxlength="255"
+                                    /></label>
+                                </template>
+                                <label
+                                    >Agreed price (₱)<input
+                                        v-model="item.price"
+                                        type="number"
+                                        step="0.01"
+                                        min="0.01"
+                                        required
+                                /></label>
+                                <button
+                                    v-if="order.items.length > 1"
+                                    type="button"
+                                    @click="order.items.splice(index, 1)"
+                                >
+                                    Remove watch {{ index + 1 }}
+                                </button>
+                            </fieldset>
+                            <div class="span-2">
+                                <button
+                                    type="button"
+                                    :disabled="order.items.length >= 20"
+                                    @click="order.items.push(orderItem())"
+                                >
+                                    Add another watch
+                                </button>
+                            </div>
+                            <label
                                 >Customer name<input
                                     v-model="order.customer_name"
                                     required
@@ -659,13 +756,6 @@ onMounted(() => {
                                     v-model="order.contact"
                                     required
                                     maxlength="255" /></label
-                            ><label
-                                >Agreed total price (₱)<input
-                                    v-model="order.total_price"
-                                    type="number"
-                                    step="0.01"
-                                    min="0.01"
-                                    required /></label
                             ><label
                                 >Required deposit (%)<input
                                     v-model="order.deposit_percentage"
@@ -687,6 +777,8 @@ onMounted(() => {
                             </label>
                         </div>
                         <p class="notice">
+                            Order total: <strong>{{ money(orderTotal) }}</strong
+                            ><br />
                             Required down payment:
                             <strong>{{ money(deposit) }}</strong
                             >. The agreed price is saved for this order.

@@ -10,11 +10,13 @@ const money = (n) =>
     }).format(Number(n || 0));
 const checks = computed(() => [
     {
-        label: "Watch has arrived",
+        label: props.order.items?.length
+            ? "All watches ready"
+            : "Watch has arrived",
         done: ["arrived", "fulfilled"].includes(props.order.status),
         note: ["arrived", "fulfilled"].includes(props.order.status)
             ? "Ready for handover"
-            : "Mark the order as arrived after receiving the watch.",
+            : "Confirm readiness after receiving all watches in the order.",
     },
     {
         label: "Customer fully paid",

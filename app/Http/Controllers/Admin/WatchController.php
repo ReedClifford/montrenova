@@ -155,7 +155,7 @@ class WatchController extends Controller
                 'sections',
             ])
             ->withCount('images')
-            ->withExists('fulfilledPreorder')
+            ->withExists(['fulfilledPreorder', 'fulfilledPreorderItem'])
             ->when(
                 $search,
                 function ($query) use ($search) {
@@ -709,7 +709,7 @@ public function markSold(Request $request, Watch $watch)
 
     $action = $validated['action'];
     if (in_array($action, ['delete', 'mark_available', 'mark_draft'], true)) {
-        $linked = \App\Models\Preorder::whereIn('fulfilled_watch_id', $watchIds)->exists();
+        $linked = \App\Models\Preorder::linkedToWatches($watchIds->all())->exists();
         $source = $action === 'delete' && \App\Models\PreorderListing::whereIn('source_watch_id', $watchIds)->exists();
         if ($linked || $source) throw \Illuminate\Validation\ValidationException::withMessages([
             'action' => 'The selection includes watches linked to preorders. Their financial records cannot be changed or deleted.',

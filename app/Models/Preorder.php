@@ -28,6 +28,26 @@ class Preorder extends Model
         return $this->hasMany(PreorderEntry::class)->orderByDesc('id');
     }
 
+    public function items()
+    {
+        return $this->hasMany(PreorderItem::class)->orderBy('id');
+    }
+
+    public function watchDetails(): array
+    {
+        if ($this->items->isEmpty()) {
+            return [$this->listing->watch_snapshot + ['price' => $this->total_price]];
+        }
+
+        return $this->items->map(fn ($item) => $item->listing->watch_snapshot + ['price' => $item->price])->all();
+    }
+
+    public function scopeLinkedToWatches($query, array $ids)
+    {
+        return $query->where(fn ($q) => $q->whereIn('fulfilled_watch_id', $ids)
+            ->orWhereHas('items', fn ($items) => $items->whereIn('fulfilled_watch_id', $ids)));
+    }
+
     public function fulfilledWatch()
     {
         return $this->belongsTo(Watch::class, 'fulfilled_watch_id');

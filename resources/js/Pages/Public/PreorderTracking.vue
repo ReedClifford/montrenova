@@ -20,7 +20,7 @@ const steps = [
     ["awaiting_deposit", "Awaiting deposit"],
     ["confirmed", "Confirmed"],
     ["ordered", "Sourcing your watch"],
-    ["arrived", "Watch arrived"],
+    ["arrived", "Ready for handover"],
     ["fulfilled", "Completed"],
 ];
 const current = computed(() =>
@@ -33,11 +33,11 @@ const message = computed(
             confirmed:
                 "Your deposit is confirmed. Our team will arrange your supplier order.",
             ordered:
-                "Your watch has been ordered. We will contact you when it arrives.",
+                "Your order is being sourced. We will contact you when it is ready for handover.",
             arrived:
                 props.order.balance > 0
-                    ? "Your watch has arrived. Please coordinate your remaining payment and handover with us."
-                    : "Your watch has arrived and is fully paid. Please contact us to arrange handover.",
+                    ? "Your order is ready. Please coordinate your remaining payment and handover with us."
+                    : "Your order is ready and fully paid. Please contact us to arrange handover.",
             fulfilled:
                 "Your preorder is complete. Thank you for choosing Montre Nova.",
             cancelled:
@@ -76,19 +76,48 @@ const messenger = computed(
             </p>
             <section v-if="order.warranty_expires_on" class="tracking-panel">
                 <h2>Warranty and service</h2>
-                <p>Warranty expires {{ date(order.warranty_expires_on) }}.</p>
-                <p class="muted">For service, contact us on Messenger with your preorder reference and a description of the issue.</p>
+                <ol v-if="order.watch_warranties?.length" class="list-decimal space-y-2 pl-5">
+                    <li v-for="(watch, index) in order.watch_warranties" :key="index">
+                        {{ watch.name }}<span v-if="watch.reference"> ({{ watch.reference }})</span>
+                        · Warranty expires {{ date(watch.expires_on) }}
+                    </li>
+                </ol>
+                <p v-else>Warranty expires {{ date(order.warranty_expires_on) }}.</p>
+                <p class="muted">
+                    For service, contact us on Messenger with your preorder
+                    reference and a description of the issue.
+                </p>
             </section>
             <section class="tracking-panel watch-summary">
                 <img
-                    v-if="order.image"
+                    v-if="order.image && order.watches?.length <= 1"
                     :src="order.image"
                     :alt="order.watch_name"
                     referrerpolicy="no-referrer"
                 />
                 <div>
-                    <h2>{{ order.watch_name }}</h2>
-                    <p class="muted">{{ order.watch_reference }}</p>
+                    <template v-if="order.watches?.length > 1">
+                        <h2>
+                            {{ order.watches.length }} watches · One handover
+                        </h2>
+                        <ul class="mb-3 space-y-2">
+                            <li
+                                v-for="(item, index) in order.watches"
+                                :key="index"
+                                class="break-words"
+                            >
+                                {{ item.name }}
+                                <span v-if="item.reference" class="muted"
+                                    >· {{ item.reference }}</span
+                                >
+                                · {{ money(item.price) }}
+                            </li>
+                        </ul>
+                    </template>
+                    <template v-else>
+                        <h2>{{ order.watch_name }}</h2>
+                        <p class="muted">{{ order.watch_reference }}</p>
+                    </template>
                     <p>
                         Estimated arrival: {{ date(order.estimated_arrival) }}
                     </p>

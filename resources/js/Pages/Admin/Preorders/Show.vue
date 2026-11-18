@@ -11,7 +11,11 @@ import { useUnsavedChanges } from "@/Composables/useUnsavedChanges";
 import { Head, Link, useForm, usePage } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 import "./preorders.css";
-const props = defineProps({ order: Object, trackingUrl: String, reversals: Array });
+const props = defineProps({
+    order: Object,
+    trackingUrl: String,
+    reversals: Array,
+});
 const reversal = useForm({ watch_id: null, reason: "" });
 function undoFulfillment() {
     reversal.watch_id = props.order.fulfilled_watch_id;
@@ -68,7 +72,7 @@ const entry = useForm({
     proof: null,
 });
 const transition = useForm({ status: "", cancellation_reason: "" });
-const fulfillment = useForm({ serial_number: "" });
+const fulfillment = useForm({ serial_number: "", units: [] });
 const eta = useForm({ estimated_arrival: "" });
 function openEta() {
     eta.defaults("estimated_arrival", props.order.estimated_arrival || "");
@@ -116,6 +120,10 @@ async function closeDialog() {
     if (!busy.value && (await confirmDiscard())) dialog.value = null;
 }
 function openFulfillment() {
+    fulfillment.units = (props.order.items || []).map(() => ({
+        serial_number: "",
+        cost: "",
+    }));
     fulfillment.clearErrors();
     dialog.value = "fulfill";
     cleanDialog.value = activeFormData();
@@ -283,15 +291,37 @@ const busy = computed(
                     <section class="panel">
                         <div class="row">
                             <div>
-                                <h2>
+                                <h2 v-if="order.items?.length">
+                                    {{ order.items.length }} watches
+                                </h2>
+                                <h2 v-else>
                                     {{ watch.brand }} {{ watch.model_name }}
                                 </h2>
-                                <p class="muted">
+                                <p v-if="!order.items?.length" class="muted">
                                     {{ watch.reference_number }}
                                 </p>
                             </div>
                         </div>
-                        <div style="margin-top: 18px">
+                        <ul v-if="order.items?.length" class="mt-4 space-y-2">
+                            <li
+                                v-for="item in order.items"
+                                :key="item.id"
+                                class="row between break-words"
+                            >
+                                <span
+                                    >{{ item.listing.watch_snapshot.brand }}
+                                    {{
+                                        item.listing.watch_snapshot.model_name
+                                    }}
+                                    <span class="muted">{{
+                                        item.listing.watch_snapshot
+                                            .reference_number
+                                    }}</span></span
+                                >
+                                <strong>{{ money(item.price) }}</strong>
+                            </li>
+                        </ul>
+                        <div v-else style="margin-top: 18px">
                             <PreorderPhotoGallery
                                 :images="watch.images || []"
                                 :primary-image="watch.primary_image_url"
@@ -538,14 +568,19 @@ const busy = computed(
                             </button></template
                         ><template v-if="order.status === 'ordered'"
                             ><p class="muted">
-                                Waiting for the watch to arrive.
+                                Wait until you have every watch ready for the
+                                customer handover.
                             </p>
                             <button
                                 class="primary"
                                 style="margin-top: 14px"
                                 @click="changeStatus('arrived')"
                             >
-                                Mark as arrived
+                                {{
+                                    order.items?.length
+                                        ? "Confirm all watches are ready"
+                                        : "Mark as arrived"
+                                }}
                             </button></template
                         ><template v-if="order.status === 'arrived'"
                             ><p class="muted">
@@ -570,19 +605,52 @@ const busy = computed(
                             </button></template
                         ><template v-if="order.status === 'fulfilled'"
                             ><p class="notice">
-                                Fulfilled. Sale #{{ order.fulfilled_watch_id }}
+                                Fulfilled.
+                                {{
+                                    order.items?.length
+                                        ? `Sales #${order.items.map((item) => item.fulfilled_watch_id).join(", #")}`
+                                        : `Sale #${order.fulfilled_watch_id}`
+                                }}
                                 is included in sales and profit reports. The
-                                customer’s warranty starts on the
-                                handover date.
+                                customer’s warranty starts on the handover date.
                             </p>
                             <details class="my-3">
-                                <summary class="cursor-pointer font-semibold">Undo fulfillment</summary>
-                                <form class="mt-2 space-y-2" @submit.prevent="undoFulfillment">
-                                    <p>This returns the preorder to Arrived and reverses the sale and warranty. Recorded payments and costs stay on the order.</p>
-                                    <label for="reversal-reason">Reason for reversal</label>
-                                    <textarea id="reversal-reason" v-model="reversal.reason" class="w-full" maxlength="1000" required />
-                                    <p v-if="reversal.errors.reason" role="alert">{{ reversal.errors.reason }}</p>
-                                    <button type="submit" class="secondary" :disabled="reversal.processing">Confirm reversal</button>
+                                <summary class="cursor-pointer font-semibold">
+                                    Undo fulfillment
+                                </summary>
+                                <form
+                                    class="mt-2 space-y-2"
+                                    @submit.prevent="undoFulfillment"
+                                >
+                                    <p>
+                                        This returns the preorder to Arrived and
+                                        reverses all linked sales and
+                                        warranties. Recorded payments and costs
+                                        stay on the order.
+                                    </p>
+                                    <label for="reversal-reason"
+                                        >Reason for reversal</label
+                                    >
+                                    <textarea
+                                        id="reversal-reason"
+                                        v-model="reversal.reason"
+                                        class="w-full"
+                                        maxlength="1000"
+                                        required
+                                    />
+                                    <p
+                                        v-if="reversal.errors.reason"
+                                        role="alert"
+                                    >
+                                        {{ reversal.errors.reason }}
+                                    </p>
+                                    <button
+                                        type="submit"
+                                        class="secondary"
+                                        :disabled="reversal.processing"
+                                    >
+                                        Confirm reversal
+                                    </button>
                                 </form>
                             </details>
                             <Link
@@ -618,7 +686,9 @@ const busy = computed(
             <h2 class="font-semibold">Fulfillment history</h2>
             <ul class="mt-2 space-y-2">
                 <li v-for="item in reversals" :key="item.id">
-                    Sale #{{ item.watch_id }} reversed by {{ item.recorded_by || "Former admin" }} on {{ item.created_at }}. {{ item.reason }}
+                    Sale #{{ item.watch_id }} reversed by
+                    {{ item.recorded_by || "Former admin" }} on
+                    {{ item.created_at }}. {{ item.reason }}
                 </li>
             </ul>
         </section>
@@ -803,7 +873,7 @@ const busy = computed(
                         {{
                             transition.status === "ordered"
                                 ? "Confirm that you have placed the order with your supplier."
-                                : "Confirm that the watch has arrived and is ready for final payment and handover."
+                                : "Confirm you have received all watches and can hand them over together."
                         }}
                     </p>
                     <div
@@ -840,12 +910,48 @@ const busy = computed(
                     <p class="eyebrow">Final handover</p>
                     <h2>Fulfill preorder #{{ order.id }}</h2>
                     <p class="notice">
-                        This records a {{ money(order.total_price) }} sale with
-                        {{ money(order.cost) }} capital. Warranty starts today.
-                        Check all costs before continuing; financial records
-                        will be locked.
+                        This records {{ money(order.total_price) }} in sales
+                        with {{ money(order.cost) }} in total direct costs.
+                        Warranties start today. Check all costs before
+                        continuing; financial records will be locked.
                     </p>
-                    <label
+                    <div v-if="order.items?.length">
+                        <p>
+                            Assign the recorded direct costs to each watch.
+                            Include its share of any shared costs so the total
+                            equals {{ money(order.cost) }}.
+                        </p>
+                        <fieldset
+                            v-for="(item, index) in order.items"
+                            :key="item.id"
+                            class="grid"
+                        >
+                            <legend>
+                                {{ index + 1 }}.
+                                {{ item.listing.watch_snapshot.brand }}
+                                {{ item.listing.watch_snapshot.model_name }}
+                            </legend>
+                            <label
+                                >Serial number
+                                <input
+                                    v-model="
+                                        fulfillment.units[index].serial_number
+                                    "
+                                    required
+                                    maxlength="255"
+                            /></label>
+                            <label
+                                >Actual cost (₱)
+                                <input
+                                    v-model="fulfillment.units[index].cost"
+                                    type="number"
+                                    min="0.01"
+                                    step="0.01"
+                                    required
+                            /></label>
+                        </fieldset>
+                    </div>
+                    <label v-else
                         >Actual watch serial number<input
                             v-model="fulfillment.serial_number"
                             required

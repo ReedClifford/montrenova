@@ -103,6 +103,7 @@ class PublicWatchController extends Controller
             ->withCount('images')
             ->whereRaw('LOWER(TRIM(status)) = ?', ['sold'])
             ->orderByRaw('COALESCE(date_sold, updated_at, created_at) DESC')
+            ->orderByDesc('id')
             ->limit(300)
             ->get();
 
@@ -322,6 +323,7 @@ class PublicWatchController extends Controller
                 });
             })
             ->orderByRaw('COALESCE(date_sold, updated_at, created_at) DESC')
+            ->orderByDesc('id')
             ->paginate(12)
             ->withQueryString()
             ->through(fn ($watch) => $this->publicWatchCard($watch));
