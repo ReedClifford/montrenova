@@ -16,22 +16,29 @@ const date = (value) =>
               timeZone: "Asia/Manila",
           }).format(new Date(value))
         : "To be confirmed";
-const steps = [
-    ["awaiting_deposit", "Awaiting deposit"],
-    ["confirmed", "Confirmed"],
-    ["ordered", "Sourcing your watch"],
-    ["arrived", "Ready for handover"],
-    ["fulfilled", "Completed"],
-];
+const steps = computed(() =>
+    [
+        ["awaiting_deposit", "Awaiting deposit"],
+        ["confirmed", "Confirmed"],
+        ["ordered", "Sourcing your watch"],
+        ["arrived", "Ready for handover"],
+        ["fulfilled", "Completed"],
+    ].filter(
+        ([status]) =>
+            props.order.required_deposit > 0 || status !== "awaiting_deposit",
+    ),
+);
 const current = computed(() =>
-    steps.findIndex(([status]) => status === props.order.status),
+    steps.value.findIndex(([status]) => status === props.order.status),
 );
 const message = computed(
     () =>
         ({
             awaiting_deposit: `A payment of ${money(Math.max(0, props.order.required_deposit - props.order.paid))} more is needed to confirm your preorder.`,
             confirmed:
-                "Your deposit is confirmed. Our team will arrange your supplier order.",
+                props.order.required_deposit > 0
+                    ? "Your deposit is confirmed. Our team will arrange your supplier order."
+                    : "Your preorder is confirmed. No down payment is required.",
             ordered:
                 "Your order is being sourced. We will contact you when it is ready for handover.",
             arrived:
@@ -76,13 +83,24 @@ const messenger = computed(
             </p>
             <section v-if="order.warranty_expires_on" class="tracking-panel">
                 <h2>Warranty and service</h2>
-                <ol v-if="order.watch_warranties?.length" class="list-decimal space-y-2 pl-5">
-                    <li v-for="(watch, index) in order.watch_warranties" :key="index">
-                        {{ watch.name }}<span v-if="watch.reference"> ({{ watch.reference }})</span>
+                <ol
+                    v-if="order.watch_warranties?.length"
+                    class="list-decimal space-y-2 pl-5"
+                >
+                    <li
+                        v-for="(watch, index) in order.watch_warranties"
+                        :key="index"
+                    >
+                        {{ watch.name
+                        }}<span v-if="watch.reference">
+                            ({{ watch.reference }})</span
+                        >
                         · Warranty expires {{ date(watch.expires_on) }}
                     </li>
                 </ol>
-                <p v-else>Warranty expires {{ date(order.warranty_expires_on) }}.</p>
+                <p v-else>
+                    Warranty expires {{ date(order.warranty_expires_on) }}.
+                </p>
                 <p class="muted">
                     For service, contact us on Messenger with your preorder
                     reference and a description of the issue.
@@ -158,7 +176,13 @@ const messenger = computed(
                         </div>
                         <div>
                             <dt>Required deposit</dt>
-                            <dd>{{ money(order.required_deposit) }}</dd>
+                            <dd>
+                                {{
+                                    order.required_deposit > 0
+                                        ? money(order.required_deposit)
+                                        : "None required"
+                                }}
+                            </dd>
                         </div>
                         <div>
                             <dt>Payments less refunds</dt>

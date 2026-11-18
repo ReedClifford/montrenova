@@ -142,13 +142,12 @@ const progress = computed(() =>
         Math.max(0, (props.order.paid / Number(props.order.total_price)) * 100),
     ),
 );
-const steps = [
-    "awaiting_deposit",
-    "confirmed",
-    "ordered",
-    "arrived",
-    "fulfilled",
-];
+const steps = computed(() =>
+    ["awaiting_deposit", "confirmed", "ordered", "arrived", "fulfilled"].filter(
+        (step) =>
+            props.order.required_deposit > 0 || step !== "awaiting_deposit",
+    ),
+);
 function openEntry(type) {
     entry.reset();
     entry.clearErrors();
@@ -310,9 +309,7 @@ const busy = computed(
                             >
                                 <span
                                     >{{ item.listing.watch_snapshot.brand }}
-                                    {{
-                                        item.listing.watch_snapshot.model_name
-                                    }}
+                                    {{ item.listing.watch_snapshot.model_name }}
                                     <span class="muted">{{
                                         item.listing.watch_snapshot
                                             .reference_number
@@ -357,7 +354,13 @@ const busy = computed(
                                     Required deposit ·
                                     {{ order.deposit_percentage }}%
                                 </p>
-                                <p>{{ money(order.required_deposit) }}</p>
+                                <p>
+                                    {{
+                                        order.required_deposit > 0
+                                            ? money(order.required_deposit)
+                                            : "No down payment required"
+                                    }}
+                                </p>
                             </div>
                         </div>
                         <p
@@ -556,7 +559,7 @@ const busy = computed(
                         </p>
                         <template v-if="order.status === 'confirmed'"
                             ><p class="muted">
-                                Deposit confirmed. Place the supplier order when
+                                Order confirmed. Place the supplier order when
                                 ready.
                             </p>
                             <button

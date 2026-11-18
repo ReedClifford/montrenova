@@ -70,6 +70,10 @@ class Preorder extends Model
 
     public function getRequiredDepositAttribute(): float
     {
+        if ((float) $this->deposit_percentage === 0.0) {
+            return 0.0;
+        }
+
         return max(0.01, round((float) $this->total_price * (float) $this->deposit_percentage / 100, 2));
     }
 

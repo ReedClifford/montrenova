@@ -136,7 +136,7 @@ class PreorderController extends Controller
             'items.*.price' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:9999999999.99'],
             'customer_name' => ['required', 'string', 'max:255'], 'contact' => ['required', 'string', 'max:255'],
             'total_price' => ['required_without:items', Rule::prohibitedIf($request->has('items')), 'numeric', 'decimal:0,2', 'min:0.01', 'max:9999999999.99'],
-            'deposit_percentage' => ['required', 'numeric', 'decimal:0,2', 'min:1', 'max:100'],
+            'deposit_percentage' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:100'],
             'estimated_arrival' => ['nullable', 'date'], 'notes' => ['nullable', 'string', 'max:5000'],
         ]);
         $items = Arr::pull($data, 'items', []);
@@ -162,7 +162,9 @@ class PreorderController extends Controller
                 $data['preorder_listing_id'] = $items[0]['preorder_listing_id'];
             }
 
-            $order = Preorder::create($data);
+            $order = Preorder::create($data + [
+                'status' => (float) $data['deposit_percentage'] === 0.0 ? 'confirmed' : 'awaiting_deposit',
+            ]);
             if (count($items) > 1) {
                 $order->items()->createMany($items);
             }

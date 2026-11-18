@@ -94,7 +94,7 @@ function applyQueue(queue = "") {
 }
 const queueHelp = {
     deposit: "Record the remaining required deposit to confirm the order.",
-    supplier: "Deposit confirmed. Place the supplier order when ready.",
+    supplier: "Order confirmed. Place the supplier order when ready.",
     sourcing:
         "Ordered watches past their arrival estimate, or created at least 14 days ago. Follow up with the supplier.",
     balance:
@@ -761,9 +761,14 @@ onMounted(() => {
                                     v-model="order.deposit_percentage"
                                     type="number"
                                     step="0.01"
-                                    min="1"
+                                    min="0"
                                     max="100"
-                                    required /></label
+                                    required
+                                />
+                                <span class="muted"
+                                    >Enter 0 to confirm without a down
+                                    payment.</span
+                                ></label
                             ><label
                                 >Estimated arrival<input
                                     v-model="order.estimated_arrival"
@@ -779,9 +784,19 @@ onMounted(() => {
                         <p class="notice">
                             Order total: <strong>{{ money(orderTotal) }}</strong
                             ><br />
-                            Required down payment:
-                            <strong>{{ money(deposit) }}</strong
-                            >. The agreed price is saved for this order.
+                            <template
+                                v-if="
+                                    order.deposit_percentage !== '' &&
+                                    Number(order.deposit_percentage) === 0
+                                "
+                            >
+                                No down payment required. The full balance is
+                                due before handover.
+                            </template>
+                            <template v-else
+                                >Required down payment:
+                                <strong>{{ money(deposit) }}</strong></template
+                            >
                         </p>
                         <div
                             v-for="(error, key) in order.errors"

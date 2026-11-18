@@ -454,6 +454,37 @@ class PreorderTest extends TestCase
         $this->actingAs(User::factory()->create(['role' => 'admin']));
     }
 
+    public function test_no_deposit_order_is_confirmed_but_must_be_paid_before_handover(): void
+    {
+        $this->admin();
+        $this->post(route('admin.preorders.store'), [
+            'items' => [['brand' => 'Seiko', 'model_name' => 'No deposit watch', 'price' => 20000]],
+            'customer_name' => 'New Buyer', 'contact' => 'Messenger', 'deposit_percentage' => 0,
+        ])->assertSessionHasNoErrors();
+
+        $order = Preorder::sole();
+        $this->assertSame('confirmed', $order->status);
+        $this->assertSame(0.0, $order->required_deposit);
+        $this->assertSame('unpaid', $order->payment_status);
+        $this->assertEquals(20000, $order->balance);
+        $this->assertDatabaseCount('preorder_entries', 0);
+        $this->get(route('admin.preorders.receipt', $order))->assertNotFound();
+        $order->update(['tracking_token' => Str::random(64)]);
+        $this->get(route('public.preorders.track', $order->tracking_token))
+            ->assertInertia(fn (Assert $page) => $page->where('order.required_deposit', 0)
+                ->where('order.status', 'confirmed')->where('order.balance', 20000));
+
+        $this->patch(route('admin.preorders.update', $order), ['status' => 'ordered'])->assertSessionHasNoErrors();
+        $this->patch(route('admin.preorders.update', $order), ['status' => 'arrived'])->assertSessionHasNoErrors();
+        $this->entry($order, 'cost', 13000)->assertSessionHasNoErrors();
+        $fulfillUrl = route('admin.preorders.fulfill', $order);
+        $this->post($fulfillUrl, ['serial_number' => 'NO-DP'])->assertSessionHasErrors('serial_number');
+        $this->entry($order, 'payment', 20000)->assertSessionHasNoErrors();
+        $this->post($fulfillUrl, ['serial_number' => 'NO-DP'])->assertSessionHasNoErrors();
+        $sale = $order->fresh()->fulfilledWatch;
+        $this->assertEquals(7000, $sale->sold_price - $sale->capital_price);
+    }
+
     public function test_partial_payments_confirm_at_twenty_percent_and_cannot_overpay(): void
     {
         $this->admin();
