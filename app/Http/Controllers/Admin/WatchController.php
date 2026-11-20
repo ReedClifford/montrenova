@@ -367,7 +367,7 @@ class WatchController extends Controller
 
         $inventoryCapital = (float) (
             clone $activeInventoryQuery
-        )->sum('capital_price');
+        )->where('is_consigned', false)->sum('capital_price');
 
         $expectedSalesValue = (float) (
             clone $activeInventoryQuery
@@ -388,7 +388,7 @@ class WatchController extends Controller
             ->value('total');
 
         $expectedProfit =
-            $expectedSalesValue - $inventoryCapital;
+            $expectedSalesValue - (float) (clone $activeInventoryQuery)->sum('capital_price');
 
         return Inertia::render(
             'Admin/Watches/Index',
@@ -905,6 +905,7 @@ private function validateWatch(Request $request, $modeOrWatchId = 'publish'): ar
         'warranty_type' => [$isDraft ? 'nullable' : 'required', 'string', 'max:255'],
 
         'capital_price' => [$isDraft ? 'nullable' : 'required', 'numeric', 'min:0'],
+        'is_consigned' => ['sometimes', 'boolean'],
         'selling_price' => [$isDraft ? 'nullable' : 'required', 'numeric', $isDraft ? 'min:0' : 'gt:0'],
         'discounted_price' => ['nullable', 'numeric', 'min:0'],
         'sold_price' => ['nullable', 'numeric', 'min:0'],

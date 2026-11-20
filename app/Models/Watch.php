@@ -13,7 +13,7 @@ class Watch extends Model
     protected static function booted(): void
     {
         static::updating(function (Watch $watch) {
-            if ($watch->isDirty(['status', 'capital_price', 'sold_price', 'date_sold', 'buyer_name', 'serial_number', 'created_at'])
+            if ($watch->isDirty(['status', 'capital_price', 'is_consigned', 'sold_price', 'date_sold', 'buyer_name', 'serial_number', 'created_at'])
                 && Preorder::linkedToWatches([$watch->id])->exists()) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
                     'preorder' => 'Financial and warranty details are locked for fulfilled preorders.',
@@ -57,6 +57,7 @@ class Watch extends Model
         'box_papers',
         'warranty_type',
         'capital_price',
+        'is_consigned',
         'selling_price',
         'discounted_price',
         'sold_price',
@@ -78,6 +79,7 @@ class Watch extends Model
 
     protected $casts = [
         'capital_price' => 'decimal:2',
+        'is_consigned' => 'boolean',
         'selling_price' => 'decimal:2',
         'discounted_price' => 'decimal:2',
         'sold_price' => 'decimal:2',
@@ -108,6 +110,11 @@ class Watch extends Model
     public function fulfilledPreorder(): HasOne
     {
         return $this->hasOne(Preorder::class, 'fulfilled_watch_id');
+    }
+
+    public function committedCapital(): float
+    {
+        return $this->is_consigned && $this->status !== 'sold' ? 0.0 : (float) $this->capital_price;
     }
 
     public function canIssueSaleReceipt(): bool

@@ -60,6 +60,7 @@ const form = useForm({
     box_papers: "",
     warranty_type: "Montre Card 1 Year Service Warranty",
 
+    is_consigned: false,
     capital_price: 0,
     selling_price: 0,
     discounted_price: "",
@@ -189,6 +190,7 @@ const applyDuplicateSource = () => {
     form.warranty_type =
         source.warranty_type || "Montre Card 1 Year Service Warranty";
 
+    form.is_consigned = Boolean(source.is_consigned);
     form.capital_price = source.capital_price ?? 0;
     form.selling_price = source.selling_price ?? 0;
     form.discounted_price = source.discounted_price || "";
@@ -220,6 +222,7 @@ const getFormSnapshot = () => {
         box_papers: form.box_papers || "",
         warranty_type: form.warranty_type || "",
 
+        is_consigned: form.is_consigned,
         capital_price: form.capital_price ?? "",
         selling_price: form.selling_price ?? "",
         discounted_price: form.discounted_price ?? "",
@@ -1206,17 +1209,32 @@ onBeforeUnmount(() => {
                                         Pricing
                                     </h3>
 
-                                    <p
+                                    <p v-if="!form.is_consigned"
                                         class="mt-2 text-sm leading-6 text-zinc-500"
                                     >
                                         Capital price can be zero, but selling
                                         price must be greater than zero.
                                     </p>
+                                    <label class="mt-4 flex items-center gap-3 text-sm text-zinc-200">
+                                        <input
+                                            v-model="form.is_consigned"
+                                            type="checkbox"
+                                            class="rounded border-white/20 bg-black"
+                                        />
+                                        Consigned watch
+                                    </label>
+                                    <p v-if="form.is_consigned" class="mt-2 text-sm leading-6 text-zinc-400">
+                                        Enter the amount payable to the consignee. Your profit is the final selling price minus this amount.
+                                    </p>
 
                                     <div class="mt-4 grid gap-4 md:grid-cols-2">
                                         <div>
                                             <label class="mn-label">
-                                                Capital Price
+                                                {{
+                                                    form.is_consigned
+                                                        ? "Consignee amount"
+                                                        : "Capital Price"
+                                                }}
                                                 <span class="text-red-400"
                                                     >*</span
                                                 >

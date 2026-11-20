@@ -189,7 +189,11 @@ const submit = () => {
                                     <p
                                         class="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-600"
                                     >
-                                        Capital
+                                        {{
+                                            watch.is_consigned
+                                                ? "Consignee amount"
+                                                : "Capital"
+                                        }}
                                     </p>
 
                                     <p

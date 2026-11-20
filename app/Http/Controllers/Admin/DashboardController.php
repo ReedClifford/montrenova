@@ -79,10 +79,12 @@ class DashboardController extends Controller
         |
         */
 
-        $totalCapitalSpent = (float) Watch::sum('capital_price');
+        $totalCapitalSpent = (float) Watch::where(fn ($query) => $query
+            ->where('is_consigned', false)->orWhere('status', 'sold'))->sum('capital_price');
 
         $inventoryValue = (float) Watch::query()
             ->whereIn('status', ['available', 'reserved'])
+            ->where('is_consigned', false)
             ->sum('capital_price');
 
         $totalSales = (float) Watch::query()

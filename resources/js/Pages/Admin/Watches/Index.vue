@@ -3024,7 +3024,7 @@ const clearReservation = (watch) => {
                                 </button></template
                             >
                             <template #badges
-                                ><span
+                                ><span v-if="watch.is_consigned" class="border border-amber-500/20 text-amber-200">Consigned</span><span
                                     :class="statusClass(watch.status)"
                                     class="border capitalize"
                                     >{{ watch.status }}</span
@@ -3362,7 +3362,7 @@ const clearReservation = (watch) => {
                                                 <p
                                                     class="text-xs text-zinc-600"
                                                 >
-                                                    Capital
+                                                    {{ watch.is_consigned ? "Consignee amount" : "Capital" }}
                                                 </p>
                                                 <p
                                                     class="text-sm font-semibold text-white"

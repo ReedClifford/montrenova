@@ -2928,6 +2928,7 @@ const yearlyChartOptions = computed(() => ({
                                     {{
                                         formatCurrency(watchItem.capital_price)
                                     }}
+                                    <span v-if="watchItem.is_consigned" class="block text-xs font-normal text-zinc-500">Consignee amount</span>
                                 </td>
 
                                 <td

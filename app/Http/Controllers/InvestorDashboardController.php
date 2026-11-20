@@ -84,7 +84,7 @@ class InvestorDashboardController extends Controller
 
         $totalWatchCapital = (float) $watches->sum(
             fn (Watch $watch): float =>
-                (float) ($watch->capital_price ?? 0)
+                $watch->committedCapital()
         );
 
         $soldWatchCapital = (float) $soldWatches->sum(
@@ -94,7 +94,7 @@ class InvestorDashboardController extends Controller
 
         $inventoryCapital = (float) $inventoryWatches->sum(
             fn (Watch $watch): float =>
-                (float) ($watch->capital_price ?? 0)
+                $watch->committedCapital()
         );
 
         $totalSales = (float) $soldWatches->sum(
@@ -679,6 +679,8 @@ $activityYears = $soldActivityYears
 
                     'capital_price' =>
                         $capitalPrice,
+
+                    'is_consigned' => $watch->is_consigned,
 
                     'selling_price' =>
                         $sellingPrice,
