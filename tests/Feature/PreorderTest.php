@@ -407,6 +407,58 @@ class PreorderTest extends TestCase
         }
     }
 
+    public function test_each_watch_photo_is_saved_independently_and_copied_to_the_fulfilled_watch(): void
+    {
+        $this->admin();
+        Storage::fake('public');
+        $listing = $this->listing();
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jA5sAAAAASUVORK5CYII=');
+        Storage::disk('public')->put('original.png', $png);
+        $listing->update(['watch_snapshot' => ['brand' => 'Seiko', 'model_name' => 'Presage',
+            'images' => [['path' => 'original.png']]]]);
+        $details = [
+            'customer_name' => 'Photo Buyer', 'contact' => 'Messenger', 'deposit_percentage' => 0,
+            'items' => [
+                ['preorder_listing_id' => $listing->id, 'price' => 20000],
+                ['brand' => 'Tissot', 'model_name' => 'PRX', 'price' => 30000],
+            ],
+        ];
+        $invalid = $details;
+        $invalid['items'][0]['photo'] = UploadedFile::fake()->create('photo.pdf', 10, 'application/pdf');
+        $this->post(route('admin.preorders.store'), $invalid)->assertSessionHasErrors('items.0.photo');
+        $this->assertDatabaseCount('preorders', 0);
+        $details['items'][0]['photo'] = UploadedFile::fake()->createWithContent('first.png', $png);
+        $details['items'][1]['photo'] = UploadedFile::fake()->createWithContent('second.png', $png);
+        $this->post(route('admin.preorders.store'), $details)->assertSessionHasNoErrors();
+        $order = Preorder::with('items.listing')->sole();
+        $paths = $order->items->map(fn ($item) => $item->listing->watch_snapshot['images'][0]['path']);
+        $this->assertCount(2, $paths->unique());
+        foreach ($paths as $path) {
+            Storage::disk('public')->assertExists($path);
+        }
+        $this->assertSame('original.png', $listing->fresh()->watch_snapshot['images'][0]['path']);
+        $order->update(['tracking_token' => Str::random(64)]);
+        $this->get(route('public.preorders.track', $order->tracking_token))->assertInertia(fn (Assert $page) => $page
+            ->where('order.watches.0.image', asset('storage/'.$paths[0]))
+            ->where('order.watches.1.image', asset('storage/'.$paths[1])));
+
+        $this->entry($order, 'payment', 50000)->assertSessionHasNoErrors();
+        $this->entry($order, 'cost', 30000)->assertSessionHasNoErrors();
+        $this->patch(route('admin.preorders.update', $order), ['status' => 'ordered'])->assertSessionHasNoErrors();
+        $this->patch(route('admin.preorders.update', $order), ['status' => 'arrived'])->assertSessionHasNoErrors();
+        $this->post(route('admin.preorders.fulfill', $order), ['units' => [
+            ['serial_number' => 'PHOTO-A', 'cost' => 12000],
+            ['serial_number' => 'PHOTO-B', 'cost' => 18000],
+        ]])->assertSessionHasNoErrors();
+        foreach ($order->items()->get() as $item) {
+            $sale = Watch::findOrFail($item->fulfilled_watch_id);
+            $copiedPath = $sale->images()->firstOrFail()->image_path;
+            Storage::disk('public')->assertExists($copiedPath);
+            $this->assertSame($png, Storage::disk('public')->get($copiedPath));
+            $this->assertNotContains($copiedPath, $paths);
+        }
+    }
+
     public function test_order_can_be_created_with_one_manual_watch_and_no_existing_listings(): void
     {
         $this->admin();

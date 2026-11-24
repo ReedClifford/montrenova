@@ -128,12 +128,13 @@ class PreorderController extends Controller
         $data = $request->validate([
             'preorder_listing_id' => ['required_without:items', Rule::prohibitedIf($request->has('items')), 'exists:preorder_listings,id'],
             'items' => ['sometimes', 'required', 'array', 'list', 'min:1', 'max:20'],
-            'items.*' => ['array:preorder_listing_id,brand,model_name,reference_number,price'],
+            'items.*' => ['array:preorder_listing_id,brand,model_name,reference_number,price,photo'],
             'items.*.preorder_listing_id' => ['nullable', 'integer', 'exists:preorder_listings,id'],
             'items.*.brand' => ['required_without:items.*.preorder_listing_id', 'nullable', 'string', 'max:255'],
             'items.*.model_name' => ['required_without:items.*.preorder_listing_id', 'nullable', 'string', 'max:255'],
             'items.*.reference_number' => ['nullable', 'string', 'max:255'],
             'items.*.price' => ['required', 'numeric', 'decimal:0,2', 'min:0.01', 'max:9999999999.99'],
+            'items.*.photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'customer_name' => ['required', 'string', 'max:255'], 'contact' => ['required', 'string', 'max:255'],
             'total_price' => ['required_without:items', Rule::prohibitedIf($request->has('items')), 'numeric', 'decimal:0,2', 'min:0.01', 'max:9999999999.99'],
             'deposit_percentage' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:100'],
@@ -145,32 +146,47 @@ class PreorderController extends Controller
             $this->check($total <= 999999999999, 'items', 'The combined price exceeds the supported limit.');
             $data['total_price'] = $total / 100;
         }
-        $order = DB::transaction(function () use ($data, $items) {
-            $items = array_map(function (array $item): array {
-                $listingId = $item['preorder_listing_id'] ?? null;
-                if ($listingId === null) {
-                    $listingId = PreorderListing::create([
-                        'watch_snapshot' => Arr::only($item, ['brand', 'model_name', 'reference_number']),
-                        'price' => $item['price'],
-                        'is_visible' => false,
-                    ])->id;
+        $uploadedPhotos = [];
+        try {
+            $order = DB::transaction(function () use ($data, $items, &$uploadedPhotos) {
+                $items = array_map(function (array $item) use (&$uploadedPhotos): array {
+                    $listingId = $item['preorder_listing_id'] ?? null;
+                    if ($listingId === null || ! empty($item['photo'])) {
+                        $snapshot = $listingId === null
+                            ? Arr::only($item, ['brand', 'model_name', 'reference_number'])
+                            : PreorderListing::findOrFail($listingId)->watch_snapshot;
+                        if (! empty($item['photo'])) {
+                            $path = $item['photo']->store('preorders', 'public');
+                            $this->check((bool) $path, 'items', 'Could not save the watch photo.');
+                            $uploadedPhotos[] = $path;
+                            $snapshot['images'] = [['path' => $path]];
+                        }
+                        $listingId = PreorderListing::create([
+                            'watch_snapshot' => $snapshot,
+                            'price' => $item['price'],
+                            'is_visible' => false,
+                        ])->id;
+                    }
+
+                    return ['preorder_listing_id' => $listingId, 'price' => $item['price']];
+                }, $items);
+                if ($items) {
+                    $data['preorder_listing_id'] = $items[0]['preorder_listing_id'];
                 }
 
-                return ['preorder_listing_id' => $listingId, 'price' => $item['price']];
-            }, $items);
-            if ($items) {
-                $data['preorder_listing_id'] = $items[0]['preorder_listing_id'];
-            }
+                $order = Preorder::create($data + [
+                    'status' => (float) $data['deposit_percentage'] === 0.0 ? 'confirmed' : 'awaiting_deposit',
+                ]);
+                if (count($items) > 1) {
+                    $order->items()->createMany($items);
+                }
 
-            $order = Preorder::create($data + [
-                'status' => (float) $data['deposit_percentage'] === 0.0 ? 'confirmed' : 'awaiting_deposit',
-            ]);
-            if (count($items) > 1) {
-                $order->items()->createMany($items);
-            }
-
-            return $order;
-        });
+                return $order;
+            });
+        } catch (\Throwable $error) {
+            Storage::disk('public')->delete($uploadedPhotos);
+            throw $error;
+        }
 
         return to_route('admin.preorders.show', $order)->with('success', 'Customer preorder created.');
     }

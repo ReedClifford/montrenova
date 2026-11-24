@@ -113,7 +113,7 @@ const messenger = computed(
                     :alt="order.watch_name"
                     referrerpolicy="no-referrer"
                 />
-                <div>
+                <div class="min-w-0 flex-1">
                     <template v-if="order.watches?.length > 1">
                         <h2>
                             {{ order.watches.length }} watches · One handover
@@ -122,13 +122,22 @@ const messenger = computed(
                             <li
                                 v-for="(item, index) in order.watches"
                                 :key="index"
-                                class="break-words"
+                                class="flex items-start gap-3 break-words"
                             >
-                                {{ item.name }}
-                                <span v-if="item.reference" class="muted"
-                                    >· {{ item.reference }}</span
-                                >
-                                · {{ money(item.price) }}
+                                <img
+                                    v-if="item.image"
+                                    :src="item.image"
+                                    :alt="item.name"
+                                    class="h-20 w-16 shrink-0 rounded-lg bg-black object-contain"
+                                    referrerpolicy="no-referrer"
+                                />
+                                <span class="min-w-0">
+                                    {{ item.name }}
+                                    <span v-if="item.reference" class="muted"
+                                        >· {{ item.reference }}</span
+                                    >
+                                    · {{ money(item.price) }}
+                                </span>
                             </li>
                         </ul>
                     </template>
@@ -297,7 +306,7 @@ h2 {
     align-items: center;
     gap: 24px;
 }
-.watch-summary img {
+.watch-summary > img {
     width: 120px;
     height: 120px;
     object-fit: contain;
@@ -402,7 +411,7 @@ a:focus-visible {
         align-items: flex-start;
         gap: 14px;
     }
-    .watch-summary img {
+    .watch-summary > img {
         width: 80px;
         height: 100px;
     }

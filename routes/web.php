@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ExpenseController;
 use App\Http\Controllers\Admin\SalesController;
 use App\Http\Controllers\Admin\WatchController;
+use App\Http\Controllers\Admin\WatchReferenceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicWarrantyController;
 use App\Http\Controllers\PublicWatchController;
@@ -135,6 +136,9 @@ Route::middleware(['auth', 'verified','role:admin'])->group(function () {
     | so Laravel does not treat "reorder" or "bulk-action" as a {watch}.
     |
     */
+
+    Route::get('/admin/watches/reference-lookup', WatchReferenceController::class)
+        ->middleware('throttle:12,1')->name('admin.watches.reference-lookup');
 
     Route::patch('/admin/watches/reorder', [WatchController::class, 'reorder'])
         ->name('admin.watches.reorder');

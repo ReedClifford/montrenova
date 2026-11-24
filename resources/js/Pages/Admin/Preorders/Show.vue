@@ -307,7 +307,27 @@ const busy = computed(
                                 :key="item.id"
                                 class="row between break-words"
                             >
-                                <span
+                                <img
+                                    v-if="
+                                        item.listing.watch_snapshot
+                                            .primary_image_url
+                                    "
+                                    :src="
+                                        item.listing.watch_snapshot
+                                            .primary_image_url
+                                    "
+                                    :alt="
+                                        [
+                                            item.listing.watch_snapshot.brand,
+                                            item.listing.watch_snapshot
+                                                .model_name,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' ')
+                                    "
+                                    class="h-20 w-20 shrink-0 rounded-lg bg-black object-contain"
+                                />
+                                <span class="min-w-0 flex-1"
                                     >{{ item.listing.watch_snapshot.brand }}
                                     {{ item.listing.watch_snapshot.model_name }}
                                     <span class="muted">{{

@@ -2,6 +2,7 @@
 import { paymentMethodsDescription } from "@/Utils/paymentMethods";
 import { requestDiscardChanges } from "@/Utils/discardChanges";
 import InputError from "@/Components/InputError.vue";
+import WatchReferenceInput from "./WatchReferenceInput.vue";
 import { useUnsavedChanges } from "@/Composables/useUnsavedChanges";
 import { compressImageFile, formatFileSize } from "@/Utils/imageCompression";
 import { useForm } from "@inertiajs/vue3";
@@ -1061,7 +1062,7 @@ onBeforeUnmount(() => {
                         >
                             <!-- BASIC -->
                             <div
-                                v-if="activeTab === 'basic'"
+                                v-show="activeTab === 'basic'"
                                 class="grid gap-4 md:grid-cols-2 sm:gap-5"
                             >
                                 <div
@@ -1140,22 +1141,10 @@ onBeforeUnmount(() => {
                                     />
                                 </div>
 
-                                <div>
-                                    <label class="mn-label">
-                                        Reference Number
-                                    </label>
-
-                                    <input
-                                        v-model="form.reference_number"
-                                        class="mn-input"
-                                        placeholder="SSC813"
-                                    />
-
-                                    <InputError
-                                        class="mt-2"
-                                        :message="form.errors.reference_number"
-                                    />
-                                </div>
+                                <WatchReferenceInput
+                                    :form="form"
+                                    :duplicate="isDuplicateMode"
+                                />
 
                                 <div>
                                     <label class="mn-label">

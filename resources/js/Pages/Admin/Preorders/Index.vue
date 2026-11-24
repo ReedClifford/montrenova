@@ -1,4 +1,5 @@
 <script setup>
+import AttachmentPreview from "@/Components/AttachmentPreview.vue";
 import UiIcon from "@/Components/UiIcon.vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Modal from "@/Components/Modal.vue";
@@ -164,12 +165,14 @@ function saveListing() {
 }
 function orderItem(listing = null) {
     return {
+        key: crypto.randomUUID(),
         source: listing || props.listings.length ? "listing" : "manual",
         preorder_listing_id: listing?.id || "",
         brand: "",
         model_name: "",
         reference_number: "",
         price: listing?.price || "",
+        photo: null,
     };
 }
 function openOrder(item = null) {
@@ -184,6 +187,11 @@ function selectListing(item) {
         props.listings.find((l) => l.id == item.preorder_listing_id)?.price ||
         "";
 }
+function clearItemPhoto(item) {
+    item.photo = null;
+    const input = document.getElementById(`order-photo-${item.key}`);
+    if (input) input.value = "";
+}
 function submitOrder() {
     order
         .transform(({ items, ...details }) => ({
@@ -196,10 +204,11 @@ function submitOrder() {
                     model_name,
                     reference_number,
                     price,
+                    photo,
                 }) =>
                     source === "manual"
-                        ? { brand, model_name, reference_number, price }
-                        : { preorder_listing_id, price },
+                        ? { brand, model_name, reference_number, price, photo }
+                        : { preorder_listing_id, price, photo },
             ),
         }))
         .post(route("admin.preorders.store"));
@@ -658,7 +667,7 @@ onMounted(() => {
                         <div class="grid">
                             <fieldset
                                 v-for="(item, index) in order.items"
-                                :key="index"
+                                :key="item.key"
                                 class="span-2 grid"
                             >
                                 <legend>Watch {{ index + 1 }}</legend>
@@ -720,6 +729,35 @@ onMounted(() => {
                                             maxlength="255"
                                     /></label>
                                 </template>
+                                <div class="span-2">
+                                    <label :for="`order-photo-${item.key}`"
+                                        >Watch {{ index + 1 }} reference photo
+                                        <input
+                                            :id="`order-photo-${item.key}`"
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/webp"
+                                            @change="
+                                                item.photo =
+                                                    $event.target.files[0] ||
+                                                    null
+                                            "
+                                        />
+                                    </label>
+                                    <p class="muted text-xs">
+                                        JPG, PNG or WebP, up to 5 MB. Existing
+                                        listing photos are used when you leave
+                                        this blank.
+                                    </p>
+                                    <AttachmentPreview :file="item.photo" />
+                                    <button
+                                        v-if="item.photo"
+                                        type="button"
+                                        class="mt-2"
+                                        @click="clearItemPhoto(item)"
+                                    >
+                                        Remove selected photo
+                                    </button>
+                                </div>
                                 <label
                                     >Agreed price (₱)<input
                                         v-model="item.price"

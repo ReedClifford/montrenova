@@ -24,6 +24,7 @@ class PublicPreorderController extends Controller
                 'name' => trim(($item['brand'] ?? '').' '.($item['model_name'] ?? '')),
                 'reference' => $item['reference_number'] ?? null,
                 'price' => $item['price'],
+                'image' => $item['primary_image_url'] ?? null,
             ], $order->watchDetails()),
             'watch_warranties' => $order->status === 'fulfilled' && $order->items->isNotEmpty()
                 ? $order->items->map(fn ($item) => [
