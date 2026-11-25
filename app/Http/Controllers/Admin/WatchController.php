@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Watch;
 use App\Models\WatchImage;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -15,6 +16,10 @@ use Illuminate\Validation\Rule;
 
 class WatchController extends Controller
 {
+    private const ACTION_FILTERS = [
+        'visible', 'needs_push', 'no_photo', 'low_margin', 'reservation_overdue', 'ready_to_post',
+    ];
+
     // public function index(Request $request)
     // {
     //     $search = trim((string) $request->input('search', ''));
@@ -85,6 +90,10 @@ class WatchController extends Controller
         $status = trim((string) $request->input('status', ''));
         $brand = trim((string) $request->input('brand', ''));
         $condition = trim((string) $request->input('condition', ''));
+        $action = $request->query('action', 'all');
+        if (! in_array($action, self::ACTION_FILTERS, true)) {
+            $action = 'all';
+        }
 
         /*
         |--------------------------------------------------------------------------
@@ -148,14 +157,7 @@ class WatchController extends Controller
             default => '',
         };
 
-        $watches = Watch::query()
-            ->with([
-                'primaryImage',
-                'images',
-                'sections',
-            ])
-            ->withCount('images')
-            ->withExists(['fulfilledPreorder', 'fulfilledPreorderItem'])
+        $inventory = Watch::query()
             ->when(
                 $search,
                 function ($query) use ($search) {
@@ -225,8 +227,20 @@ class WatchController extends Controller
                         ) = ?",
                         [$normalizedCondition]
                     )
-            )
+            );
+
+        $today = Carbon::today('Asia/Manila');
+        $actionCounts = [];
+        foreach (self::ACTION_FILTERS as $filter) {
+            $actionCounts[$filter] = $this->applyInventoryAction(clone $inventory, $filter, $today)->count();
+        }
+
+        $watches = $this->applyInventoryAction($inventory, $action, $today)
+            ->with(['primaryImage', 'images', 'sections'])
+            ->withCount('images')
+            ->withExists(['fulfilledPreorder', 'fulfilledPreorderItem'])
             ->latest()
+            ->orderByDesc('id')
             ->paginate(10)
             ->withQueryString()
             ->through(fn (Watch $watch) => $watch->setAttribute(
@@ -396,6 +410,8 @@ class WatchController extends Controller
                 'watches' =>
                     $watches,
 
+                'actionCounts' => $actionCounts,
+
                 'warrantyWatches' =>
                     $warrantyWatches,
 
@@ -411,6 +427,8 @@ class WatchController extends Controller
 
                     'condition' =>
                         $condition,
+                    'action' =>
+                        $action,
                 ],
 
                 'summary' => [
@@ -455,6 +473,24 @@ class WatchController extends Controller
                 ],
             ]
         );
+    }
+
+    private function applyInventoryAction(Builder $query, string $action, Carbon $today): Builder
+    {
+        $listedPrice = '(CASE WHEN discounted_price > 0 THEN discounted_price ELSE COALESCE(selling_price, 0) END)';
+        $slowStockCutoff = $today->copy()->subDays(30)->utc();
+
+        return match ($action) {
+            'visible' => $query->where('is_visible', true)->where('status', '!=', 'sold'),
+            'needs_push' => $query->where('status', '!=', 'sold')->where('created_at', '<', $slowStockCutoff),
+            'no_photo' => $query->whereDoesntHave('primaryImage'),
+            'low_margin' => $query->where('status', '!=', 'sold')->where(fn (Builder $q) => $q
+                ->whereRaw("{$listedPrice} <= 0")
+                ->orWhereRaw("({$listedPrice} - COALESCE(capital_price, 0)) * 10 < {$listedPrice}")),
+            'reservation_overdue' => $query->where('status', 'reserved')->where('reservation_deadline', '<', $today->toDateString()),
+            'ready_to_post' => $query->where('status', 'available')->where('is_visible', true)->whereHas('primaryImage'),
+            default => $query,
+        };
     }
 
     public function create()

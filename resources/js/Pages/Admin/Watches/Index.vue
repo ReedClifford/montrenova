@@ -45,6 +45,10 @@ const props = defineProps({
             condition: "",
         }),
     },
+    actionCounts: {
+        type: Object,
+        default: () => ({}),
+    },
     summary: {
         type: Object,
         default: () => ({
@@ -76,7 +80,7 @@ const search = ref(props.filters.search || "");
 const status = ref(props.filters.status || "");
 const brand = ref(props.filters.brand || "");
 const condition = ref(props.filters.condition || "");
-const actionFilter = ref("all");
+const actionFilter = computed(() => props.filters.action || "all");
 const suppressSearchWatcher = ref(false);
 
 const viewMode = ref(
@@ -133,14 +137,13 @@ const clearSearchDebounce = () => {
 
 const applyServerFilters = ({
     debounce = 0,
-    nextActionFilter = "all",
+    nextActionFilter = actionFilter.value,
 } = {}) => {
     clearSearchDebounce();
 
     const run = () => {
         isSearchPending.value = false;
         isFiltering.value = true;
-        actionFilter.value = nextActionFilter;
 
         router.get(
             route("admin.watches.index"),
@@ -149,6 +152,7 @@ const applyServerFilters = ({
                 status: status.value,
                 brand: brand.value,
                 condition: condition.value,
+                action: nextActionFilter === "all" ? undefined : nextActionFilter,
             },
             {
                 preserveState: true,
@@ -159,6 +163,7 @@ const applyServerFilters = ({
                     "arrangeWatches",
                     "warrantyWatches",
                     "summary",
+                    "actionCounts",
                     "filters",
                 ],
                 onFinish: () => {
@@ -677,34 +682,6 @@ const visibilityClass = (watch) => {
 
 const currentPageWatches = computed(() => props.watches?.data || []);
 
-const visibleWatchesCount = computed(() => {
-    return currentPageWatches.value.filter(
-        (watch) => watch.is_visible && watch.status !== "sold",
-    ).length;
-});
-
-const watchActionStats = computed(() => {
-    const stats = {
-        visible: 0,
-        needsPush: 0,
-        noPhoto: 0,
-        lowMargin: 0,
-        reservationOverdue: 0,
-        readyToPost: 0,
-    };
-
-    currentPageWatches.value.forEach((watch) => {
-        if (watch.is_visible && watch.status !== "sold") stats.visible += 1;
-        if (isSlowMoving(watch)) stats.needsPush += 1;
-        if (hasNoPhoto(watch)) stats.noPhoto += 1;
-        if (isLowMargin(watch)) stats.lowMargin += 1;
-        if (isReservationOverdue(watch)) stats.reservationOverdue += 1;
-        if (isReadyToPost(watch)) stats.readyToPost += 1;
-    });
-
-    return stats;
-});
-
 const warrantyRecords = computed(() => props.warrantyWatches?.data || []);
 
 const warrantyActiveCount = computed(() => {
@@ -735,27 +712,7 @@ const warrantyFilteredRecords = computed(() => {
     );
 });
 
-const actionFilterMatches = (watch) => {
-    if (actionFilter.value === "all") return true;
-    if (actionFilter.value === "visible") {
-        return watch.is_visible && watch.status !== "sold";
-    }
-    if (actionFilter.value === "needs_push") return isSlowMoving(watch);
-    if (actionFilter.value === "no_photo") return hasNoPhoto(watch);
-    if (actionFilter.value === "low_margin") return isLowMargin(watch);
-    if (actionFilter.value === "reservation_overdue") {
-        return isReservationOverdue(watch);
-    }
-    if (actionFilter.value === "ready_to_post") return isReadyToPost(watch);
-
-    return true;
-};
-
-const displayedWatches = computed(() => {
-    return currentPageWatches.value.filter((watch) =>
-        actionFilterMatches(watch),
-    );
-});
+const displayedWatches = currentPageWatches;
 
 const displayedWatchIds = computed(() => {
     return displayedWatches.value.map((watch) => watch.id);
@@ -1014,6 +971,7 @@ const runBulkAction = (action) => {
                         "arrangeWatches",
                         "warrantyWatches",
                         "summary",
+                        "actionCounts",
                     ],
                     preserveScroll: true,
                     preserveState: false,
@@ -1030,24 +988,9 @@ const runBulkAction = (action) => {
 };
 
 const setActionFilter = (value) => {
-    if (
-        value === actionFilter.value &&
-        !(value === "visible" && status.value !== "")
-    ) {
-        return;
-    }
+    if (value === actionFilter.value) return;
 
-    if (value === "visible" && status.value !== "") {
-        status.value = "";
-
-        applyServerFilters({
-            nextActionFilter: "visible",
-        });
-
-        return;
-    }
-
-    actionFilter.value = value;
+    applyServerFilters({ nextActionFilter: value });
 };
 
 const arrangeWatchImageUrl = (watch) => {
@@ -1245,6 +1188,7 @@ const saveArrangeOrder = () => {
                         "arrangeWatches",
                         "warrantyWatches",
                         "summary",
+                        "actionCounts",
                     ],
                     preserveScroll: true,
                     preserveState: false,
@@ -1373,46 +1317,15 @@ const warrantyFilterTabs = computed(() => [
     },
 ]);
 
-const actionCards = computed(() => [
-    {
-        label: "Needs Push",
-        value: watchActionStats.value.needsPush,
-        helper: "Slow moving or dead stock",
-        filter: "needs_push",
-        className: "border-amber-500/20 bg-amber-500/10 text-amber-300",
-    },
-    {
-        label: "No Photo",
-        value: watchActionStats.value.noPhoto,
-        helper: "Needs product images",
-        filter: "no_photo",
-        className: "border-red-500/20 bg-red-500/10 text-red-300",
-    },
-    {
-        label: "Low Margin",
-        value: watchActionStats.value.lowMargin,
-        helper: "Review price or cost",
-        filter: "low_margin",
-        className: "border-red-500/20 bg-red-500/10 text-red-300",
-    },
-    {
-        label: "Ready to Post",
-        value: watchActionStats.value.readyToPost,
-        helper: "Available with photos",
-        filter: "ready_to_post",
-        className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
-    },
-]);
-
-const priorityFilterLabels = computed(() => [
+const priorityFilterLabels = [
     { label: "All", value: "all" },
     { label: "Visible", value: "visible" },
     { label: "Needs Push", value: "needs_push" },
     { label: "No Photo", value: "no_photo" },
     { label: "Low Margin", value: "low_margin" },
-    { label: "Overdue", value: "reservation_overdue" },
-    { label: "Ready", value: "ready_to_post" },
-]);
+    { label: "Overdue Reservations", value: "reservation_overdue" },
+    { label: "Ready to Post", value: "ready_to_post" },
+];
 
 const brandOptions = [
     { label: "All Brands", value: "" },
@@ -1451,7 +1364,7 @@ const selectedStatusLabel = computed(() => {
 
 const selectedActionFilterLabel = computed(() => {
     return (
-        priorityFilterLabels.value.find(
+        priorityFilterLabels.find(
             (filter) => filter.value === actionFilter.value,
         )?.label || "All"
     );
@@ -1484,7 +1397,7 @@ const hasActiveFilters = computed(() => {
 const filterStateLabel = computed(() => {
     if (isSearchPending.value) return "Typing… applying search shortly";
     if (isFiltering.value) return "Applying filters…";
-    if (!hasActiveFilters.value) return "Showing all loaded watches";
+    if (!hasActiveFilters.value) return "Showing all inventory";
 
     const parts = [];
 
@@ -1522,10 +1435,7 @@ onMounted(() => {
 watch(search, () => {
     if (suppressSearchWatcher.value) return;
 
-    applyServerFilters({
-        debounce: 500,
-        nextActionFilter: "all",
-    });
+    applyServerFilters({ debounce: 500 });
 });
 
 onBeforeUnmount(() => {
@@ -1533,13 +1443,11 @@ onBeforeUnmount(() => {
 });
 
 const setStatusFilter = (value) => {
-    if (status.value === value && actionFilter.value === "all") return;
+    if (status.value === value) return;
 
     status.value = value;
 
-    applyServerFilters({
-        nextActionFilter: "all",
-    });
+    applyServerFilters();
 };
 
 const setBrandFilter = (value) => {
@@ -1564,9 +1472,7 @@ const clearAllFilters = () => {
     status.value = "";
     brand.value = "";
     condition.value = "";
-    actionFilter.value = "all";
-
-    applyServerFilters();
+    applyServerFilters({ nextActionFilter: "all" });
 
     nextTick(() => {
         suppressSearchWatcher.value = false;
@@ -1581,7 +1487,6 @@ const setActiveTab = (tab) => {
     }
 
     if (tab === "warranty") {
-        actionFilter.value = "all";
         cancelArrangeMode();
         cancelBulkMode();
     }
@@ -1616,7 +1521,7 @@ const closeCreateModal = () => {
     duplicateSource.value = null;
 
     router.reload({
-        only: ["watches", "arrangeWatches", "warrantyWatches", "summary"],
+        only: ["watches", "arrangeWatches", "warrantyWatches", "summary", "actionCounts"],
         preserveScroll: true,
     });
 };
@@ -1692,6 +1597,7 @@ const closeEditModal = async (payload = {}) => {
                     "arrangeWatches",
                     "warrantyWatches",
                     "summary",
+                    "actionCounts",
                 ],
                 preserveScroll: true,
                 preserveState: false,
@@ -1710,7 +1616,7 @@ const closeDeleteModal = () => {
     selectedWatch.value = null;
 
     router.reload({
-        only: ["watches", "arrangeWatches", "warrantyWatches", "summary"],
+        only: ["watches", "arrangeWatches", "warrantyWatches", "summary", "actionCounts"],
         preserveScroll: true,
     });
 };
@@ -1725,7 +1631,7 @@ const closeMarkSoldModal = () => {
     selectedWatch.value = null;
 
     router.reload({
-        only: ["watches", "arrangeWatches", "warrantyWatches", "summary"],
+        only: ["watches", "arrangeWatches", "warrantyWatches", "summary", "actionCounts"],
         preserveScroll: true,
     });
 };
@@ -1740,7 +1646,7 @@ const closeReserveModal = () => {
     selectedWatch.value = null;
 
     router.reload({
-        only: ["watches", "arrangeWatches", "warrantyWatches", "summary"],
+        only: ["watches", "arrangeWatches", "warrantyWatches", "summary", "actionCounts"],
         preserveScroll: true,
     });
 };
@@ -1762,6 +1668,7 @@ const clearReservation = (watch) => {
                         "arrangeWatches",
                         "warrantyWatches",
                         "summary",
+                        "actionCounts",
                     ],
                     preserveScroll: true,
                 });
@@ -2577,13 +2484,13 @@ const clearReservation = (watch) => {
                                 <span>
                                     Showing
                                     <strong class="text-white">
-                                        {{ displayedWatches.length }}
+                                        {{ watches.from ? `${watches.from}–${watches.to}` : "0" }}
                                     </strong>
                                     of
                                     <strong class="text-white">
-                                        {{ currentPageWatches.length }}
+                                        {{ watches.total ?? 0 }}
                                     </strong>
-                                    loaded watches
+                                    watches
                                 </span>
 
                                 <p class="mt-1 text-xs text-zinc-600">
@@ -2616,6 +2523,31 @@ const clearReservation = (watch) => {
                         </div>
                     </div>
                 </section>
+
+                <div
+                    v-if="!isArrangeMode"
+                    role="group"
+                    aria-label="Stock priority filters"
+                    class="flex flex-wrap gap-2"
+                >
+                    <button
+                        v-for="filter in priorityFilterLabels"
+                        :key="filter.value"
+                        type="button"
+                        :aria-pressed="actionFilter === filter.value"
+                        :disabled="isFiltering"
+                        class="rounded-xl border px-3 py-2 text-xs font-medium transition disabled:opacity-60"
+                        :class="actionFilter === filter.value
+                            ? 'border-white bg-white text-black'
+                            : 'border-white/10 bg-white/[0.03] text-zinc-300 hover:border-white/30'"
+                        @click="setActionFilter(filter.value)"
+                    >
+                        {{ filter.label }}
+                        <span v-if="filter.value !== 'all'" class="ml-1 tabular-nums opacity-70">
+                            {{ actionCounts[filter.value] ?? 0 }}
+                        </span>
+                    </button>
+                </div>
 
                 <!-- BULK ACTIONS -->
                 <section
